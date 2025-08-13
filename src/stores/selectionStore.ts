@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { Selection, SelectionMode } from '../types/geometry';
+import { Selection, SelectionMode, ViewMode } from '../types/geometry';
 
 interface SelectionState {
   selection: Selection;
 }
 
 interface SelectionActions {
+  setViewMode: (mode: ViewMode) => void;
   setSelectionMode: (mode: SelectionMode) => void;
   selectMesh: (meshId: string | null) => void;
   selectVertices: (meshId: string, vertexIds: string[], additive?: boolean) => void;
@@ -20,6 +21,8 @@ interface SelectionActions {
   toggleFaceSelection: (meshId: string, faceId: string) => void;
   hasSelection: () => boolean;
   getSelectionCount: () => number;
+  enterEditMode: (meshId: string) => void;
+  exitEditMode: () => void;
 }
 
 type SelectionStore = SelectionState & SelectionActions;
@@ -29,7 +32,8 @@ export const useSelectionStore = create<SelectionStore>()(
     immer((set, get) => ({
       // Initial state
       selection: {
-        mode: 'vertex',
+        viewMode: 'object',
+        selectionMode: 'vertex',
         meshId: null,
         vertexIds: [],
         edgeIds: [],
@@ -38,19 +42,56 @@ export const useSelectionStore = create<SelectionStore>()(
       },
       
       // Actions
-      setSelectionMode: (mode: SelectionMode) => {
+      setViewMode: (viewMode: ViewMode) => {
         set((state) => {
-          // Clear selection when changing modes
-          state.selection.mode = mode;
+          state.selection.viewMode = viewMode;
+          // Clear all selections when changing view modes
           state.selection.vertexIds = [];
           state.selection.edgeIds = [];
           state.selection.faceIds = [];
           state.selection.objectIds = [];
           
-          // For object mode, clear mesh selection
-          if (mode === 'object') {
+          // In object mode, clear mesh selection
+          if (viewMode === 'object') {
             state.selection.meshId = null;
           }
+        });
+      },
+      
+      setSelectionMode: (mode: SelectionMode) => {
+        set((state) => {
+          // Only allow selection mode changes in edit mode
+          if (state.selection.viewMode !== 'edit') return;
+          
+          state.selection.selectionMode = mode;
+          // Clear component selections when changing selection modes
+          state.selection.vertexIds = [];
+          state.selection.edgeIds = [];
+          state.selection.faceIds = [];
+        });
+      },
+      
+      enterEditMode: (meshId: string) => {
+        set((state) => {
+          state.selection.viewMode = 'edit';
+          state.selection.meshId = meshId;
+          state.selection.selectionMode = 'vertex';
+          // Clear all selections
+          state.selection.vertexIds = [];
+          state.selection.edgeIds = [];
+          state.selection.faceIds = [];
+          state.selection.objectIds = [];
+        });
+      },
+      
+      exitEditMode: () => {
+        set((state) => {
+          state.selection.viewMode = 'object';
+          state.selection.meshId = null;
+          // Clear component selections
+          state.selection.vertexIds = [];
+          state.selection.edgeIds = [];
+          state.selection.faceIds = [];
         });
       },
       
@@ -66,8 +107,11 @@ export const useSelectionStore = create<SelectionStore>()(
       
       selectVertices: (meshId: string, vertexIds: string[], additive: boolean = false) => {
         set((state) => {
+          // Only allow in edit mode
+          if (state.selection.viewMode !== 'edit') return;
+          
           state.selection.meshId = meshId;
-          state.selection.mode = 'vertex';
+          state.selection.selectionMode = 'vertex';
           
           if (additive) {
             // Add to existing selection (union)
@@ -87,8 +131,11 @@ export const useSelectionStore = create<SelectionStore>()(
       
       selectEdges: (meshId: string, edgeIds: string[], additive: boolean = false) => {
         set((state) => {
+          // Only allow in edit mode
+          if (state.selection.viewMode !== 'edit') return;
+          
           state.selection.meshId = meshId;
-          state.selection.mode = 'edge';
+          state.selection.selectionMode = 'edge';
           
           if (additive) {
             const existingIds = new Set(state.selection.edgeIds);
@@ -107,8 +154,11 @@ export const useSelectionStore = create<SelectionStore>()(
       
       selectFaces: (meshId: string, faceIds: string[], additive: boolean = false) => {
         set((state) => {
+          // Only allow in edit mode
+          if (state.selection.viewMode !== 'edit') return;
+          
           state.selection.meshId = meshId;
-          state.selection.mode = 'face';
+          state.selection.selectionMode = 'face';
           
           if (additive) {
             const existingIds = new Set(state.selection.faceIds);
@@ -127,7 +177,9 @@ export const useSelectionStore = create<SelectionStore>()(
       
       selectObjects: (objectIds: string[], additive: boolean = false) => {
         set((state) => {
-          state.selection.mode = 'object';
+          // Only allow in object mode
+          if (state.selection.viewMode !== 'object') return;
+          
           state.selection.meshId = null;
           
           if (additive) {
@@ -157,8 +209,11 @@ export const useSelectionStore = create<SelectionStore>()(
       
       toggleVertexSelection: (meshId: string, vertexId: string) => {
         set((state) => {
+          // Only allow in edit mode
+          if (state.selection.viewMode !== 'edit') return;
+          
           state.selection.meshId = meshId;
-          state.selection.mode = 'vertex';
+          state.selection.selectionMode = 'vertex';
           
           const index = state.selection.vertexIds.indexOf(vertexId);
           if (index >= 0) {
@@ -176,8 +231,11 @@ export const useSelectionStore = create<SelectionStore>()(
       
       toggleEdgeSelection: (meshId: string, edgeId: string) => {
         set((state) => {
+          // Only allow in edit mode
+          if (state.selection.viewMode !== 'edit') return;
+          
           state.selection.meshId = meshId;
-          state.selection.mode = 'edge';
+          state.selection.selectionMode = 'edge';
           
           const index = state.selection.edgeIds.indexOf(edgeId);
           if (index >= 0) {
@@ -195,8 +253,11 @@ export const useSelectionStore = create<SelectionStore>()(
       
       toggleFaceSelection: (meshId: string, faceId: string) => {
         set((state) => {
+          // Only allow in edit mode
+          if (state.selection.viewMode !== 'edit') return;
+          
           state.selection.meshId = meshId;
-          state.selection.mode = 'face';
+          state.selection.selectionMode = 'face';
           
           const index = state.selection.faceIds.indexOf(faceId);
           if (index >= 0) {
@@ -233,7 +294,8 @@ export const useSelectionStore = create<SelectionStore>()(
 
 // Selector hooks for optimized re-renders
 export const useSelection = () => useSelectionStore((state) => state.selection);
-export const useSelectionMode = () => useSelectionStore((state) => state.selection.mode);
+export const useViewMode = () => useSelectionStore((state) => state.selection.viewMode);
+export const useSelectionMode = () => useSelectionStore((state) => state.selection.selectionMode);
 export const useSelectedVertices = () => useSelectionStore((state) => state.selection.vertexIds);
 export const useSelectedEdges = () => useSelectionStore((state) => state.selection.edgeIds);
 export const useSelectedFaces = () => useSelectionStore((state) => state.selection.faceIds);

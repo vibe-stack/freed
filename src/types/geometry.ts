@@ -61,11 +61,13 @@ export interface Material {
   emissive: Vector3;
 }
 
-// Selection types
-export type SelectionMode = 'vertex' | 'edge' | 'face' | 'object';
+// View and Selection types
+export type ViewMode = 'object' | 'edit';
+export type SelectionMode = 'vertex' | 'edge' | 'face';
 
 export interface Selection {
-  mode: SelectionMode;
+  viewMode: ViewMode;
+  selectionMode: SelectionMode; // Only used in edit mode
   meshId: string | null;
   vertexIds: string[];
   edgeIds: string[];
