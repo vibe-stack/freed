@@ -1,5 +1,7 @@
+'use client';
+
 import React, { useMemo } from 'react';
-import { Vector3, Color, BufferGeometry, Float32BufferAttribute } from 'three';
+import { Color, BufferGeometry, Float32BufferAttribute } from 'three';
 import { useGeometryStore } from '../../stores/geometryStore';
 import { Edge, Vertex } from '../../types/geometry';
 
@@ -24,8 +26,13 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
   const geometryStore = useGeometryStore();
   const mesh = geometryStore.meshes.get(meshId);
   
-  // Use local vertices if provided (during tool operations), otherwise use store vertices
-  const vertices = localVertices || mesh?.vertices || [];
+  // Merge local vertex overrides when provided
+  const vertices = useMemo(() => {
+    const base = mesh?.vertices || [];
+    if (!localVertices || localVertices.length === 0) return base;
+    const overrides = new Map(localVertices.map(v => [v.id, v] as const));
+    return base.map(v => overrides.get(v.id) || v);
+  }, [mesh?.vertices, localVertices]);
   const edges = mesh?.edges || [];
   
   const edgeData = useMemo(() => {
@@ -45,6 +52,7 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
         v1.position.x, v1.position.y, v1.position.z,
       ]);
       geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+      geometry.computeBoundingSphere();
       
       return {
         id: edge.id,
@@ -55,8 +63,8 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
   }, [edges, vertices, selectedEdgeIds]);
 
   const handleEdgePointerDown = (edgeId: string) => (event: any) => {
-    event.stopPropagation();
     if (selectionMode === 'edge') {
+      event.stopPropagation();
       onEdgeClick(edgeId, event);
     }
   };
@@ -65,11 +73,17 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
     <>
       {edgeData.map(edge => {
         if (!edge) return null;
-        
         return (
-          <line key={edge.id} onPointerDown={handleEdgePointerDown(edge.id)}>
-            <primitive object={edge.geometry} />
-            <lineBasicMaterial color={edge.isSelected ? ORANGE : BLACK} linewidth={2} />
+          <line
+            key={edge.id}
+            onPointerDown={handleEdgePointerDown(edge.id)}
+            ref={(node: any) => { if (node) node.renderOrder = 2000; }}
+          >
+            <bufferGeometry>
+              {/* @ts-ignore */}
+              <bufferAttribute attach="attributes-position" args={[edge.geometry.getAttribute('position').array, 3]} />
+            </bufferGeometry>
+            <lineBasicMaterial color={edge.isSelected ? ORANGE : BLACK} linewidth={1} depthTest={false} depthWrite={false} />
           </line>
         );
       })}

@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useRef, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Vector3 } from 'three';
@@ -28,53 +30,59 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({ meshId, onLocalDataCha
   const [localVertices, setLocalVertices] = useState<Vertex[]>([]);
   const [centroid, setCentroid] = useState<Vector3>(new Vector3());
   const [accumulator, setAccumulator] = useState<{ rotation: number, scale: number }>({ rotation: 0, scale: 1 });
+  const moveAccumRef = useRef(new Vector3(0, 0, 0));
   
   const pointerLocked = useRef(false);
   
   // Get current selection data
-  const mesh = geometryStore.meshes.get(meshId);
-  const selection = selectionStore.selection;
+  // We'll read fresh state inside effects to avoid unnecessary re-renders
   
   // Setup tool operation when tool becomes active
   useEffect(() => {
-    if (toolStore.isActive && mesh) {
+    if (toolStore.isActive) {
+      const mesh = useGeometryStore.getState().meshes.get(meshId);
+      const selection = useSelectionStore.getState().selection;
       // Get selected vertices based on selection mode
       let selectedVertices: Vertex[] = [];
       
       if (selection.selectionMode === 'vertex') {
-        selectedVertices = mesh.vertices.filter(v => selection.vertexIds.includes(v.id));
+        selectedVertices = (mesh?.vertices || []).filter(v => selection.vertexIds.includes(v.id));
       } else if (selection.selectionMode === 'edge') {
         // Get vertices from selected edges
         const vertexIds = new Set<string>();
         selection.edgeIds.forEach(edgeId => {
-          const edge = mesh.edges.find(e => e.id === edgeId);
+          const edge = mesh?.edges.find(e => e.id === edgeId);
           if (edge) {
             edge.vertexIds.forEach(vid => vertexIds.add(vid));
           }
         });
-        selectedVertices = mesh.vertices.filter(v => vertexIds.has(v.id));
+        selectedVertices = (mesh?.vertices || []).filter(v => vertexIds.has(v.id));
       } else if (selection.selectionMode === 'face') {
         // Get vertices from selected faces
         const vertexIds = new Set<string>();
         selection.faceIds.forEach(faceId => {
-          const face = mesh.faces.find(f => f.id === faceId);
+          const face = mesh?.faces.find(f => f.id === faceId);
           if (face) {
             face.vertexIds.forEach(vid => vertexIds.add(vid));
           }
         });
-        selectedVertices = mesh.vertices.filter(v => vertexIds.has(v.id));
+        selectedVertices = (mesh?.vertices || []).filter(v => vertexIds.has(v.id));
       }
       
       if (selectedVertices.length > 0) {
-        setOriginalVertices(selectedVertices);
+        // Avoid re-initializing if selection unchanged
+        const same = originalVertices.length === selectedVertices.length && originalVertices.every((v, i) => v.id === selectedVertices[i].id);
+        if (!same) setOriginalVertices(selectedVertices);
         setLocalVertices(selectedVertices);
         setCentroid(calculateCentroid(selectedVertices));
         setAccumulator({ rotation: 0, scale: 1 });
+        moveAccumRef.current.set(0, 0, 0);
         onLocalDataChange(selectedVertices);
         
         // Request pointer lock for infinite movement
-        gl.domElement.requestPointerLock();
-        pointerLocked.current = true;
+        if (!pointerLocked.current && document.pointerLockElement !== gl.domElement) {
+          gl.domElement.requestPointerLock();
+        }
       }
     } else {
       // Tool is not active, release pointer lock
@@ -90,23 +98,36 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({ meshId, onLocalDataCha
         pointerLocked.current = false;
       }
     };
-  }, [toolStore.isActive, mesh, selection, gl.domElement, onLocalDataChange]);
+  }, [toolStore.isActive, meshId, gl, onLocalDataChange, originalVertices.length]);
+
+  // Track pointer lock state
+  useEffect(() => {
+    const onLockChange = () => {
+      pointerLocked.current = document.pointerLockElement === gl.domElement;
+    };
+    document.addEventListener('pointerlockchange', onLockChange);
+    return () => document.removeEventListener('pointerlockchange', onLockChange);
+  }, [gl]);
   
   // Handle mouse movement during tool operations
   useEffect(() => {
     if (!toolStore.isActive || originalVertices.length === 0) return;
     
-    const handleMouseMove = (event: MouseEvent) => {
+  const handleMouseMove = (event: MouseEvent) => {
       const distance = camera.position.distanceTo(centroid);
       
       if (toolStore.tool === 'move') {
-        const delta = mouseToWorldDelta(event.movementX, event.movementY, camera, distance);
-        const newVertices = applyMoveOperation(originalVertices, delta, toolStore.axisLock);
+        const moveSensitivity = useToolStore.getState().moveSensitivity;
+        const delta = mouseToWorldDelta(event.movementX, event.movementY, camera, distance, moveSensitivity);
+    // accumulate movement since start
+    moveAccumRef.current.add(delta);
+    const newVertices = applyMoveOperation(originalVertices, moveAccumRef.current.clone(), toolStore.axisLock);
         setLocalVertices(newVertices);
         onLocalDataChange(newVertices);
       } else if (toolStore.tool === 'rotate') {
         // Rotation based on mouse movement
-        const rotationDelta = (event.movementX + event.movementY) * 0.01;
+        const rotateSensitivity = useToolStore.getState().rotateSensitivity;
+        const rotationDelta = (event.movementX + event.movementY) * rotateSensitivity;
         const newRotation = accumulator.rotation + rotationDelta;
         setAccumulator(prev => ({ ...prev, rotation: newRotation }));
         
@@ -115,7 +136,8 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({ meshId, onLocalDataCha
         onLocalDataChange(newVertices);
       } else if (toolStore.tool === 'scale') {
         // Scale based on mouse movement
-        const scaleDelta = event.movementX * 0.01;
+        const scaleSensitivity = useToolStore.getState().scaleSensitivity;
+        const scaleDelta = event.movementX * scaleSensitivity;
         const newScale = Math.max(0.01, accumulator.scale + scaleDelta); // Prevent negative scale
         setAccumulator(prev => ({ ...prev, scale: newScale }));
         
@@ -125,7 +147,7 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({ meshId, onLocalDataCha
       }
     };
     
-    const handleMouseDown = (event: MouseEvent) => {
+  const handleMouseDown = (event: MouseEvent) => {
       if (event.button === 0) { // Left mouse button - commit operation
         if (localVertices.length > 0) {
           // Update the store with new vertex positions
@@ -140,6 +162,7 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({ meshId, onLocalDataCha
           });
         }
         toolStore.endOperation(true);
+    moveAccumRef.current.set(0, 0, 0);
       }
     };
     
@@ -151,6 +174,7 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({ meshId, onLocalDataCha
         setLocalVertices(originalVertices);
         onLocalDataChange(originalVertices);
         toolStore.endOperation(false);
+        moveAccumRef.current.set(0, 0, 0);
       } else if (key === 'x') {
         toolStore.setAxisLock(toolStore.axisLock === 'x' ? 'none' : 'x');
       } else if (key === 'y') {

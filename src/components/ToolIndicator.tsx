@@ -30,19 +30,11 @@ const ToolIndicator: React.FC = () => {
   };
   
   return (
-    <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
-      <div className="bg-orange-500 text-white px-6 py-3 rounded-lg shadow-lg border-2 border-orange-600">
-        <div className="flex items-center space-x-2">
-          <span className="text-2xl">{getToolIcon()}</span>
-          <div>
-            <div className="font-bold text-lg">
-              {getToolName()}{getAxisLockDisplay()}
-            </div>
-            <div className="text-sm opacity-90">
-              Left click to confirm • ESC to cancel • X/Y/Z to lock axis
-            </div>
-          </div>
-        </div>
+    <div className="pointer-events-none fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
+      <div className="bg-black/50 text-white/90 px-3 py-1.5 rounded-md border border-white/10 text-xs flex items-center gap-2">
+        <span className="opacity-80">{getToolIcon()}</span>
+        <span className="font-medium">{getToolName()}{getAxisLockDisplay()}</span>
+        <span className="opacity-70">• LMB confirm • ESC cancel • X/Y/Z lock</span>
       </div>
     </div>
   );

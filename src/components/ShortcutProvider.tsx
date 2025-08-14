@@ -10,6 +10,7 @@ interface ShortcutConfig {
   ctrl?: boolean;
   shift?: boolean;
   alt?: boolean;
+  meta?: boolean; // Cmd key on macOS / Meta on others
   action: () => void;
   description: string;
   preventDefault?: boolean;
@@ -35,128 +36,73 @@ interface ShortcutProviderProps {
 
 export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) => {
   const shortcutsRef = useRef<Map<string, ShortcutConfig>>(new Map());
-  const selectionActions = useSelectionStore();
-  const sceneStore = useSceneStore();
-  const toolStore = useToolStore();
 
-  // Global shortcuts - Blender-compatible
+  // Global shortcuts - Blender-compatible (read current state at press time)
   const globalShortcuts: ShortcutConfig[] = [
     {
       key: 'Tab',
       action: () => {
-        const currentSelection = selectionActions.selection;
-        if (currentSelection.viewMode === 'object') {
-          // Enter edit mode - require a selected object
-          if (currentSelection.objectIds.length > 0) {
-            const objId = currentSelection.objectIds[0];
-            const meshId = sceneStore.objects[objId]?.meshId;
-            if (meshId) selectionActions.enterEditMode(meshId);
-          } else {
-            console.log('Select an object first to enter Edit Mode');
+        const selection = useSelectionStore.getState().selection;
+        const scene = useSceneStore.getState();
+        const selActions = useSelectionStore.getState();
+        if (selection.viewMode === 'object') {
+          if (selection.objectIds.length > 0) {
+            const objId = selection.objectIds[0];
+            const meshId = scene.objects[objId]?.meshId;
+            if (meshId) selActions.enterEditMode(meshId);
           }
         } else {
-          // Exit edit mode
-          selectionActions.exitEditMode();
+          selActions.exitEditMode();
         }
       },
       description: 'Toggle between Object and Edit mode',
       preventDefault: true,
     },
     // Selection modes (only work in edit mode)
-    {
-      key: '1',
-      action: () => {
-        const currentSelection = selectionActions.selection;
-        if (currentSelection.viewMode === 'edit') {
-          selectionActions.setSelectionMode('vertex');
-        }
-      },
-      description: 'Switch to Vertex selection mode (Edit Mode)',
-      preventDefault: true,
-    },
-    {
-      key: '2',
-      action: () => {
-        const currentSelection = selectionActions.selection;
-        if (currentSelection.viewMode === 'edit') {
-          selectionActions.setSelectionMode('edge');
-        }
-      },
-      description: 'Switch to Edge selection mode (Edit Mode)',
-      preventDefault: true,
-    },
-    {
-      key: '3',
-      action: () => {
-        const currentSelection = selectionActions.selection;
-        if (currentSelection.viewMode === 'edit') {
-          selectionActions.setSelectionMode('face');
-        }
-      },
-      description: 'Switch to Face selection mode (Edit Mode)',
-      preventDefault: true,
-    },
-    {
-      key: 'a',
-      alt: true,
-      action: () => selectionActions.clearSelection(),
-      description: 'Clear selection (Alt+A)',
-      preventDefault: true,
-    },
-    {
-      key: 'Escape',
-      action: () => selectionActions.clearSelection(),
-      description: 'Clear selection (Escape)',
-      preventDefault: true,
-    },
+    { key: '1', action: () => { const s = useSelectionStore.getState().selection; if (s.viewMode === 'edit') useSelectionStore.getState().setSelectionMode('vertex'); }, description: 'Switch to Vertex selection mode (Edit Mode)', preventDefault: true },
+    { key: '2', action: () => { const s = useSelectionStore.getState().selection; if (s.viewMode === 'edit') useSelectionStore.getState().setSelectionMode('edge'); }, description: 'Switch to Edge selection mode (Edit Mode)', preventDefault: true },
+    { key: '3', action: () => { const s = useSelectionStore.getState().selection; if (s.viewMode === 'edit') useSelectionStore.getState().setSelectionMode('face'); }, description: 'Switch to Face selection mode (Edit Mode)', preventDefault: true },
+    { key: 'a', alt: true, action: () => useSelectionStore.getState().clearSelection(), description: 'Clear selection (Alt+A)', preventDefault: true },
+    { key: 'Escape', action: () => useSelectionStore.getState().clearSelection(), description: 'Clear selection (Escape)', preventDefault: true },
     // Tool shortcuts - only work in edit mode with selection
     {
       key: 'g',
       action: () => {
-        const currentSelection = selectionActions.selection;
-        if (currentSelection.viewMode === 'edit' && !toolStore.isActive) {
-          const hasSelection = currentSelection.vertexIds.length > 0 || 
-                              currentSelection.edgeIds.length > 0 || 
-                              currentSelection.faceIds.length > 0;
-          if (hasSelection) {
-            toolStore.startOperation('move', null);
-          }
+        const selection = useSelectionStore.getState().selection;
+        const tool = useToolStore.getState();
+        if (selection.viewMode === 'edit' && !tool.isActive) {
+          const hasSelection = selection.vertexIds.length > 0 || selection.edgeIds.length > 0 || selection.faceIds.length > 0;
+          if (hasSelection) useToolStore.getState().startOperation('move', null);
         }
       },
       description: 'Move tool (G)',
-      preventDefault: false,
+      preventDefault: true,
     },
     {
       key: 'r',
       action: () => {
-        const currentSelection = selectionActions.selection;
-        if (currentSelection.viewMode === 'edit' && !toolStore.isActive) {
-          const hasSelection = currentSelection.vertexIds.length > 0 || 
-                              currentSelection.edgeIds.length > 0 || 
-                              currentSelection.faceIds.length > 0;
-          if (hasSelection) {
-            toolStore.startOperation('rotate', null);
-          }
+        const selection = useSelectionStore.getState().selection;
+        const tool = useToolStore.getState();
+        if (selection.viewMode === 'edit' && !tool.isActive) {
+          const hasSelection = selection.vertexIds.length > 0 || selection.edgeIds.length > 0 || selection.faceIds.length > 0;
+          if (hasSelection) useToolStore.getState().startOperation('rotate', null);
         }
       },
       description: 'Rotate tool (R)',
-      preventDefault: false,
+      preventDefault: true,
     },
     {
       key: 's',
       action: () => {
-        const currentSelection = selectionActions.selection;
-        if (currentSelection.viewMode === 'edit' && !toolStore.isActive) {
-          const hasSelection = currentSelection.vertexIds.length > 0 || 
-                              currentSelection.edgeIds.length > 0 || 
-                              currentSelection.faceIds.length > 0;
-          if (hasSelection) {
-            toolStore.startOperation('scale', null);
-          }
+        const selection = useSelectionStore.getState().selection;
+        const tool = useToolStore.getState();
+        if (selection.viewMode === 'edit' && !tool.isActive) {
+          const hasSelection = selection.vertexIds.length > 0 || selection.edgeIds.length > 0 || selection.faceIds.length > 0;
+          if (hasSelection) useToolStore.getState().startOperation('scale', null);
         }
       },
       description: 'Scale tool (S)',
-      preventDefault: false,
+      preventDefault: true,
     },
   ];
 
@@ -165,6 +111,7 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
     if (config.ctrl) parts.push('ctrl');
     if (config.shift) parts.push('shift');
     if (config.alt) parts.push('alt');
+  if (config.meta) parts.push('meta');
     parts.push(config.key.toLowerCase());
     return parts.join('+');
   };
@@ -176,10 +123,11 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
     }
 
     const keyString = createKeyString({
-      key: event.key,
-      ctrl: event.ctrlKey || event.metaKey,
+      key: event.key.length === 1 ? event.key.toLowerCase() : event.key,
+      ctrl: event.ctrlKey, // don't treat meta as ctrl, to avoid conflicts on macOS
       shift: event.shiftKey,
       alt: event.altKey,
+      meta: event.metaKey,
       action: () => {},
       description: '',
     });

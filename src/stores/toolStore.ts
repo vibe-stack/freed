@@ -12,6 +12,13 @@ interface ToolState {
   setAxisLock: (axis: AxisLock) => void;
   endOperation: (commit: boolean) => void;
   reset: () => void;
+  // Sensitivity controls
+  moveSensitivity: number; // world delta per pixel scaled by distance
+  rotateSensitivity: number; // radians per pixel
+  scaleSensitivity: number; // scale factor delta per pixel
+  setMoveSensitivity: (value: number) => void;
+  setRotateSensitivity: (value: number) => void;
+  setScaleSensitivity: (value: number) => void;
 }
 
 export const useToolStore = create<ToolState>((set) => ({
@@ -23,4 +30,11 @@ export const useToolStore = create<ToolState>((set) => ({
   setAxisLock: (axis) => set({ axisLock: axis }),
   endOperation: (commit) => set({ tool: 'none', isActive: false, axisLock: 'none', localData: null }),
   reset: () => set({ tool: 'none', isActive: false, axisLock: 'none', localData: null }),
+  // Sensitivity defaults (tuned lower than previous hardcoded values)
+  moveSensitivity: 0.0025,
+  rotateSensitivity: 0.005,
+  scaleSensitivity: 0.005,
+  setMoveSensitivity: (value) => set({ moveSensitivity: Math.max(0, value) }),
+  setRotateSensitivity: (value) => set({ rotateSensitivity: Math.max(0, value) }),
+  setScaleSensitivity: (value) => set({ scaleSensitivity: Math.max(0, value) }),
 }));

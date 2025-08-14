@@ -35,7 +35,7 @@ export const useViewportStore = create<ViewportStore>()(
       showGrid: true,
       showAxes: true,
       gridSize: 10,
-      backgroundColor: vec3(0.2, 0.2, 0.2),
+      backgroundColor: vec3(.1, .1, .1),
       
       // Actions
       setCamera: (camera: Partial<CameraState>) => {

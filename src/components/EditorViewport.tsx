@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, GizmoHelper, GizmoViewport } from '@react-three/drei';
-import { Color, DoubleSide, BufferGeometry, Float32BufferAttribute, MeshStandardMaterial } from 'three';
+import { Color, DoubleSide, BufferGeometry, Float32BufferAttribute, MeshStandardMaterial, Vector3 } from 'three';
 import { useViewportStore } from '../stores/viewportStore';
 import { useGeometryStore } from '../stores/geometryStore';
 import { useSceneStore } from '../stores/sceneStore';
@@ -32,8 +32,12 @@ function CameraController() {
   }, [camera, cameraState]);
 
   useFrame(() => {
-    const pos = { x: camera.position.x, y: camera.position.y, z: camera.position.z } as any;
-    setCamera({ position: pos });
+    const current = useViewportStore.getState().camera.position;
+    const x = camera.position.x, y = camera.position.y, z = camera.position.z;
+    // Only update if camera actually moved beyond a tiny threshold
+    if (Math.abs(current.x - x) > 1e-5 || Math.abs(current.y - y) > 1e-5 || Math.abs(current.z - z) > 1e-5) {
+      setCamera({ position: { x, y, z } as any });
+    }
   });
 
   return null;
@@ -55,17 +59,22 @@ function MeshView({ objectId }: { objectId: string }) {
     const geo = new BufferGeometry();
 
     const vertexMap = new Map(mesh.vertices.map(v => [v.id, v] as const));
-    const positions: number[] = [];
-    const normals: number[] = [];
+  const positions: number[] = [];
+  const normals: number[] = [];
 
     mesh.faces.forEach(face => {
       const tris = convertQuadToTriangles(face.vertexIds);
       tris.forEach(tri => {
-        tri.forEach(vId => {
-          const v = vertexMap.get(vId)!;
-          positions.push(v.position.x, v.position.y, v.position.z);
-          normals.push(v.normal.x, v.normal.y, v.normal.z);
-        });
+        const v0 = vertexMap.get(tri[0])!;
+        const v1 = vertexMap.get(tri[1])!;
+        const v2 = vertexMap.get(tri[2])!;
+        const p0 = new Vector3(v0.position.x, v0.position.y, v0.position.z);
+        const p1 = new Vector3(v1.position.x, v1.position.y, v1.position.z);
+        const p2 = new Vector3(v2.position.x, v2.position.y, v2.position.z);
+        const faceNormal = new Vector3().subVectors(p1, p0).cross(new Vector3().subVectors(p2, p0)).normalize();
+        // Push triangle with flat normals
+        positions.push(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+        for (let i = 0; i < 3; i++) normals.push(faceNormal.x, faceNormal.y, faceNormal.z);
       });
     });
 
@@ -79,6 +88,7 @@ function MeshView({ objectId }: { objectId: string }) {
       metalness: 0.05,
       wireframe: shading === 'wireframe',
       side: DoubleSide,
+      flatShading: true,
     });
 
     return { geom: geo, mat: material };
@@ -87,8 +97,8 @@ function MeshView({ objectId }: { objectId: string }) {
   if (!obj || !mesh || !geom || !mat) return null as any;
 
   const onPointerDown = (e: any) => {
-    e.stopPropagation();
     if (selection.viewMode === 'object') {
+      e.stopPropagation();
       scene.selectObject(objectId);
       selectionActions.selectObjects([objectId]);
     }
@@ -110,8 +120,13 @@ function MeshView({ objectId }: { objectId: string }) {
       onPointerDown={onPointerDown}
       onDoubleClick={onDoubleClick}
     >
+      {/* In edit mode, keep mesh visible but disable raycasting so overlay receives events */}
       {/* @ts-ignore */}
-      <mesh geometry={geom} material={mat as any} />
+      <mesh
+        geometry={geom}
+        material={mat as any}
+        raycast={selection.viewMode === 'edit' ? ((_: any, __: any) => {}) : undefined}
+      />
     </group>
   );
 }
@@ -146,7 +161,11 @@ const EditorViewport: React.FC = () => {
 
   return (
     <div className="absolute inset-0">
-      <Canvas camera={{ fov: camera.fov, near: camera.near, far: camera.far, position: [camera.position.x, camera.position.y, camera.position.z] }} dpr={[1, 2]}>
+      <Canvas
+        camera={{ fov: camera.fov, near: camera.near, far: camera.far, position: [camera.position.x, camera.position.y, camera.position.z] }}
+        dpr={[0.2, 2]}
+        raycaster={{ params: { Line2: { threshold: 0.1 }, Line: { threshold: 0.1 } } as any }}
+      >
         <CalmBg />
         <ambientLight intensity={0.5} />
         <directionalLight position={[5, 8, 3]} intensity={0.8} />
