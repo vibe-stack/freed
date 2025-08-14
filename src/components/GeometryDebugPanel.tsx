@@ -9,6 +9,9 @@ import { logStoreStates } from '../stores';
 import { SelectionModeToolbar } from './SelectionModeToolbar';
 import { SelectionSummary } from './SelectionSummary';
 import { ViewModeToolbar } from './ViewModeToolbar';
+import T3DToolbar from './T3DToolbar';
+import T3DTestSuite from './T3DTestSuite';
+import DemoContentCreator from './DemoContentCreator';
 
 export const GeometryDebugPanel: React.FC = () => {
   const meshes = useMeshes();
@@ -74,6 +77,12 @@ export const GeometryDebugPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Demo Content Creator */}
+      <DemoContentCreator className="max-w-4xl mx-auto" />
+      
+      {/* T3D Export/Import Toolbar */}
+      <T3DToolbar className="max-w-4xl mx-auto" />
+      
       {/* View Mode Toolbar */}
       <ViewModeToolbar />
       
@@ -277,6 +286,9 @@ export const GeometryDebugPanel: React.FC = () => {
           </div>
         )}
       </div>
+      
+      {/* T3D Test Suite */}
+      <T3DTestSuite className="max-w-4xl mx-auto" />
     </div>
     </div>
   );
