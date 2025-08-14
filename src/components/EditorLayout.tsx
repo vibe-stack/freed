@@ -6,6 +6,7 @@ import TopToolbar from '@/components/TopToolbar';
 import EditorViewport from '@/components/EditorViewport';
 import SceneHierarchyPanel from '@/components/SceneHierarchyPanel';
 import { SelectionSummary } from '@/components/SelectionSummary';
+import ToolIndicator from '@/components/ToolIndicator';
 
 const EditorLayout: React.FC = () => {
   return (
@@ -34,6 +35,9 @@ const EditorLayout: React.FC = () => {
             <SelectionSummary />
           </div>
         </div>
+        
+        {/* Tool Indicator - shows when tools are active */}
+        <ToolIndicator />
       </div>
     </div>
   );

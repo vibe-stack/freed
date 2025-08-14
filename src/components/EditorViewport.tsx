@@ -9,6 +9,7 @@ import { useGeometryStore } from '../stores/geometryStore';
 import { useSceneStore } from '../stores/sceneStore';
 import { useSelection, useSelectionStore } from '../stores/selectionStore';
 import { convertQuadToTriangles } from '../utils/geometry';
+import EditModeOverlay from './EditModeOverlay';
 
 const CalmBg: React.FC = () => {
   const bg = useViewportStore(s => s.backgroundColor);
@@ -118,6 +119,7 @@ function MeshView({ objectId }: { objectId: string }) {
 const SceneContent: React.FC = () => {
   const scene = useSceneStore();
   const viewport = useViewportStore();
+  const selection = useSelection();
 
   return (
     <>
@@ -132,6 +134,9 @@ const SceneContent: React.FC = () => {
       {scene.rootObjects.map(id => (
         <MeshView key={id} objectId={id} />
       ))}
+      
+      {/* Edit Mode Overlay - only show when in edit mode */}
+      {selection.viewMode === 'edit' && <EditModeOverlay />}
     </>
   );
 };

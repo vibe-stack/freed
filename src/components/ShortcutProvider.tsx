@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, createContext, useContext } from 'react';
 import { useSelectionStore } from '../stores/selectionStore';
 import { useSceneStore } from '../stores/sceneStore';
+import { useToolStore } from '../stores/toolStore';
 
 interface ShortcutConfig {
   key: string;
@@ -36,6 +37,7 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
   const shortcutsRef = useRef<Map<string, ShortcutConfig>>(new Map());
   const selectionActions = useSelectionStore();
   const sceneStore = useSceneStore();
+  const toolStore = useToolStore();
 
   // Global shortcuts - Blender-compatible
   const globalShortcuts: ShortcutConfig[] = [
@@ -106,6 +108,55 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
       action: () => selectionActions.clearSelection(),
       description: 'Clear selection (Escape)',
       preventDefault: true,
+    },
+    // Tool shortcuts - only work in edit mode with selection
+    {
+      key: 'g',
+      action: () => {
+        const currentSelection = selectionActions.selection;
+        if (currentSelection.viewMode === 'edit' && !toolStore.isActive) {
+          const hasSelection = currentSelection.vertexIds.length > 0 || 
+                              currentSelection.edgeIds.length > 0 || 
+                              currentSelection.faceIds.length > 0;
+          if (hasSelection) {
+            toolStore.startOperation('move', null);
+          }
+        }
+      },
+      description: 'Move tool (G)',
+      preventDefault: false,
+    },
+    {
+      key: 'r',
+      action: () => {
+        const currentSelection = selectionActions.selection;
+        if (currentSelection.viewMode === 'edit' && !toolStore.isActive) {
+          const hasSelection = currentSelection.vertexIds.length > 0 || 
+                              currentSelection.edgeIds.length > 0 || 
+                              currentSelection.faceIds.length > 0;
+          if (hasSelection) {
+            toolStore.startOperation('rotate', null);
+          }
+        }
+      },
+      description: 'Rotate tool (R)',
+      preventDefault: false,
+    },
+    {
+      key: 's',
+      action: () => {
+        const currentSelection = selectionActions.selection;
+        if (currentSelection.viewMode === 'edit' && !toolStore.isActive) {
+          const hasSelection = currentSelection.vertexIds.length > 0 || 
+                              currentSelection.edgeIds.length > 0 || 
+                              currentSelection.faceIds.length > 0;
+          if (hasSelection) {
+            toolStore.startOperation('scale', null);
+          }
+        }
+      },
+      description: 'Scale tool (S)',
+      preventDefault: false,
     },
   ];
 
