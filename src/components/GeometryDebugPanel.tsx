@@ -26,10 +26,7 @@ export const GeometryDebugPanel: React.FC = () => {
 
   const handleCreateCube = () => {
     const cubeId = geometryActions.createCube(Math.random() * 2 + 1);
-    // The cube is automatically added to the store by createCube
     const objectId = sceneActions.createMeshObject(`Cube ${Date.now()}`, cubeId);
-    
-    // Auto-select the new object in Object Mode
     if (selection.viewMode === 'object') {
       selectionActions.selectObjects([objectId]);
     }
@@ -49,7 +46,6 @@ export const GeometryDebugPanel: React.FC = () => {
 
   const handleSelectObject = (objectId: string) => {
     if (selection.viewMode === 'object') {
-      // Toggle object selection in Object Mode
       const isSelected = selection.objectIds.includes(objectId);
       if (isSelected) {
         const newSelection = selection.objectIds.filter(id => id !== objectId);
@@ -61,9 +57,10 @@ export const GeometryDebugPanel: React.FC = () => {
   };
 
   const handleDoubleClickObject = (objectId: string) => {
-    // Double-click to enter Edit Mode for this object
     if (selection.viewMode === 'object') {
-      selectionActions.enterEditMode(objectId);
+      const obj = sceneActions.objects[objectId];
+      const meshId = obj?.meshId;
+      if (meshId) selectionActions.enterEditMode(meshId);
     }
   };
 

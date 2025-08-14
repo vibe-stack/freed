@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, createContext, useContext } from 'react';
 import { useSelectionStore } from '../stores/selectionStore';
+import { useSceneStore } from '../stores/sceneStore';
 
 interface ShortcutConfig {
   key: string;
@@ -34,6 +35,7 @@ interface ShortcutProviderProps {
 export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) => {
   const shortcutsRef = useRef<Map<string, ShortcutConfig>>(new Map());
   const selectionActions = useSelectionStore();
+  const sceneStore = useSceneStore();
 
   // Global shortcuts - Blender-compatible
   const globalShortcuts: ShortcutConfig[] = [
@@ -42,11 +44,12 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
       action: () => {
         const currentSelection = selectionActions.selection;
         if (currentSelection.viewMode === 'object') {
-          // Enter edit mode - need to have an object selected
+          // Enter edit mode - require a selected object
           if (currentSelection.objectIds.length > 0) {
-            selectionActions.enterEditMode(currentSelection.objectIds[0]);
+            const objId = currentSelection.objectIds[0];
+            const meshId = sceneStore.objects[objId]?.meshId;
+            if (meshId) selectionActions.enterEditMode(meshId);
           } else {
-            // Could show message - for now, do nothing
             console.log('Select an object first to enter Edit Mode');
           }
         } else {
@@ -116,7 +119,6 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {
-    // Skip if user is typing in an input element
     const target = event.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true') {
       return;
@@ -124,7 +126,7 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
 
     const keyString = createKeyString({
       key: event.key,
-      ctrl: event.ctrlKey || event.metaKey, // Support Cmd on Mac
+      ctrl: event.ctrlKey || event.metaKey,
       shift: event.shiftKey,
       alt: event.altKey,
       action: () => {},
@@ -142,13 +144,11 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
   };
 
   const registerShortcuts = (shortcuts: ShortcutConfig[]): (() => void) => {
-    // Add shortcuts to the registry
     shortcuts.forEach(shortcut => {
       const keyString = createKeyString(shortcut);
       shortcutsRef.current.set(keyString, shortcut);
     });
 
-    // Return cleanup function
     return () => {
       shortcuts.forEach(shortcut => {
         const keyString = createKeyString(shortcut);
@@ -158,10 +158,7 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
   };
 
   useEffect(() => {
-    // Register global shortcuts
     const cleanup = registerShortcuts(globalShortcuts);
-
-    // Add global event listener
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
@@ -181,7 +178,8 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
   );
 };
 
-// Hook for components to register their own shortcuts
+export { ShortcutContext };
+
 export const useRegisterShortcuts = (shortcuts: ShortcutConfig[]) => {
   const { registerShortcuts } = useShortcuts();
 

@@ -3,6 +3,7 @@
 import React from 'react';
 import { useSelection, useSelectionStore } from '../stores/selectionStore';
 import { ViewMode } from '../types/geometry';
+import { useSceneStore } from '../stores/sceneStore';
 
 interface ViewModeButtonProps {
   mode: ViewMode;
@@ -22,7 +23,7 @@ const ViewModeButton: React.FC<ViewModeButtonProps> = ({
   label,
 }) => {
   const isActive = currentMode === mode;
-  
+
   return (
     <button
       onClick={onClick}
@@ -35,7 +36,9 @@ const ViewModeButton: React.FC<ViewModeButtonProps> = ({
     >
       <span className="text-xl mb-2">{icon}</span>
       <span className="text-sm font-medium">{label} Mode</span>
-      <span className="absolute top-2 right-2 text-xs opacity-60">{shortcut}</span>
+      <span className="absolute top-2 right-2 text-xs opacity-60">
+        {shortcut}
+      </span>
     </button>
   );
 };
@@ -43,6 +46,7 @@ const ViewModeButton: React.FC<ViewModeButtonProps> = ({
 export const ViewModeToolbar: React.FC = () => {
   const selection = useSelection();
   const { setViewMode, enterEditMode, exitEditMode } = useSelectionStore();
+  const scene = useSceneStore();
 
   const modes: Array<{
     mode: ViewMode;
@@ -60,9 +64,9 @@ export const ViewModeToolbar: React.FC = () => {
       if (selection.objectIds.length > 0) {
         // Use the first selected object's mesh ID
         const firstObjectId = selection.objectIds[0];
-        // In a real app, you'd look up the mesh ID from the scene object
-        // For now, assume object ID maps to mesh ID
-        enterEditMode(firstObjectId);
+        const meshId = scene.objects[firstObjectId]?.meshId;
+        if (meshId) enterEditMode(meshId);
+        return;
       } else {
         // Show a message or do nothing if no object is selected
         alert('Please select an object first to enter Edit Mode');
@@ -98,7 +102,7 @@ export const ViewModeToolbar: React.FC = () => {
           />
         ))}
       </div>
-      
+
       {selection.viewMode === 'edit' && (
         <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-700 dark:text-blue-300">
           <div className="flex items-center gap-2">
@@ -112,7 +116,7 @@ export const ViewModeToolbar: React.FC = () => {
           )}
         </div>
       )}
-      
+
       {selection.viewMode === 'object' && (
         <div className="mt-3 p-2 bg-green-50 dark:bg-green-900/20 rounded text-xs text-green-700 dark:text-green-300">
           <div className="flex items-center gap-2">
@@ -126,7 +130,9 @@ export const ViewModeToolbar: React.FC = () => {
           )}
           {selection.objectIds.length > 0 && (
             <div className="mt-1 text-green-600 dark:text-green-400 text-xs">
-              ✓ {selection.objectIds.length} object{selection.objectIds.length !== 1 ? 's' : ''} selected - Press Tab or click Edit Mode
+              ✓ {selection.objectIds.length} object
+              {selection.objectIds.length !== 1 ? 's' : ''} selected - Press Tab or
+              click Edit Mode
             </div>
           )}
         </div>
