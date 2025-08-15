@@ -76,7 +76,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
           onPointerDown={handleVertexPointerDown(vertex.id)}
           renderOrder={3000}
         >
-          <boxGeometry args={[1, 1, 1]} />
+          <boxGeometry args={[.5, .5, .5]} />
           <meshBasicMaterial color={vertex.isSelected ? ORANGE : BLACK} depthTest={false} depthWrite={false} />
         </mesh>
       ))}

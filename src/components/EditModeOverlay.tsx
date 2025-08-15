@@ -110,14 +110,14 @@ const EditModeOverlay: React.FC = () => {
       {/* Tool Handler - manages tool operations */}
       <ToolHandler meshId={meshId} onLocalDataChange={handleLocalDataChange} />
 
-  {/* Vertex Renderer - always visible, selectable in vertex mode */}
-  <VertexRenderer
+      {/* Vertex Renderer - always visible, selectable in vertex mode */}
+      { selection.selectionMode === "vertex" && <VertexRenderer
         meshId={meshId}
         selectedVertexIds={selection.vertexIds}
         onVertexClick={handleVertexClick}
         selectionMode={selection.selectionMode}
         localVertices={localVertices || undefined}
-  />
+      /> }
 
       {/* Edge Renderer - always visible, selectable in edge mode */}
       <EdgeRenderer
@@ -129,36 +129,36 @@ const EditModeOverlay: React.FC = () => {
       />
 
       {/* Face Renderer - always visible, selectable in face mode */}
-      <FaceRenderer
+      { selection.selectionMode === "face" && <FaceRenderer
         meshId={meshId}
         selectedFaceIds={selection.faceIds}
         onFaceClick={handleFaceClick}
         selectionMode={selection.selectionMode}
         localVertices={localVertices || undefined}
-      />
+      /> }
 
       {/* Axis lock visual rays (visible when a tool is active) */}
       {toolStore.isActive && centroid && (
         <group>
           {[{ key: 'x', dir: new Vector3(1, 0, 0), color: new Color(1, 0, 0) },
-            { key: 'y', dir: new Vector3(0, 1, 0), color: new Color(0, 1, 0) },
-            { key: 'z', dir: new Vector3(0, 0, 1), color: new Color(0, 0, 1) }].map(({ key, dir, color }) => {
-              const len = 1000;
-              const positions = new Float32Array([
-                centroid.x - dir.x * len, centroid.y - dir.y * len, centroid.z - dir.z * len,
-                centroid.x + dir.x * len, centroid.y + dir.y * len, centroid.z + dir.z * len,
-              ]);
-              const opacity = toolStore.axisLock === key ? 1 : 0.2;
-              return (
-                <line key={key} ref={(n: any) => { if (n) n.renderOrder = 2550; }}>
-                  <bufferGeometry>
-                    {/* @ts-ignore */}
-                    <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-                  </bufferGeometry>
-                  <lineBasicMaterial color={color} depthTest={false} depthWrite={false} transparent opacity={opacity} />
-                </line>
-              );
-            })}
+          { key: 'y', dir: new Vector3(0, 1, 0), color: new Color(0, 1, 0) },
+          { key: 'z', dir: new Vector3(0, 0, 1), color: new Color(0, 0, 1) }].map(({ key, dir, color }) => {
+            const len = 1000;
+            const positions = new Float32Array([
+              centroid.x - dir.x * len, centroid.y - dir.y * len, centroid.z - dir.z * len,
+              centroid.x + dir.x * len, centroid.y + dir.y * len, centroid.z + dir.z * len,
+            ]);
+            const opacity = toolStore.axisLock === key ? 1 : 0.2;
+            return (
+              <line key={key} ref={(n: any) => { if (n) n.renderOrder = 2550; }}>
+                <bufferGeometry>
+                  {/* @ts-ignore */}
+                  <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+                </bufferGeometry>
+                <lineBasicMaterial color={color} depthTest={false} depthWrite={false} transparent opacity={opacity} />
+              </line>
+            );
+          })}
         </group>
       )}
     </>

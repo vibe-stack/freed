@@ -14,14 +14,13 @@ export const SelectionSummary: React.FC = () => {
 
   if (totalSelected === 0) {
     return (
-      <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-        <div className="text-center text-gray-500 dark:text-gray-400">
-          <div className="text-sm">No selection</div>
-          <div className="text-xs mt-1">
+      <div className="p-2 rounded-md text-xs text-gray-400">
+        <div className="text-center">
+          <div>Nothing selected</div>
+          <div className="mt-0.5 opacity-80">
             {selection.viewMode === 'object' 
-              ? 'Click on objects to select them'
-              : 'Click on vertices, edges, or faces to select them'
-            }
+              ? 'Select an object to begin'
+              : 'Select vertices, edges, or faces'}
           </div>
         </div>
       </div>
@@ -81,42 +80,26 @@ export const SelectionSummary: React.FC = () => {
   };
 
   return (
-    <div className="p-3 bg-white dark:bg-gray-700 rounded-lg border">
-      <div className="flex items-center justify-between">
+    <div className="p-2">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className={`text-lg ${getModeColor(selection.viewMode, selection.selectionMode)}`}>
-            {getModeIcon(selection.viewMode, selection.selectionMode)}
-          </span>
+          <span className={`text-base ${getModeColor(selection.viewMode, selection.selectionMode)}`}>{getModeIcon(selection.viewMode, selection.selectionMode)}</span>
           <div>
-            <div className="font-medium text-sm">
-              {getSelectionText()} selected
-            </div>
-            {selectedMesh && (
-              <div className="text-xs text-gray-600 dark:text-gray-400">
-                in {selectedMesh.name}
-              </div>
-            )}
+            <div className="text-xs text-gray-200/90">{getSelectionText()} selected</div>
+            {selectedMesh && (<div className="text-[10px] text-gray-400">in {selectedMesh.name}</div>)}
           </div>
         </div>
-        
-        <div className="flex gap-2">
-          <div className={`px-2 py-1 rounded text-xs font-medium ${getModeColor(selection.viewMode, selection.selectionMode)} bg-gray-100 dark:bg-gray-800`}>
-            {getCurrentModeLabel()}
-          </div>
-          <button
-            onClick={clearSelection}
-            className="px-2 py-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50"
-            title="Clear selection (Alt+A or Esc)"
-          >
-            Clear
-          </button>
+
+        <div className="flex items-center gap-2">
+          <div className={`px-2 py-0.5 rounded text-[10px] ${getModeColor(selection.viewMode, selection.selectionMode)} bg-white/5 border border-white/10`}>{getCurrentModeLabel()}</div>
+          <button onClick={clearSelection} className="px-2 py-0.5 text-[10px] rounded bg-white/5 hover:bg-white/10 text-gray-300" title="Clear selection (Alt+A or Esc)">Clear</button>
         </div>
       </div>
       
       {/* Selected items preview */}
       {totalSelected > 0 && (
-        <div className="mt-2 pt-2 border-t dark:border-gray-600">
-          <div className="text-xs text-gray-600 dark:text-gray-400">
+        <div className="mt-1 pt-1 border-t border-white/10">
+          <div className="text-[11px] text-gray-400">
             {selection.vertexIds.length > 0 && (
               <div>Vertices: {selection.vertexIds.map(id => id.slice(-4)).join(', ')}</div>
             )}

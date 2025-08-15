@@ -142,7 +142,7 @@ const SceneContent: React.FC = () => {
         <Grid infiniteGrid args={[10, 10]} position={[0, -0.001, 0]} cellColor="#2a2f38" sectionColor="#3a414f" />
       )}
       {viewport.showAxes && (
-        <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
+        <GizmoHelper alignment="top-left" margin={[80, 80]}>
           <GizmoViewport labelColor="white" axisHeadScale={1} />
         </GizmoHelper>
       )}

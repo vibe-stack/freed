@@ -7,6 +7,7 @@ import EditorViewport from '@/components/EditorViewport';
 import SceneHierarchyPanel from '@/components/SceneHierarchyPanel';
 import { SelectionSummary } from '@/components/SelectionSummary';
 import ToolIndicator from '@/components/ToolIndicator';
+import ShapeAdjustPanel from '@/components/ShapeAdjustPanel';
 
 const EditorLayout: React.FC = () => {
   return (
@@ -38,6 +39,11 @@ const EditorLayout: React.FC = () => {
         
         {/* Tool Indicator - shows when tools are active */}
         <ToolIndicator />
+
+        {/* Bottom-center shape segmentation panel */}
+        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 z-20">
+          <ShapeAdjustPanel />
+        </div>
       </div>
     </div>
   );
