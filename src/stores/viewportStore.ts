@@ -13,6 +13,7 @@ interface ViewportActions {
   setBackgroundColor: (color: [number, number, number]) => void;
   resetCamera: () => void;
   focusOnObject: (center: [number, number, number], size: number) => void;
+  reset: () => void;
 }
 
 type ViewportStore = ViewportState & ViewportActions;
@@ -35,7 +36,7 @@ export const useViewportStore = create<ViewportStore>()(
       showGrid: true,
       showAxes: true,
       gridSize: 10,
-      backgroundColor: vec3(.1, .1, .1),
+  backgroundColor: vec3(0.14, 0.14, 0.14),
       
       // Actions
       setCamera: (camera: Partial<CameraState>) => {
@@ -99,6 +100,16 @@ export const useViewportStore = create<ViewportStore>()(
             center[1] + normalizedDirection.y * distance,
             center[2] + normalizedDirection.z * distance
           );
+        });
+      },
+      reset: () => {
+        set((state) => {
+          state.camera = { ...defaultCameraState };
+          state.shadingMode = 'solid' as ShadingMode;
+          state.showGrid = true;
+          state.showAxes = true;
+          state.gridSize = 10;
+          state.backgroundColor = vec3(.1, .1, .1);
         });
       },
     }))

@@ -23,6 +23,7 @@ interface SelectionActions {
   getSelectionCount: () => number;
   enterEditMode: (meshId: string) => void;
   exitEditMode: () => void;
+  reset: () => void;
 }
 
 type SelectionStore = SelectionState & SelectionActions;
@@ -287,6 +288,19 @@ export const useSelectionStore = create<SelectionStore>()(
                state.edgeIds.length + 
                state.faceIds.length + 
                state.objectIds.length;
+      },
+      reset: () => {
+        set((state) => {
+          state.selection = {
+            viewMode: 'object',
+            selectionMode: 'vertex',
+            meshId: null,
+            vertexIds: [],
+            edgeIds: [],
+            faceIds: [],
+            objectIds: [],
+          };
+        });
       },
     }))
   )

@@ -1,26 +1,24 @@
 'use client';
 
 import React, { useCallback } from 'react';
+import { Menu } from '@base-ui-components/react/menu';
 import { useGeometryStore } from '../stores/geometryStore';
 import { useSceneStore } from '../stores/sceneStore';
 import { useViewportStore } from '../stores/viewportStore';
+import { useSelectionStore } from '../stores/selectionStore';
+import { useToolStore } from '../stores/toolStore';
+import { useShapeCreationStore } from '../stores/shapeCreationStore';
 import { exportAndDownload, WorkspaceData } from '../utils/t3dExporter';
 import { openImportDialog } from '../utils/t3dImporter';
 import { Box, FileDown, FileUp } from 'lucide-react';
-
-const IconBtn: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({ className = '', children, ...rest }) => (
-  <button
-    className={`inline-flex items-center gap-1 text-xs text-gray-300 hover:text-white px-2 py-1 rounded hover:bg-white/5 ${className}`}
-    {...rest}
-  >
-    {children}
-  </button>
-);
 
 const MenuBar: React.FC = () => {
   const geometryStore = useGeometryStore();
   const sceneStore = useSceneStore();
   const viewportStore = useViewportStore();
+  const selectionStore = useSelectionStore();
+  const toolStore = useToolStore();
+  const shapeCreationStore = useShapeCreationStore();
 
   const handleExport = useCallback(async () => {
     const workspaceData: WorkspaceData = {
@@ -68,6 +66,16 @@ const MenuBar: React.FC = () => {
     );
   }, [geometryStore, sceneStore, viewportStore]);
 
+  const handleNewScene = useCallback(() => {
+    // Reset all app stores to initial state
+    geometryStore.reset();
+    sceneStore.reset();
+    selectionStore.reset();
+    viewportStore.reset();
+    toolStore.reset();
+    shapeCreationStore.reset();
+  }, [geometryStore, sceneStore, selectionStore, viewportStore, toolStore, shapeCreationStore]);
+
   return (
     <div className="h-8 w-full border-b border-white/10 bg-[#0b0e13]/80 backdrop-blur supports-[backdrop-filter]:bg-[#0b0e13]/60 flex items-center px-3 select-none z-30">
       <div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
@@ -77,14 +85,68 @@ const MenuBar: React.FC = () => {
       <div className="mx-2 h-4 w-px bg-white/10" />
 
       <div className="flex items-center gap-1">
-        <IconBtn onClick={handleImport} title="Import (.t3d)">
-          <FileUp className="w-4 h-4" />
-          <span>Import</span>
-        </IconBtn>
-        <IconBtn onClick={handleExport} title="Export (.t3d)">
-          <FileDown className="w-4 h-4" />
-          <span>Export</span>
-        </IconBtn>
+        {/* File */}
+        <Menu.Root modal={false} openOnHover>
+          <Menu.Trigger className="px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5 data-[open]:bg-white/10 data-[open]:text-white">
+            File
+          </Menu.Trigger>
+          <Menu.Portal>
+            <Menu.Positioner side="bottom" align="start" sideOffset={4}>
+              <Menu.Popup className="mt-0 w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-40">
+                <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleNewScene}>Create New</Menu.Item>
+                <Menu.Separator className="my-1 h-px bg-white/10" />
+                <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleImport}>
+                  <span className="inline-flex items-center gap-2"><FileUp className="w-4 h-4" /> Import…</span>
+                </Menu.Item>
+                <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleExport}>
+                  <span className="inline-flex items-center gap-2"><FileDown className="w-4 h-4" /> Export…</span>
+                </Menu.Item>
+              </Menu.Popup>
+            </Menu.Positioner>
+          </Menu.Portal>
+        </Menu.Root>
+
+        {/* Edit (placeholders) */}
+        <Menu.Root modal={false} openOnHover>
+          <Menu.Trigger className="px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5 data-[open]:bg-white/10 data-[open]:text-white">
+            Edit
+          </Menu.Trigger>
+          <Menu.Portal>
+            <Menu.Positioner side="bottom" align="start" sideOffset={4}>
+              <Menu.Popup className="mt-0 w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-40">
+                <Menu.Item className="px-3 py-1.5 text-gray-500">Undo</Menu.Item>
+                <Menu.Item className="px-3 py-1.5 text-gray-500">Redo</Menu.Item>
+                <Menu.Separator className="my-1 h-px bg-white/10" />
+                <Menu.Item className="px-3 py-1.5 text-gray-500">Cut</Menu.Item>
+                <Menu.Item className="px-3 py-1.5 text-gray-500">Copy</Menu.Item>
+                <Menu.Item className="px-3 py-1.5 text-gray-500">Paste</Menu.Item>
+                <Menu.Separator className="my-1 h-px bg-white/10" />
+                <Menu.Item className="px-3 py-1.5 text-gray-500">Delete</Menu.Item>
+                <Menu.Item className="px-3 py-1.5 text-gray-500">Select All</Menu.Item>
+              </Menu.Popup>
+            </Menu.Positioner>
+          </Menu.Portal>
+        </Menu.Root>
+
+        {/* View (placeholders) */}
+        <Menu.Root modal={false} openOnHover>
+          <Menu.Trigger className="px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5 data-[open]:bg-white/10 data-[open]:text-white">
+            View
+          </Menu.Trigger>
+          <Menu.Portal>
+            <Menu.Positioner side="bottom" align="start" sideOffset={4}>
+              <Menu.Popup className="mt-0 w-48 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-40">
+                <Menu.Item className="px-3 py-1.5 text-gray-500">Zoom In</Menu.Item>
+                <Menu.Item className="px-3 py-1.5 text-gray-500">Zoom Out</Menu.Item>
+                <Menu.Item className="px-3 py-1.5 text-gray-500">Fit to Screen</Menu.Item>
+                <Menu.Separator className="my-1 h-px bg-white/10" />
+                <Menu.Item className="px-3 py-1.5 text-gray-500">Toggle Grid</Menu.Item>
+                <Menu.Item className="px-3 py-1.5 text-gray-500">Toggle Axes</Menu.Item>
+                <Menu.Item className="px-3 py-1.5 text-gray-500">Shading Mode</Menu.Item>
+              </Menu.Popup>
+            </Menu.Positioner>
+          </Menu.Portal>
+        </Menu.Root>
       </div>
 
       <div className="ml-auto flex items-center gap-2 text-[11px] text-gray-400">

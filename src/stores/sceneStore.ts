@@ -19,6 +19,7 @@ interface SceneActions {
   selectObject: (objectId: string | null) => void;
   setParent: (childId: string, parentId: string | null) => void;
   moveObject: (objectId: string, newParentId: string | null, index?: number) => void;
+  reset: () => void;
   
   // Transform operations
   setTransform: (objectId: string, transform: Partial<Transform>) => void;
@@ -292,6 +293,13 @@ export const useSceneStore = create<SceneStore>()(
       getSelectedObject: () => {
         const state = get();
         return state.selectedObjectId ? state.objects[state.selectedObjectId] || null : null;
+      },
+      reset: () => {
+        set((state) => {
+          state.objects = {};
+          state.rootObjects = [];
+          state.selectedObjectId = null;
+        });
       },
     }))
   )

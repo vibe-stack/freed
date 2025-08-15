@@ -45,6 +45,7 @@ interface ShapeCreationActions {
   applyParams: (params: Partial<ShapeParams>) => void;
   finalize: () => void;
   cancel: () => void;
+  reset: () => void;
 }
 
 type Store = ShapeCreationState & ShapeCreationActions;
@@ -166,6 +167,14 @@ export const useShapeCreationStore = create<Store>()(
       },
 
       cancel: () => {
+        set((state) => {
+          state.active = false;
+          state.shape = null;
+          state.meshId = null;
+          state.params = {};
+        });
+      },
+      reset: () => {
         set((state) => {
           state.active = false;
           state.shape = null;

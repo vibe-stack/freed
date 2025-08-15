@@ -12,8 +12,8 @@ import { convertQuadToTriangles } from '../utils/geometry';
 import EditModeOverlay from './EditModeOverlay';
 
 const CalmBg: React.FC = () => {
-  const bg = useViewportStore(s => s.backgroundColor);
-  return <color attach="background" args={[new Color(bg.x, bg.y, bg.z)]} />;
+  // Hardcode Blender-like dark gray for test
+  return <color attach="background" args={[new Color('#232323')]} />;
 };
 
 function CameraController() {
@@ -139,7 +139,13 @@ const SceneContent: React.FC = () => {
   return (
     <>
       {viewport.showGrid && (
-        <Grid infiniteGrid args={[10, 10]} position={[0, -0.001, 0]} cellColor="#2a2f38" sectionColor="#3a414f" />
+        <Grid
+          infiniteGrid
+          args={[10, 10]}
+          position={[0, -0.001, 0]}
+          cellColor="rgba(60, 60, 60, 0.35)" // minor lines, subtle gray
+          sectionColor="rgba(100, 100, 100, 0.6)" // major lines, slightly lighter
+        />
       )}
       {viewport.showAxes && (
         <GizmoHelper alignment="top-left" margin={[80, 80]}>

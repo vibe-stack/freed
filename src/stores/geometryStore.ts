@@ -30,6 +30,7 @@ interface GeometryActions {
   removeMesh: (meshId: string) => void;
   updateMesh: (meshId: string, updater: (mesh: Mesh) => void) => void;
   selectMesh: (meshId: string | null) => void;
+  reset: () => void;
   
   // Material operations
   addMaterial: (material: Material) => void;
@@ -86,6 +87,13 @@ export const useGeometryStore = create<GeometryStore>()(
       selectMesh: (meshId: string | null) => {
         set((state) => {
           state.selectedMeshId = meshId;
+        });
+      },
+      reset: () => {
+        set((state) => {
+          state.meshes = new Map();
+          state.materials = new Map();
+          state.selectedMeshId = null;
         });
       },
       
