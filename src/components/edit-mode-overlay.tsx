@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSelectionStore } from '../stores/selectionStore';
-import { useToolStore } from '../stores/toolStore';
-import { useGeometryStore } from '../stores/geometryStore';
+import { useSelectionStore } from '../stores/selection-store';
+import { useToolStore } from '../stores/tool-store';
+import { useGeometryStore } from '../stores/geometry-store';
 import { Vertex } from '../types/geometry';
-import { VertexRenderer } from './edit-mode/VertexRenderer';
-import { EdgeRenderer } from './edit-mode/EdgeRenderer';
-import { FaceRenderer } from './edit-mode/FaceRenderer';
-import { ToolHandler } from './edit-mode/ToolHandler';
+import { VertexRenderer } from './edit-mode/vertex-renderer';
+import { EdgeRenderer } from './edit-mode/edge-renderer';
+import { FaceRenderer } from './edit-mode/face-renderer';
+import { ToolHandler } from './edit-mode/tool-handler';
 import { Color, Vector3 } from 'three';
 
 const EditModeOverlay: React.FC = () => {

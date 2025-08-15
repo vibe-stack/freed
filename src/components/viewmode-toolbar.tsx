@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { useSelection, useSelectionStore } from '../stores/selectionStore';
+import { useSelection, useSelectionStore } from '../stores/selection-store';
 import { ViewMode } from '../types/geometry';
-import { useSceneStore } from '../stores/sceneStore';
+import { useSceneStore } from '../stores/scene-store';
 
 interface ViewModeButtonProps {
   mode: ViewMode;

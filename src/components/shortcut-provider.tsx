@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useEffect, useRef, createContext, useContext } from 'react';
-import { useSelectionStore } from '../stores/selectionStore';
-import { useSceneStore } from '../stores/sceneStore';
-import { useToolStore } from '../stores/toolStore';
+import { useSelectionStore } from '../stores/selection-store';
+import { useSceneStore } from '../stores/scene-store';
+import { useToolStore } from '../stores/tool-store';
 
 interface ShortcutConfig {
   key: string;

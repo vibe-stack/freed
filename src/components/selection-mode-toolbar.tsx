@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { useSelection, useSelectionStore } from '../stores/selectionStore';
+import { useSelection, useSelectionStore } from '../stores/selection-store';
 import { SelectionMode } from '../types/geometry';
-import { ShortcutHelp } from './ShortcutHelp';
+import { ShortcutHelp } from './shortcut-help';
 
 interface SelectionModeButtonProps {
   mode: SelectionMode;

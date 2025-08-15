@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import { useSelection, useSelectionStore } from '../stores/selectionStore';
-import { useViewportStore } from '../stores/viewportStore';
-import { useSceneStore } from '../stores/sceneStore';
-import { useGeometryStore } from '../stores/geometryStore';
-import { useShapeCreationStore } from '../stores/shapeCreationStore';
+import { useSelection, useSelectionStore } from '../stores/selection-store';
+import { useViewportStore } from '../stores/viewport-store';
+import { useSceneStore } from '../stores/scene-store';
+import { useGeometryStore } from '../stores/geometry-store';
+import { useShapeCreationStore } from '../stores/shape-creation-store';
 
 const Pill = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className = '', children, ...rest }, ref) => (
   <div

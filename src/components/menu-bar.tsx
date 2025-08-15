@@ -2,14 +2,14 @@
 
 import React, { useCallback } from 'react';
 import { Menu } from '@base-ui-components/react/menu';
-import { useGeometryStore } from '../stores/geometryStore';
-import { useSceneStore } from '../stores/sceneStore';
-import { useViewportStore } from '../stores/viewportStore';
-import { useSelectionStore } from '../stores/selectionStore';
-import { useToolStore } from '../stores/toolStore';
-import { useShapeCreationStore } from '../stores/shapeCreationStore';
-import { exportAndDownload, WorkspaceData } from '../utils/t3dExporter';
-import { openImportDialog } from '../utils/t3dImporter';
+import { useGeometryStore } from '../stores/geometry-store';
+import { useSceneStore } from '../stores/scene-store';
+import { useViewportStore } from '../stores/viewport-store';
+import { useSelectionStore } from '../stores/selection-store';
+import { useToolStore } from '../stores/tool-store';
+import { useShapeCreationStore } from '../stores/shape-creation-store';
+import { exportAndDownload, WorkspaceData } from '../utils/t3d-exporter';
+import { openImportDialog } from '../utils/t3d-importer';
 import { Box, FileDown, FileUp } from 'lucide-react';
 
 const MenuBar: React.FC = () => {

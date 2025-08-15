@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useShapeCreationStore } from '@/stores/shapeCreationStore';
+import { useShapeCreationStore } from '@/stores/shape-creation-store';
 
 const Label: React.FC<{label: string}> = ({ label }) => (
   <div className="text-[10px] uppercase tracking-wide text-gray-300/80 mb-1">{label}</div>

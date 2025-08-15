@@ -1,6 +1,6 @@
 import { StoreProvider } from '../stores';
-import { ShortcutProvider } from '@/components/ShortcutProvider';
-import EditorLayout from '@/components/EditorLayout';
+import { ShortcutProvider } from '@/components/shortcut-provider';
+import EditorLayout from '@/components/editor-layout';
 
 export default function Home() {
   return (

@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { useSceneStore, useSceneHierarchy } from '../stores/sceneStore';
-import { useSelection, useSelectionStore } from '../stores/selectionStore';
+import { useSceneStore, useSceneHierarchy } from '../stores/scene-store';
+import { useSelection, useSelectionStore } from '../stores/selection-store';
 import { Eye, EyeOff, Lock, Unlock } from 'lucide-react';
 
 const Panel: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = '', children, ...rest }) => (

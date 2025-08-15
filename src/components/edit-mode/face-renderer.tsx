@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { Color, Vector3 } from 'three';
-import { useGeometryStore } from '../../stores/geometryStore';
+import { useGeometryStore } from '../../stores/geometry-store';
 import { Face, Vertex } from '../../types/geometry';
 import { convertQuadToTriangles } from '../../utils/geometry';
 

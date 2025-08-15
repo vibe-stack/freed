@@ -4,12 +4,12 @@ import React, { useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, GizmoHelper, GizmoViewport } from '@react-three/drei';
 import { Color, DoubleSide, BufferGeometry, Float32BufferAttribute, MeshStandardMaterial, Vector3 } from 'three';
-import { useViewportStore } from '../stores/viewportStore';
-import { useGeometryStore } from '../stores/geometryStore';
-import { useSceneStore } from '../stores/sceneStore';
-import { useSelection, useSelectionStore } from '../stores/selectionStore';
+import { useViewportStore } from '../stores/viewport-store';
+import { useGeometryStore } from '../stores/geometry-store';
+import { useSceneStore } from '../stores/scene-store';
+import { useSelection, useSelectionStore } from '../stores/selection-store';
 import { convertQuadToTriangles } from '../utils/geometry';
-import EditModeOverlay from './EditModeOverlay';
+import EditModeOverlay from './edit-mode-overlay';
 
 const CalmBg: React.FC = () => {
   // Hardcode Blender-like dark gray for test

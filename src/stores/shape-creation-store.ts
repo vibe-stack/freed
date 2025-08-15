@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { useGeometryStore } from './geometryStore';
+import { useGeometryStore } from './geometry-store';
 import { buildPlaneGeometry, buildCylinderGeometry, buildConeGeometry, buildUVSphereGeometry, buildIcoSphereGeometry, buildTorusGeometry, buildCubeGeometry } from '@/utils/geometry';
 
 type ShapeType = 'cube' | 'plane' | 'cylinder' | 'cone' | 'uvsphere' | 'icosphere' | 'torus';
