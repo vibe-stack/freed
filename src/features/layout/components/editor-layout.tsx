@@ -1,13 +1,13 @@
 "use client";
 
+import MenuBar from '@/features/menu/components/menu-bar';
+import SceneHierarchyPanel from '@/features/scene-hierarchy/components/scene-hierarchy-panel';
+import { ShapeAdjustPanel } from '@/features/shape-creation';
+import { TopToolbar } from '@/features/toolbar';
+import { SelectionSummary } from '@/features/toolbar/components/selection-summary';
+import { ToolIndicator } from '@/features/tools';
+import { EditorViewport } from '@/features/viewport';
 import React from 'react';
-import MenuBar from '@/components/menu-bar';
-import TopToolbar from '@/components/top-toolbar';
-import EditorViewport from '@/components/editor-viewport';
-import SceneHierarchyPanel from '@/components/scene-hierarchy-panel';
-import { SelectionSummary } from '@/components/selection-summary';
-import ToolIndicator from '@/components/tool-indicator';
-import ShapeAdjustPanel from '@/components/shape-adjust-panel';
 
 const EditorLayout: React.FC = () => {
   return (

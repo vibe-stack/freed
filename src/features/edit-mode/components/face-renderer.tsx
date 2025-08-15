@@ -2,9 +2,9 @@
 
 import React, { useMemo } from 'react';
 import { Color, Vector3 } from 'three';
-import { useGeometryStore } from '../../stores/geometry-store';
-import { Face, Vertex } from '../../types/geometry';
-import { convertQuadToTriangles } from '../../utils/geometry';
+import { useGeometryStore } from '../../../stores/geometry-store';
+import { Face, Vertex } from '../../../types/geometry';
+import { convertQuadToTriangles } from '../../../utils/geometry';
 
 const ORANGE = new Color(1.0, 0.5, 0.0);
 const GREY = new Color(0.5, 0.5, 0.5);

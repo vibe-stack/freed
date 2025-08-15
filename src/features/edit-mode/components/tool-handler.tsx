@@ -3,10 +3,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Vector3 } from 'three';
-import { useToolStore } from '../../stores/tool-store';
-import { useSelectionStore } from '../../stores/selection-store';
-import { useGeometryStore } from '../../stores/geometry-store';
-import { Vertex } from '../../types/geometry';
+import { useToolStore } from '@/stores/tool-store';
+import { useSelectionStore } from '@/stores/selection-store';
+import { useGeometryStore } from '@/stores/geometry-store';
+import { Vertex } from '@/types/geometry';
 import {
   calculateCentroid,
   applyMoveOperation,

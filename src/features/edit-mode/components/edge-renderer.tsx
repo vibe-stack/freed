@@ -2,8 +2,8 @@
 
 import React, { useMemo } from 'react';
 import { Color, BufferGeometry, Float32BufferAttribute } from 'three';
-import { useGeometryStore } from '../../stores/geometry-store';
-import { Edge, Vertex } from '../../types/geometry';
+import { useGeometryStore } from '../../../stores/geometry-store';
+import { Edge, Vertex } from '../../../types/geometry';
 
 const ORANGE = new Color(1.0, 0.5, 0.0);
 const BLACK = new Color(0, 0, 0);

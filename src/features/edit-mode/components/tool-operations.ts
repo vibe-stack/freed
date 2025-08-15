@@ -1,6 +1,6 @@
 import { Vector3, Matrix4, Euler } from 'three';
-import { Vertex, Edge, Face } from '../../types/geometry';
-import { ToolMode, AxisLock } from '../../stores/tool-store';
+import { Vertex, Edge, Face } from '../../../types/geometry';
+import { ToolMode, AxisLock } from '../../../stores/tool-store';
 
 // Calculate centroid of selected elements
 export function calculateCentroid(vertices: Vertex[]): Vector3 {

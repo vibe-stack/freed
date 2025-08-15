@@ -1,5 +1,5 @@
 import React from 'react';
-import { useToolStore } from '../stores/tool-store';
+import { useToolStore } from '@/stores/tool-store';
 
 const ToolIndicator: React.FC = () => {
   const toolStore = useToolStore();

@@ -3,8 +3,8 @@
 import React, { useMemo } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Color, PerspectiveCamera, Vector3 } from 'three';
-import { useGeometryStore } from '../../stores/geometry-store';
-import { Vertex } from '../../types/geometry';
+import { useGeometryStore } from '../../../stores/geometry-store';
+import { Vertex } from '../../../types/geometry';
 
 const ORANGE = new Color(1.0, 0.5, 0.0);
 const BLACK = new Color(0, 0, 0);

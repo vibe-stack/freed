@@ -1,8 +1,8 @@
 'use client';
 
+import { useMeshes } from '@/stores/geometry-store';
+import { useSelection, useSelectionStore } from '@/stores/selection-store';
 import React from 'react';
-import { useSelection, useSelectionStore } from '../stores/selection-store';
-import { useMeshes } from '../stores/geometry-store';
 
 export const SelectionSummary: React.FC = () => {
   const selection = useSelection();

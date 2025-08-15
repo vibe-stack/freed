@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { useSelection, useSelectionStore } from '../stores/selection-store';
-import { SelectionMode } from '../types/geometry';
-import { ShortcutHelp } from './shortcut-help';
+import { useSelection, useSelectionStore } from '@/stores/selection-store';
+import { SelectionMode } from '@/types/geometry';
+import { ShortcutHelp } from '@/features/toolbar/components/shortcut-help';
 
 interface SelectionModeButtonProps {
   mode: SelectionMode;
@@ -45,10 +45,7 @@ export const SelectionModeToolbar: React.FC = () => {
   const selection = useSelection();
   const { setSelectionMode } = useSelectionStore();
 
-  // Only show in edit mode
-  if (selection.viewMode !== 'edit') {
-    return null;
-  }
+  if (selection.viewMode !== 'edit') return null;
 
   const modes: Array<{
     mode: SelectionMode;

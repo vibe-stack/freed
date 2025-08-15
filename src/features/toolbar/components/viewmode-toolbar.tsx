@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { useSelection, useSelectionStore } from '../stores/selection-store';
-import { ViewMode } from '../types/geometry';
-import { useSceneStore } from '../stores/scene-store';
+import { useSelection, useSelectionStore } from '@/stores/selection-store';
+import { ViewMode } from '@/types/geometry';
+import { useSceneStore } from '@/stores/scene-store';
 
 interface ViewModeButtonProps {
   mode: ViewMode;
@@ -60,15 +60,12 @@ export const ViewModeToolbar: React.FC = () => {
 
   const handleModeChange = (mode: ViewMode) => {
     if (mode === 'edit' && selection.viewMode === 'object') {
-      // When entering edit mode, use the first selected object
       if (selection.objectIds.length > 0) {
-        // Use the first selected object's mesh ID
         const firstObjectId = selection.objectIds[0];
         const meshId = scene.objects[firstObjectId]?.meshId;
         if (meshId) enterEditMode(meshId);
         return;
       } else {
-        // Show a message or do nothing if no object is selected
         alert('Please select an object first to enter Edit Mode');
         return;
       }
