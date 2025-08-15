@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import type { ThreeEvent } from '@react-three/fiber';
 import { useSelectionStore } from '@/stores/selection-store';
 import { useToolStore } from '@/stores/tool-store';
 import { useGeometryStore } from '@/stores/geometry-store';
@@ -21,39 +22,35 @@ const EditModeOverlay: React.FC = () => {
 
 	const selection = selectionStore.selection;
 	const meshId = selection.meshId;
+	const mesh = meshId ? geometryStore.meshes.get(meshId) : null;
 
-	if (!meshId) return null;
-
-	const mesh = geometryStore.meshes.get(meshId);
-	if (!mesh) return null;
-
-	const handleVertexClick = (vertexId: string, event: React.MouseEvent) => {
+	const handleVertexClick = (vertexId: string, event: ThreeEvent<PointerEvent>) => {
 		if (toolStore.isActive) return;
 		const isShiftPressed = event.shiftKey;
 		if (isShiftPressed) {
-			selectionStore.toggleVertexSelection(meshId, vertexId);
+			if (meshId) selectionStore.toggleVertexSelection(meshId, vertexId);
 		} else {
-			selectionStore.selectVertices(meshId, [vertexId]);
+			if (meshId) selectionStore.selectVertices(meshId, [vertexId]);
 		}
 	};
 
-	const handleEdgeClick = (edgeId: string, event: React.MouseEvent) => {
+	const handleEdgeClick = (edgeId: string, event: ThreeEvent<PointerEvent>) => {
 		if (toolStore.isActive) return;
 		const isShiftPressed = event.shiftKey;
 		if (isShiftPressed) {
-			selectionStore.toggleEdgeSelection(meshId, edgeId);
+			if (meshId) selectionStore.toggleEdgeSelection(meshId, edgeId);
 		} else {
-			selectionStore.selectEdges(meshId, [edgeId]);
+			if (meshId) selectionStore.selectEdges(meshId, [edgeId]);
 		}
 	};
 
-	const handleFaceClick = (faceId: string, event: React.MouseEvent) => {
+	const handleFaceClick = (faceId: string, event: ThreeEvent<PointerEvent>) => {
 		if (toolStore.isActive) return;
 		const isShiftPressed = event.shiftKey;
 		if (isShiftPressed) {
-			selectionStore.toggleFaceSelection(meshId, faceId);
+			if (meshId) selectionStore.toggleFaceSelection(meshId, faceId);
 		} else {
-			selectionStore.selectFaces(meshId, [faceId]);
+			if (meshId) selectionStore.selectFaces(meshId, [faceId]);
 		}
 	};
 
@@ -67,7 +64,9 @@ const EditModeOverlay: React.FC = () => {
 		}
 	}, [toolStore.isActive]);
 
-	const { vertices: currentSelectionVertices, centroid } = useSelectionVertices(meshId, localVertices);
+	const { vertices: currentSelectionVertices, centroid } = useSelectionVertices(meshId || '', localVertices);
+
+	if (!meshId || !mesh) return null;
 
 	return (
 		<>
@@ -113,7 +112,7 @@ const EditModeOverlay: React.FC = () => {
 						]);
 						const opacity = toolStore.axisLock === key ? 1 : 0.2;
 						return (
-							<line key={key as string} ref={(n: any) => { if (n) (n as any).renderOrder = 2550; }}>
+							<line key={key as string}>
 												<bufferGeometry>
 													<bufferAttribute attach="attributes-position" args={[positions, 3]} />
 												</bufferGeometry>

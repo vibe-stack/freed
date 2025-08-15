@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { Color, Vector3 } from 'three';
+import React, { useMemo, useRef } from 'react';
+import { Color, Vector3, BufferGeometry, Float32BufferAttribute, Mesh } from 'three';
+import type { ThreeEvent } from '@react-three/fiber';
 import { useGeometryStore } from '../../../stores/geometry-store';
-import { Face, Vertex } from '../../../types/geometry';
+import { Vertex } from '../../../types/geometry';
 import { convertQuadToTriangles } from '../../../utils/geometry';
 
 const ORANGE = new Color(1.0, 0.5, 0.0);
@@ -12,7 +13,7 @@ const GREY = new Color(0.5, 0.5, 0.5);
 interface FaceRendererProps {
   meshId: string;
   selectedFaceIds: string[];
-  onFaceClick: (faceId: string, event: any) => void;
+  onFaceClick: (faceId: string, event: ThreeEvent<PointerEvent>) => void;
   selectionMode: string;
   localVertices?: Vertex[]; // For showing local changes during tool operations
 }
@@ -26,6 +27,8 @@ export const FaceRenderer: React.FC<FaceRendererProps> = ({
 }) => {
   const geometryStore = useGeometryStore();
   const mesh = geometryStore.meshes.get(meshId);
+  const meshSelRef = useRef<Mesh | null>(null);
+  const meshUnRef = useRef<Mesh | null>(null);
   
   // Merge local vertex overrides when provided
   const vertices = useMemo(() => {
@@ -36,19 +39,21 @@ export const FaceRenderer: React.FC<FaceRendererProps> = ({
   }, [mesh?.vertices, localVertices]);
   const faces = mesh?.faces || [];
   
-  const faceData = useMemo(() => {
-    const vertexMap = new Map(vertices.map(v => [v.id, v]));
-    
-    return faces.map(face => {
+  const batched = useMemo(() => {
+    const vertexMap = new Map(vertices.map(v => [v.id, v] as const));
+    const selSet = new Set(selectedFaceIds);
+  const posSel: number[] = [];
+  const normSel: number[] = [];
+  const posUn: number[] = [];
+  const normUn: number[] = [];
+    const triToFaceSel: string[] = [];
+    const triToFaceUn: string[] = [];
+    for (const face of faces) {
       const faceVertices = face.vertexIds.map(vid => vertexMap.get(vid)).filter(Boolean);
-      if (faceVertices.length < 3) return null;
-      const isSelected = selectedFaceIds.includes(face.id);
-      
-      // Convert face to triangles for rendering
+      if (faceVertices.length < 3) continue;
+      const isSelected = selSet.has(face.id);
       const triangles = convertQuadToTriangles(face.vertexIds);
-      const positions: number[] = [];
-      const normals: number[] = [];
-      triangles.forEach(tri => {
+      for (const tri of triangles) {
         const v0 = vertexMap.get(tri[0])!;
         const v1 = vertexMap.get(tri[1])!;
         const v2 = vertexMap.get(tri[2])!;
@@ -56,42 +61,67 @@ export const FaceRenderer: React.FC<FaceRendererProps> = ({
         const p1 = new Vector3(v1.position.x, v1.position.y, v1.position.z);
         const p2 = new Vector3(v2.position.x, v2.position.y, v2.position.z);
         const n = new Vector3().subVectors(p1, p0).cross(new Vector3().subVectors(p2, p0)).normalize();
-        positions.push(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
-        for (let i = 0; i < 3; i++) normals.push(n.x, n.y, n.z);
-      });
-      
-      return {
-        id: face.id,
-        positions,
-        normals,
-        isSelected
-      };
-    }).filter(Boolean);
+        const targetPos = isSelected ? posSel : posUn;
+        const targetNorm = isSelected ? normSel : normUn;
+        targetPos.push(
+          p0.x, p0.y, p0.z,
+          p1.x, p1.y, p1.z,
+          p2.x, p2.y, p2.z
+        );
+        for (let i = 0; i < 3; i++) targetNorm.push(n.x, n.y, n.z);
+        if (isSelected) triToFaceSel.push(face.id);
+        else triToFaceUn.push(face.id);
+      }
+    }
+    const geoSel = new BufferGeometry();
+    const geoUn = new BufferGeometry();
+    if (posSel.length > 0) {
+      geoSel.setAttribute('position', new Float32BufferAttribute(new Float32Array(posSel), 3));
+      geoSel.setAttribute('normal', new Float32BufferAttribute(new Float32Array(normSel), 3));
+      geoSel.computeBoundingSphere();
+    }
+    if (posUn.length > 0) {
+      geoUn.setAttribute('position', new Float32BufferAttribute(new Float32Array(posUn), 3));
+      geoUn.setAttribute('normal', new Float32BufferAttribute(new Float32Array(normUn), 3));
+      geoUn.computeBoundingSphere();
+    }
+    return { geoSel, geoUn, triToFaceSel, triToFaceUn };
   }, [faces, vertices, selectedFaceIds]);
 
-  const handleFacePointerDown = (faceId: string) => (event: any) => {
-    if (selectionMode === 'face') {
-      event.stopPropagation();
-      onFaceClick(faceId, event);
-    }
-  };
+  // no-op: picking handled on batched meshes
 
   return (
     <>
-      {faceData.map(face => {
-        if (!face) return null;
-        return (
-          <mesh key={face.id} onPointerDown={handleFacePointerDown(face.id)} renderOrder={1000}>
-            <bufferGeometry>
-              {/* @ts-ignore */}
-              <bufferAttribute attach="attributes-position" args={[new Float32Array(face.positions), 3]} />
-              {/* @ts-ignore */}
-              <bufferAttribute attach="attributes-normal" args={[new Float32Array(face.normals), 3]} />
-            </bufferGeometry>
-            <meshBasicMaterial color={face.isSelected ? ORANGE : GREY} side={2} transparent opacity={0.5} depthWrite={false} />
-          </mesh>
-        );
-      })}
+      {/* Unselected faces */}
+  <mesh ref={meshUnRef} renderOrder={999} onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+        if (selectionMode !== 'face') return;
+        e.stopPropagation();
+        const triIdx: number = e.faceIndex ?? -1; // faceIndex is the triangle index
+        if (triIdx < 0) return;
+        const fid = batched.triToFaceUn[triIdx] as string | undefined;
+        if (fid) onFaceClick(fid, e);
+      }}>
+        <bufferGeometry>
+      <bufferAttribute attach="attributes-position" args={[(batched.geoUn.getAttribute('position')?.array as Float32Array) || new Float32Array(0), 3]} />
+      <bufferAttribute attach="attributes-normal" args={[(batched.geoUn.getAttribute('normal')?.array as Float32Array) || new Float32Array(0), 3]} />
+        </bufferGeometry>
+        <meshBasicMaterial color={GREY} side={2} transparent opacity={0.5} depthWrite={false} />
+      </mesh>
+      {/* Selected faces */}
+  <mesh ref={meshSelRef} renderOrder={1000} onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+        if (selectionMode !== 'face') return;
+        e.stopPropagation();
+        const triIdx: number = e.faceIndex ?? -1;
+        if (triIdx < 0) return;
+        const fid = batched.triToFaceSel[triIdx] as string | undefined;
+        if (fid) onFaceClick(fid, e);
+      }}>
+        <bufferGeometry>
+      <bufferAttribute attach="attributes-position" args={[(batched.geoSel.getAttribute('position')?.array as Float32Array) || new Float32Array(0), 3]} />
+      <bufferAttribute attach="attributes-normal" args={[(batched.geoSel.getAttribute('normal')?.array as Float32Array) || new Float32Array(0), 3]} />
+        </bufferGeometry>
+        <meshBasicMaterial color={ORANGE} side={2} transparent opacity={0.5} depthWrite={false} />
+      </mesh>
     </>
   );
 };

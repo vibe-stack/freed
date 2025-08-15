@@ -80,6 +80,8 @@ export const useGeometryStore = create<GeometryStore>()(
           const mesh = state.meshes.get(meshId);
           if (mesh) {
             updater(mesh);
+            // Ensure array identity changes so memoized consumers update
+            mesh.vertices = mesh.vertices.slice();
           }
         });
       },

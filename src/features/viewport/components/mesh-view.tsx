@@ -74,7 +74,7 @@ const MeshView: React.FC<Props> = ({ objectId }) => {
 
   if (!obj || !mesh || !geom || !mat) return null as any;
 
-  const onPointerDown = (e: any) => {
+  const onPointerDown = (e: React.PointerEvent) => {
     if (selection.viewMode === 'object') {
       e.stopPropagation();
       scene.selectObject(objectId);
@@ -82,12 +82,14 @@ const MeshView: React.FC<Props> = ({ objectId }) => {
     }
   };
 
-  const onDoubleClick = (e: any) => {
+  const onDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (selection.viewMode === 'object' && obj.meshId) {
       selectionActions.enterEditMode(obj.meshId);
     }
   };
+
+  const raycastStub = (/* _obj: any, _raycaster: any, _intersects: any */) => {};
 
   return (
     <group
@@ -98,8 +100,7 @@ const MeshView: React.FC<Props> = ({ objectId }) => {
       onPointerDown={onPointerDown}
       onDoubleClick={onDoubleClick}
     >
-      {/* @ts-ignore */}
-      <mesh geometry={geom} material={mat as any} raycast={selection.viewMode === 'edit' ? ((_: any) => {}) : undefined} />
+  <mesh geometry={geom} material={mat as any} raycast={selection.viewMode === 'edit' ? raycastStub : undefined} />
     </group>
   );
 };
