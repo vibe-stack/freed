@@ -1,10 +1,13 @@
 import { create } from 'zustand';
 import type { Transform } from '@/types/geometry';
 
-export type ToolMode = 'none' | 'move' | 'rotate' | 'scale';
+export type ToolMode = 'none' | 'move' | 'rotate' | 'scale' | 'extrude' | 'inset' | 'bevel' | 'loopcut';
 export type AxisLock = 'none' | 'x' | 'y' | 'z';
 
-type LocalData = { kind: 'object-transform'; transforms: Record<string, Transform> } | null;
+type LocalData =
+  | { kind: 'object-transform'; transforms: Record<string, Transform> }
+  | { kind: 'loopcut'; objectId: string; meshId: string; faceId: string; edge: [string, string]; segments: number }
+  | null;
 
 interface ToolState {
   tool: ToolMode;

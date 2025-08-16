@@ -24,13 +24,13 @@ const EditorViewport: React.FC = () => {
           position: [camera.position.x, camera.position.y, camera.position.z],
         }}
         dpr={[0.2, 2]}
-  // Provide minimal raycaster params; cast to any to satisfy drei typing
-  raycaster={{ params: { Mesh: {}, LOD: {}, Points: {}, Sprite: {}, Line2: { threshold: 0.1 }, Line: { threshold: 0.1 } } as unknown as RaycasterParameters }}
+        // Provide minimal raycaster params; cast to any to satisfy drei typing
+        raycaster={{ params: { Mesh: {}, LOD: {}, Points: {}, Sprite: {}, Line2: { threshold: 0.1 }, Line: { threshold: 0.1 } } as unknown as RaycasterParameters }}
       >
-  <CalmBg />
+        <CalmBg />
         <ambientLight intensity={0.5} />
         <directionalLight position={[5, 8, 3]} intensity={0.8} />
-  <CameraController />
+        <CameraController />
         <OrbitControls
           makeDefault
           target={[camera.target.x, camera.target.y, camera.target.z]}

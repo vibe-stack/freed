@@ -149,9 +149,7 @@ const MenuBar: React.FC = () => {
 			</div>
 
 			<div className="ml-auto flex items-center gap-2 text-[11px] text-gray-400">
-				<span>Dark</span>
-				<span className="opacity-40">|</span>
-				<span>Calm Mode</span>
+				{/* SPONSORING AREA */}
 			</div>
 		</div>
 	);

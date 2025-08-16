@@ -16,7 +16,7 @@ const SceneContent: React.FC = () => {
 
   return (
     <>
-  <ObjectToolHandler />
+      <ObjectToolHandler />
       {viewport.showGrid && (
         <Grid
           infiniteGrid

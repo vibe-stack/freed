@@ -4,6 +4,7 @@ import MenuBar from '@/features/menu/components/menu-bar';
 import SceneHierarchyPanel from '@/features/scene-hierarchy/components/scene-hierarchy-panel';
 import { ShapeAdjustPanel } from '@/features/shape-creation';
 import { TopToolbar } from '@/features/toolbar';
+import { EditToolsToolbar } from '@/features/toolbar';
 import { SelectionSummary } from '@/features/toolbar/components/selection-summary';
 import { ToolIndicator } from '@/features/tools';
 import { EditorViewport } from '@/features/viewport';
@@ -21,8 +22,10 @@ const EditorLayout: React.FC = () => {
         <EditorViewport />
 
         {/* Floating Top Toolbar */}
-        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-3 z-20">
+        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-3 z-20 space-y-2 flex flex-col items-center">
           <TopToolbar />
+          {/* Edit Tools toolbar appears only in Edit Mode */}
+          <EditToolsToolbar />
         </div>
 
         {/* Right Scene Hierarchy Panel */}

@@ -114,6 +114,60 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
       description: 'Scale tool (S)',
       preventDefault: true,
     },
+    {
+      key: 'e',
+      action: () => {
+        const selection = useSelectionStore.getState().selection;
+        const tool = useToolStore.getState();
+        if (tool.isActive) return;
+        if (selection.viewMode === 'edit' && selection.faceIds.length > 0) {
+          useToolStore.getState().startOperation('extrude', null);
+        }
+      },
+      description: 'Extrude (E) — faces only for now',
+      preventDefault: true,
+    },
+    {
+      key: 'i',
+      action: () => {
+        const selection = useSelectionStore.getState().selection;
+        const tool = useToolStore.getState();
+        if (tool.isActive) return;
+        if (selection.viewMode === 'edit' && selection.faceIds.length > 0) {
+          useToolStore.getState().startOperation('inset', null);
+        }
+      },
+      description: 'Inset (I) — faces only for now',
+      preventDefault: true,
+    },
+    {
+      key: 'b',
+      ctrl: true,
+      action: () => {
+        const selection = useSelectionStore.getState().selection;
+        const tool = useToolStore.getState();
+        if (tool.isActive) return;
+        if (selection.viewMode === 'edit' && selection.faceIds.length > 0) {
+          useToolStore.getState().startOperation('bevel', null);
+        }
+      },
+      description: 'Bevel (Ctrl+B) — faces only for now',
+      preventDefault: true,
+    },
+    {
+      key: 'r',
+      ctrl: true,
+      action: () => {
+        const selection = useSelectionStore.getState().selection;
+        const tool = useToolStore.getState();
+        if (tool.isActive) return;
+        if (selection.viewMode === 'edit') {
+          useToolStore.getState().startOperation('loopcut', null);
+        }
+      },
+      description: 'Loop Cut (Ctrl+R) — preview: hover shows yellow ticks, mouse wheel sets segments',
+      preventDefault: true,
+    },
     // Delete selected objects in Object Mode
     {
       key: 'Delete',
