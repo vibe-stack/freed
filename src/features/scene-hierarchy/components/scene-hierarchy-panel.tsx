@@ -6,7 +6,7 @@ import { useSelection, useSelectionStore } from '@/stores/selection-store';
 import { Eye, EyeOff, Lock, Unlock } from 'lucide-react';
 
 const Panel: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = '', children, ...rest }) => (
-	<div className={`bg-black/40 backdrop-blur-md border border-white/10 rounded-lg shadow-lg shadow-black/30 w-80 h-full ${className}`} {...rest}>
+	<div className={`bg-black/40 backdrop-blur-md border border-white/10 rounded-lg shadow-lg shadow-black/30 w-64 h-full ${className}`} {...rest}>
 		{children}
 	</div>
 );
@@ -74,7 +74,7 @@ const SceneHierarchyPanel: React.FC = () => {
 				<div className="text-xs uppercase tracking-wide text-gray-400">Scene</div>
 				<div className="text-[10px] text-gray-500">{Object.keys(scene.objects).length} items</div>
 			</div>
-			<div className="h-[calc(100%-28px)] overflow-auto">
+			<div className="h-[60dvh] overflow-auto">
 				{scene.rootObjects.length === 0 && (
 					<div className="p-3 text-xs text-gray-500">No objects. Use + Cube to add one.</div>
 				)}

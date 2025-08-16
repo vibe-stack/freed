@@ -26,7 +26,7 @@ const EditorLayout: React.FC = () => {
         </div>
 
         {/* Right Scene Hierarchy Panel */}
-        <div className="absolute right-4 top-14 bottom-4 z-20">
+        <div className="absolute left-4 top-32 z-20">
           <SceneHierarchyPanel />
         </div>
 

@@ -72,9 +72,8 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({ meshId, onLocalDataCha
       }
       
       if (selectedVertices.length > 0) {
-        // Avoid re-initializing if selection unchanged
-        const same = originalVertices.length === selectedVertices.length && originalVertices.every((v, i) => v.id === selectedVertices[i].id);
-        if (!same) setOriginalVertices(selectedVertices);
+  // Always re-snapshot from store at operation start so we start from last committed state
+  setOriginalVertices(selectedVertices);
         setLocalVertices(selectedVertices);
         setCentroid(calculateCentroid(selectedVertices));
         setAccumulator({ rotation: 0, scale: 1 });
@@ -100,7 +99,7 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({ meshId, onLocalDataCha
         pointerLocked.current = false;
       }
     };
-  }, [toolStore.isActive, meshId, gl, onLocalDataChange, originalVertices.length]);
+  }, [toolStore.isActive, meshId, gl, onLocalDataChange]);
 
   // Track pointer lock state
   useEffect(() => {
@@ -176,6 +175,8 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({ meshId, onLocalDataCha
               }
             });
           });
+          // Keep normals up to date after geometry changes
+          geometryStore.recalculateNormals(meshId);
         }
         toolStore.endOperation(true);
     moveAccumRef.current.set(0, 0, 0);

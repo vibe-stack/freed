@@ -75,22 +75,25 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
     if (selectionMode !== 'edge') return;
     event.stopPropagation();
     // Approximate picking by finding nearest segment to intersection point
-    const pt = event.point;
+    // Convert world-space intersection point to this object's local space
+    const ptLocal = lineRef.current ? lineRef.current.worldToLocal(event.point.clone()) : event.point;
+    // Use the same merged vertices used for rendering (respects local preview)
+    const vtxMap = new Map(vertices.map(v => [v.id, v] as const));
     let best = -1;
     let bestDist = Infinity;
     for (let i = 0; i < edges.length; i++) {
       const e = edges[i];
-      const v0 = mesh?.vertices.find(v => v.id === e.vertexIds[0]);
-      const v1 = mesh?.vertices.find(v => v.id === e.vertexIds[1]);
+      const v0 = vtxMap.get(e.vertexIds[0]);
+      const v1 = vtxMap.get(e.vertexIds[1]);
       if (!v0 || !v1) continue;
       const ax = v0.position.x, ay = v0.position.y, az = v0.position.z;
       const bx = v1.position.x, by = v1.position.y, bz = v1.position.z;
       // point-line distance in 3D
       const abx = bx - ax, aby = by - ay, abz = bz - az;
-      const apx = pt.x - ax, apy = pt.y - ay, apz = pt.z - az;
+      const apx = ptLocal.x - ax, apy = ptLocal.y - ay, apz = ptLocal.z - az;
       const t = Math.max(0, Math.min(1, (apx*abx + apy*aby + apz*abz) / (abx*abx + aby*aby + abz*abz + 1e-6)));
       const cx = ax + abx * t, cy = ay + aby * t, cz = az + abz * t;
-      const dx = pt.x - cx, dy = pt.y - cy, dz = pt.z - cz;
+      const dx = ptLocal.x - cx, dy = ptLocal.y - cy, dz = ptLocal.z - cz;
       const d2 = dx*dx + dy*dy + dz*dz;
       if (d2 < bestDist) { bestDist = d2; best = i; }
     }
