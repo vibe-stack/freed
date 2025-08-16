@@ -29,7 +29,7 @@ const defaultCameraState: CameraState = {
 
 export const useViewportStore = create<ViewportStore>()(
   subscribeWithSelector(
-    immer((set, get) => ({
+    immer((set, _get) => ({
       // Initial state
       camera: defaultCameraState,
       shadingMode: 'solid' as ShadingMode,

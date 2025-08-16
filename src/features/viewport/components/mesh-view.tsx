@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { BufferGeometry, DoubleSide, Float32BufferAttribute, MeshStandardMaterial, Color, Vector3 } from 'three';
+import { BufferGeometry, DoubleSide, Float32BufferAttribute, MeshStandardMaterial, Color, Vector3, Raycaster, Intersection, Material } from 'three';
 import { useViewportStore } from '@/stores/viewport-store';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { useSceneStore } from '@/stores/scene-store';
 import { useSelection, useSelectionStore } from '@/stores/selection-store';
+import { useToolStore } from '@/stores/tool-store';
 import { convertQuadToTriangles } from '@/utils/geometry';
 
 type Props = { objectId: string };
@@ -19,9 +20,10 @@ const MeshView: React.FC<Props> = ({ objectId }) => {
   const mesh = obj?.meshId ? geometryStore.meshes.get(obj.meshId) : undefined;
   const shading = useViewportStore((s) => s.shadingMode);
   const isSelected = selection.objectIds.includes(objectId);
+  const tool = useToolStore();
 
-  const { geom, mat } = useMemo(() => {
-    if (!mesh) return { geom: undefined, mat: undefined } as any;
+  const geomAndMat = useMemo<{ geom: BufferGeometry; mat: MeshStandardMaterial } | null>(() => {
+    if (!mesh) return null;
 
     const geo = new BufferGeometry();
     const vertexMap = new Map(mesh.vertices.map((v) => [v.id, v] as const));
@@ -60,8 +62,9 @@ const MeshView: React.FC<Props> = ({ objectId }) => {
     geo.setAttribute('normal', new Float32BufferAttribute(normals, 3));
     geo.computeBoundingSphere();
 
+    // Blender selection orange approx: #FF9900
     const material = new MeshStandardMaterial({
-      color: new Color(isSelected ? 0.45 : 0.8, isSelected ? 0.65 : 0.8, isSelected ? 1.0 : 0.85),
+      color: isSelected ? new Color('#ff9900') : new Color(0.8, 0.8, 0.85),
       roughness: 0.8,
       metalness: 0.05,
       wireframe: shading === 'wireframe',
@@ -72,13 +75,15 @@ const MeshView: React.FC<Props> = ({ objectId }) => {
     return { geom: geo, mat: material };
   }, [mesh, shading, isSelected]);
 
-  if (!obj || !mesh || !geom || !mat) return null as any;
+  if (!obj || !mesh || !geomAndMat) return null;
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (selection.viewMode === 'object') {
       e.stopPropagation();
+      const isShift = e.shiftKey;
+  if (isShift) selectionActions.toggleObjectSelection(objectId);
+  else selectionActions.selectObjects([objectId], false);
       scene.selectObject(objectId);
-      selectionActions.selectObjects([objectId]);
     }
   };
 
@@ -89,18 +94,27 @@ const MeshView: React.FC<Props> = ({ objectId }) => {
     }
   };
 
-  const raycastStub = (/* _obj: any, _raycaster: any, _intersects: any */) => {};
+  const raycastStub = (_raycaster: Raycaster, _intersects: Intersection[]) => {};
+
+  // Choose transform source: live localData during active tool, otherwise scene store
+  const t = (() => {
+    if (tool.isActive && tool.localData && tool.localData.kind === 'object-transform') {
+      const lt = tool.localData.transforms[objectId];
+      if (lt) return lt;
+    }
+    return obj.transform;
+  })();
 
   return (
     <group
-      position={[obj.transform.position.x, obj.transform.position.y, obj.transform.position.z]}
-      rotation={[obj.transform.rotation.x, obj.transform.rotation.y, obj.transform.rotation.z]}
-      scale={[obj.transform.scale.x, obj.transform.scale.y, obj.transform.scale.z]}
+      position={[t.position.x, t.position.y, t.position.z]}
+      rotation={[t.rotation.x, t.rotation.y, t.rotation.z]}
+      scale={[t.scale.x, t.scale.y, t.scale.z]}
       visible={obj.visible}
       onPointerDown={onPointerDown}
       onDoubleClick={onDoubleClick}
     >
-  <mesh geometry={geom} material={mat as any} raycast={selection.viewMode === 'edit' ? raycastStub : undefined} />
+  <mesh geometry={geomAndMat.geom} material={geomAndMat.mat as unknown as Material} raycast={selection.viewMode === 'edit' ? raycastStub : undefined} />
     </group>
   );
 };

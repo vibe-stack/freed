@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
+import type { RaycasterParameters } from 'three';
 import { OrbitControls } from '@react-three/drei';
 import { useViewportStore } from '@/stores/viewport-store';
 import CalmBg from './calm-bg';
@@ -23,7 +24,8 @@ const EditorViewport: React.FC = () => {
           position: [camera.position.x, camera.position.y, camera.position.z],
         }}
         dpr={[0.2, 2]}
-        raycaster={{ params: { Line2: { threshold: 0.1 }, Line: { threshold: 0.1 } } as any }}
+  // Provide minimal raycaster params; cast to any to satisfy drei typing
+  raycaster={{ params: { Mesh: {}, LOD: {}, Points: {}, Sprite: {}, Line2: { threshold: 0.1 }, Line: { threshold: 0.1 } } as unknown as RaycasterParameters }}
       >
   <CalmBg />
         <ambientLight intensity={0.5} />

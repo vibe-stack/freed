@@ -5,7 +5,6 @@ import { useGeometryStore } from './geometry-store';
 import { useSelectionStore } from './selection-store';
 import { useViewportStore } from './viewport-store';
 import { useSceneStore } from './scene-store';
-import { useToolStore } from './tool-store';
 
 // Store provider component that initializes stores and provides context
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

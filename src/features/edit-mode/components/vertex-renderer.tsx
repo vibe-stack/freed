@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef } from 'react';
-import { ThreeEvent, useThree } from '@react-three/fiber';
-import { Color, PerspectiveCamera, Vector3, Object3D, InstancedMesh, BoxGeometry, MeshBasicMaterial } from 'three';
+import { ThreeEvent, useThree, useFrame } from '@react-three/fiber';
+import { Color, PerspectiveCamera, Vector3, Object3D, InstancedMesh, BoxGeometry, MeshBasicMaterial, Euler } from 'three';
 import { useGeometryStore } from '../../../stores/geometry-store';
 import { Vertex } from '../../../types/geometry';
 
@@ -23,6 +23,9 @@ interface VertexRendererProps {
   onVertexClick: (vertexId: string, event: ThreeEvent<PointerEvent>) => void;
   selectionMode: string;
   localVertices?: Vertex[]; // For showing local changes during tool operations
+  objectScale?: { x: number; y: number; z: number }; // parent object scale for compensation
+  objectRotation?: { x: number; y: number; z: number };
+  objectPosition?: { x: number; y: number; z: number };
 }
 
 export const VertexRenderer: React.FC<VertexRendererProps> = ({
@@ -30,7 +33,10 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
   selectedVertexIds,
   onVertexClick,
   selectionMode,
-  localVertices
+  localVertices,
+  objectScale,
+  objectRotation,
+  objectPosition
 }) => {
   const { camera, size } = useThree();
   const geometryStore = useGeometryStore();
@@ -52,48 +58,54 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
   
   const { selectedVerts, unselectedVerts } = useMemo(() => {
     const selSet = new Set(selectedVertexIds);
-    const selected: { id: string; position: Vector3; scale: number }[] = [];
-    const unselected: { id: string; position: Vector3; scale: number }[] = [];
+    const selected: { id: string; position: Vector3 }[] = [];
+    const unselected: { id: string; position: Vector3 }[] = [];
     for (const v of vertices) {
       const position = new Vector3(v.position.x, v.position.y, v.position.z);
-      const scale = getScreenScale(camera as PerspectiveCamera, position, size.height, 10);
-      const item = { id: v.id, position, scale };
+      const item = { id: v.id, position };
       if (selSet.has(v.id)) selected.push(item);
       else unselected.push(item);
     }
     return { selectedVerts: selected, unselectedVerts: unselected };
-  }, [vertices, selectedVertexIds, camera, size.height]);
+  }, [vertices, selectedVertexIds]);
 
   // Populate instance matrices when data changes
-  useEffect(() => {
-    const r = unselectedRef.current;
-    if (!r) return;
-    const count = unselectedVerts.length;
-    for (let i = 0; i < count; i++) {
-      const v = unselectedVerts[i];
-      tmp.position.copy(v.position);
-      tmp.scale.set(v.scale, v.scale, v.scale);
-      tmp.updateMatrix();
-      r.setMatrixAt(i, tmp.matrix);
-    }
-    r.count = count;
-    r.instanceMatrix.needsUpdate = true;
-  }, [unselectedVerts, tmp]);
+  // Per-frame update to keep handle size constant in screen space as camera moves
+  useFrame(() => {
+    const update = (ref: InstancedMesh | null, arr: { position: Vector3 }[]) => {
+      if (!ref) return;
+      const count = arr.length;
+      for (let i = 0; i < count; i++) {
+        const v = arr[i];
+        // local position inside the object's transform group
+        tmp.position.copy(v.position);
+        // compute world position for distance-based scaling
+        const wp = v.position.clone();
+        if (objectScale) {
+          wp.set(wp.x * objectScale.x, wp.y * objectScale.y, wp.z * objectScale.z);
+        }
+        if (objectRotation) {
+          wp.applyEuler(new Euler(objectRotation.x, objectRotation.y, objectRotation.z));
+        }
+        if (objectPosition) {
+          wp.add(new Vector3(objectPosition.x, objectPosition.y, objectPosition.z));
+        }
+        const pxScale = getScreenScale(camera as PerspectiveCamera, wp, size.height, 10);
+        // compensate per-axis object scale so cubes remain visually constant
+        const sx = pxScale / Math.max(1e-6, Math.abs(objectScale?.x ?? 1));
+        const sy = pxScale / Math.max(1e-6, Math.abs(objectScale?.y ?? 1));
+        const sz = pxScale / Math.max(1e-6, Math.abs(objectScale?.z ?? 1));
+        tmp.scale.set(sx, sy, sz);
+        tmp.updateMatrix();
+        ref.setMatrixAt(i, tmp.matrix);
+      }
+      ref.count = count;
+      ref.instanceMatrix.needsUpdate = true;
+    };
 
-  useEffect(() => {
-    const r = selectedRef.current;
-    if (!r) return;
-    const count = selectedVerts.length;
-    for (let i = 0; i < count; i++) {
-      const v = selectedVerts[i];
-      tmp.position.copy(v.position);
-      tmp.scale.set(v.scale, v.scale, v.scale);
-      tmp.updateMatrix();
-      r.setMatrixAt(i, tmp.matrix);
-    }
-    r.count = count;
-    r.instanceMatrix.needsUpdate = true;
-  }, [selectedVerts, tmp]);
+    update(unselectedRef.current, unselectedVerts);
+    update(selectedRef.current, selectedVerts);
+  });
 
   const handleUnselectedPointerDown = (e: ThreeEvent<PointerEvent>) => {
     if (selectionMode !== 'vertex') return;

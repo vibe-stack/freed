@@ -1,8 +1,6 @@
 // T3D File Format Types
 // Version 1.0.0
 
-import { Mesh, Material, SceneObject, ViewportState, CameraState } from './geometry';
-
 export interface T3DVersion {
   major: number;
   minor: number;

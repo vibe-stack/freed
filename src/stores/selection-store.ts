@@ -15,6 +15,7 @@ interface SelectionActions {
   selectEdges: (meshId: string, edgeIds: string[], additive?: boolean) => void;
   selectFaces: (meshId: string, faceIds: string[], additive?: boolean) => void;
   selectObjects: (objectIds: string[], additive?: boolean) => void;
+  toggleObjectSelection: (objectId: string) => void;
   clearSelection: () => void;
   toggleVertexSelection: (meshId: string, vertexId: string) => void;
   toggleEdgeSelection: (meshId: string, edgeId: string) => void;
@@ -195,6 +196,25 @@ export const useSelectionStore = create<SelectionStore>()(
           state.selection.vertexIds = [];
           state.selection.edgeIds = [];
           state.selection.faceIds = [];
+        });
+      },
+      
+      toggleObjectSelection: (objectId: string) => {
+        set((state) => {
+          // Only allow in object mode
+          if (state.selection.viewMode !== 'object') return;
+          
+          const idx = state.selection.objectIds.indexOf(objectId);
+          if (idx >= 0) {
+            state.selection.objectIds.splice(idx, 1);
+          } else {
+            state.selection.objectIds.push(objectId);
+          }
+          // Ensure component selections are cleared in object mode
+          state.selection.vertexIds = [];
+          state.selection.edgeIds = [];
+          state.selection.faceIds = [];
+          state.selection.meshId = null;
         });
       },
       

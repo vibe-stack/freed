@@ -434,7 +434,7 @@ export const buildIcoSphereGeometry = (
     vec3( t,  0, -1), vec3( t,  0,  1), vec3(-t,  0, -1), vec3(-t,  0,  1),
   ].map(v => normalize(v, radius));
 
-  let verts: Vector3[] = base.slice();
+  const verts: Vector3[] = base.slice();
   let facesIdx: [number, number, number][] = [
     [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
     [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],

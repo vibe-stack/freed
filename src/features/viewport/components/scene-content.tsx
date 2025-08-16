@@ -7,6 +7,7 @@ import { useSceneStore } from '@/stores/scene-store';
 import { useSelection } from '@/stores/selection-store';
 import MeshView from './mesh-view';
 import EditModeOverlay from '@/features/edit-mode/components/edit-mode-overlay';
+import ObjectToolHandler from './object-tool-handler';
 
 const SceneContent: React.FC = () => {
   const scene = useSceneStore();
@@ -15,6 +16,7 @@ const SceneContent: React.FC = () => {
 
   return (
     <>
+  <ObjectToolHandler />
       {viewport.showGrid && (
         <Grid
           infiniteGrid

@@ -21,7 +21,7 @@ export function useCameraController() {
       cameraState.target.y,
       cameraState.target.z
     );
-    // @ts-ignore
+  // @ts-expect-error drei camera typing vs three
     camera.fov = cameraState.fov;
     camera.near = cameraState.near;
     camera.far = cameraState.far;
@@ -38,7 +38,14 @@ export function useCameraController() {
       Math.abs(current.y - y) > 1e-5 ||
       Math.abs(current.z - z) > 1e-5
     ) {
-      setCamera({ position: { x, y, z } as any });
+      setCamera({
+        position: { x, y, z },
+        target: useViewportStore.getState().camera.target,
+        up: useViewportStore.getState().camera.up,
+        fov: useViewportStore.getState().camera.fov,
+        near: useViewportStore.getState().camera.near,
+        far: useViewportStore.getState().camera.far,
+      });
     }
   });
 }

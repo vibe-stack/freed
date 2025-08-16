@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useThree } from '@react-three/fiber';
-import { Vector3 } from 'three';
+import { Vector3, Euler } from 'three';
 import { useToolStore } from '@/stores/tool-store';
 import { useSelectionStore } from '@/stores/selection-store';
 import { useGeometryStore } from '@/stores/geometry-store';
@@ -18,9 +18,11 @@ import {
 interface ToolHandlerProps {
   meshId: string;
   onLocalDataChange: (vertices: Vertex[]) => void;
+  objectRotation?: { x: number; y: number; z: number };
+  objectScale?: { x: number; y: number; z: number };
 }
 
-export const ToolHandler: React.FC<ToolHandlerProps> = ({ meshId, onLocalDataChange }) => {
+export const ToolHandler: React.FC<ToolHandlerProps> = ({ meshId, onLocalDataChange, objectRotation, objectScale }) => {
   const { camera, gl } = useThree();
   const toolStore = useToolStore();
   const selectionStore = useSelectionStore();
@@ -114,14 +116,28 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({ meshId, onLocalDataCha
     if (!toolStore.isActive || originalVertices.length === 0) return;
     
   const handleMouseMove = (event: MouseEvent) => {
-      const distance = camera.position.distanceTo(centroid);
+  const distance = camera.position.distanceTo(centroid);
+  // Compensate move sensitivity for object scale so it feels the same regardless of scale
+  const scaleFactor = objectScale ? (Math.abs(objectScale.x) + Math.abs(objectScale.y) + Math.abs(objectScale.z)) / 3 : 1;
       
       if (toolStore.tool === 'move') {
         const moveSensitivity = useToolStore.getState().moveSensitivity;
-        const delta = mouseToWorldDelta(event.movementX, event.movementY, camera, distance, moveSensitivity);
-    // accumulate movement since start
-    moveAccumRef.current.add(delta);
-    const newVertices = applyMoveOperation(originalVertices, moveAccumRef.current.clone(), toolStore.axisLock);
+        const deltaWorld = mouseToWorldDelta(event.movementX, event.movementY, camera, distance, moveSensitivity);
+        // Convert world delta to object-local delta (inverse rotate, inverse scale)
+        const deltaLocal = deltaWorld.clone();
+        if (objectRotation) {
+          deltaLocal.applyEuler(new Euler(-objectRotation.x, -objectRotation.y, -objectRotation.z));
+        }
+        if (objectScale) {
+          deltaLocal.set(
+            deltaLocal.x / Math.max(1e-6, objectScale.x),
+            deltaLocal.y / Math.max(1e-6, objectScale.y),
+            deltaLocal.z / Math.max(1e-6, objectScale.z)
+          );
+        }
+        // accumulate movement since start in local space
+        moveAccumRef.current.add(deltaLocal);
+        const newVertices = applyMoveOperation(originalVertices, moveAccumRef.current.clone(), toolStore.axisLock);
         setLocalVertices(newVertices);
         onLocalDataChange(newVertices);
       } else if (toolStore.tool === 'rotate') {
@@ -136,8 +152,8 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({ meshId, onLocalDataCha
         onLocalDataChange(newVertices);
       } else if (toolStore.tool === 'scale') {
         // Scale based on mouse movement
-        const scaleSensitivity = useToolStore.getState().scaleSensitivity;
-        const scaleDelta = event.movementX * scaleSensitivity;
+  const scaleSensitivity = useToolStore.getState().scaleSensitivity;
+  const scaleDelta = event.movementX * scaleSensitivity / Math.max(1e-6, scaleFactor);
         const newScale = Math.max(0.01, accumulator.scale + scaleDelta); // Prevent negative scale
         setAccumulator(prev => ({ ...prev, scale: newScale }));
         

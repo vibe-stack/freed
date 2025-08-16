@@ -53,7 +53,7 @@ type GeometryStore = GeometryState & GeometryActions;
 
 export const useGeometryStore = create<GeometryStore>()(
   subscribeWithSelector(
-    immer((set, get) => ({
+    immer((set, _get) => ({
       // Initial state
       meshes: new Map(),
       materials: new Map(),

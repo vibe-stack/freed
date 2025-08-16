@@ -6,6 +6,7 @@ import { useViewportStore } from '@/stores/viewport-store';
 import { useSceneStore } from '@/stores/scene-store';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { useShapeCreationStore } from '@/stores/shape-creation-store';
+import { useClipboardStore } from '@/stores/clipboard-store';
 
 const Pill = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className = '', children, ...rest }, ref) => (
   <div
@@ -39,6 +40,7 @@ const TopToolbar: React.FC = () => {
   const scene = useSceneStore();
   const geometry = useGeometryStore();
   const shapeCreation = useShapeCreationStore();
+  const clipboard = useClipboardStore();
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
@@ -111,7 +113,30 @@ const TopToolbar: React.FC = () => {
         </div>
       </Pill>
 
-  <Pill className="px-2 py-1 relative" ref={menuRef as any}>
+      {/* Edit controls for Object Mode */}
+      <Pill className="px-2 py-1">
+        <div className="flex items-center gap-1">
+          <SegButton onClick={() => selection.viewMode === 'object' && clipboard.copySelection()}>
+            Copy
+          </SegButton>
+          <SegButton onClick={() => selection.viewMode === 'object' && clipboard.cutSelection()}>
+            Cut
+          </SegButton>
+          <SegButton onClick={() => clipboard.paste()} disabled={!clipboard.hasClipboard}>
+            Paste
+          </SegButton>
+          <div className="mx-1 w-px h-4 bg-white/10" />
+          <SegButton onClick={() => {
+            if (selection.viewMode !== 'object' || selection.objectIds.length === 0) return;
+            selection.objectIds.forEach((id) => scene.removeObject(id));
+            selectionActions.clearSelection();
+          }}>
+            Delete
+          </SegButton>
+        </div>
+      </Pill>
+
+  <Pill className="px-2 py-1 relative" ref={menuRef}>
         <div className="flex items-center gap-1">
           <SegButton onClick={() => setMenuOpen((v) => !v)}>+ Add</SegButton>
         </div>

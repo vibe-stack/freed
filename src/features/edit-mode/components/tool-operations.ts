@@ -1,6 +1,6 @@
-import { Vector3, Matrix4, Euler } from 'three';
-import { Vertex, Edge, Face } from '../../../types/geometry';
-import { ToolMode, AxisLock } from '../../../stores/tool-store';
+import { Vector3, Matrix4, Euler, Camera } from 'three';
+import { Vertex } from '../../../types/geometry';
+import { AxisLock } from '../../../stores/tool-store';
 
 // Calculate centroid of selected elements
 export function calculateCentroid(vertices: Vertex[]): Vector3 {
@@ -134,7 +134,7 @@ export function applyRotateOperation(
 export function mouseToWorldDelta(
   movementX: number,
   movementY: number,
-  camera: any,
+  camera: Camera,
   distance: number,
   sensitivity: number = 0.005
 ): Vector3 {
