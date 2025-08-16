@@ -21,7 +21,7 @@ const EditModeOverlay: React.FC = () => {
 	const selectionStore = useSelectionStore();
 	const toolStore = useToolStore();
 	const geometryStore = useGeometryStore();
-	const { camera, gl, scene: threeScene } = useThree();
+	const { camera, gl } = useThree();
 
 	const [localVertices, setLocalVertices] = useState<Vertex[] | null>(null);
 
@@ -87,7 +87,7 @@ const EditModeOverlay: React.FC = () => {
 		return obj?.transform ?? { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } };
 	}, [sceneStore.objects, meshId]);
 
-	if (!meshId || !mesh) return null;
+	// Note: Avoid returning early before hooks; instead, short-circuit rendering below.
 
 	// Basic plane-based loop cut approximation: hover shows mesh-local face ring and N evenly spaced segment lines
 		useEffect(() => {
@@ -278,7 +278,7 @@ const EditModeOverlay: React.FC = () => {
 								const delta = slideT - avgBase;
 								const tPositions = Array.from({ length: N }, (_v, i) => Math.max(0.001, Math.min(0.999, base(i + 1) + delta)));
 								// Commit changes
-										geometryStore.updateMesh(meshId, (m) => {
+										geometryStore.updateMesh(meshId!, (m) => {
 									const vmap = new Map(m.vertices.map((v) => [v.id, v] as const));
 									const edgeSplit = new Map<string, string>(); // key: edgeKey|segIndex -> vertexId
 									const keyFor = (a: string, b: string) => (a < b ? `${a}-${b}` : `${b}-${a}`);
@@ -337,7 +337,7 @@ const EditModeOverlay: React.FC = () => {
 									// Rebuild edges
 									m.edges = buildEdgesFromFaces(m.vertices, m.faces);
 								});
-								geometryStore.recalculateNormals(meshId);
+								geometryStore.recalculateNormals(meshId!);
 								toolStore.endOperation(true);
 					}
 				};
@@ -358,15 +358,17 @@ const EditModeOverlay: React.FC = () => {
 			};
 			document.addEventListener('keydown', onKeyDown);
 		return () => {
-			document.removeEventListener('mousemove', onMouseMove as any);
-			document.removeEventListener('wheel', onWheel as any, { capture: true } as any);
-				document.removeEventListener('mousedown', onMouseDown as any);
-				document.removeEventListener('keydown', onKeyDown as any);
+			document.removeEventListener('mousemove', onMouseMove);
+			document.removeEventListener('wheel', onWheel, { capture: true } as AddEventListenerOptions);
+				document.removeEventListener('mousedown', onMouseDown);
+				document.removeEventListener('keydown', onKeyDown);
 		};
 				}, [toolStore.isActive, toolStore.tool, mesh, camera, gl.domElement, loopcutSegments, objTransform, phase, slideT]);
 
 	return (
 		<>
+			{(!meshId || !mesh) ? null : (
+			<>
 			{/* Loop Cut handler: preview only + wheel segments; LMB to commit later */}
 			{toolStore.isActive && toolStore.tool === 'loopcut' && (
 				<group>
@@ -388,7 +390,7 @@ const EditModeOverlay: React.FC = () => {
 				</group>
 			)}
 			<ToolHandler
-				meshId={meshId}
+				meshId={meshId!}
 				onLocalDataChange={handleLocalDataChange}
 				objectRotation={objTransform.rotation}
 				objectScale={objTransform.scale}
@@ -402,7 +404,7 @@ const EditModeOverlay: React.FC = () => {
 			>
 				{selection.selectionMode === 'vertex' && (
 					<VertexRenderer
-						meshId={meshId}
+						meshId={meshId!}
 						selectedVertexIds={selection.vertexIds}
 						onVertexClick={handleVertexClick}
 						selectionMode={selection.selectionMode}
@@ -414,7 +416,7 @@ const EditModeOverlay: React.FC = () => {
 				)}
 
 				<EdgeRenderer
-					meshId={meshId}
+					meshId={meshId!}
 					selectedEdgeIds={selection.edgeIds}
 					onEdgeClick={handleEdgeClick}
 					selectionMode={selection.selectionMode}
@@ -423,7 +425,7 @@ const EditModeOverlay: React.FC = () => {
 
 				{selection.selectionMode === 'face' && (
 					<FaceRenderer
-						meshId={meshId}
+						meshId={meshId!}
 						selectedFaceIds={selection.faceIds}
 						onFaceClick={handleFaceClick}
 						selectionMode={selection.selectionMode}
@@ -454,6 +456,8 @@ const EditModeOverlay: React.FC = () => {
 					</group>
 				)}
 			</group>
+			</>
+			)}
 		</>
 	);
 };

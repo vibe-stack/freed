@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Menu } from '@base-ui-components/react/menu';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { useSceneStore } from '@/stores/scene-store';
@@ -10,9 +10,11 @@ import { useToolStore } from '@/stores/tool-store';
 import { useShapeCreationStore } from '@/stores/shape-creation-store';
 import { exportAndDownload, WorkspaceData } from '@/utils/t3d-exporter';
 import { openImportDialog } from '@/utils/t3d-importer';
-import { Box, FileDown, FileUp } from 'lucide-react';
+import { Box, FileDown, FileUp, Heart } from 'lucide-react';
+import DonateDialog from '@/components/donate-dialog';
 
 const MenuBar: React.FC = () => {
+	const [donateOpen, setDonateOpen] = useState(false);
 	const geometryStore = useGeometryStore();
 	const sceneStore = useSceneStore();
 	const viewportStore = useViewportStore();
@@ -150,6 +152,13 @@ const MenuBar: React.FC = () => {
 
 			<div className="ml-auto flex items-center gap-2 text-[11px] text-gray-400">
 				{/* SPONSORING AREA */}
+				<button
+					className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-rose-300 hover:text-white hover:bg-rose-500/20 border border-rose-500/30"
+					onClick={() => setDonateOpen(true)}
+				>
+					<Heart className="w-3.5 h-3.5" /> Donate
+				</button>
+				<DonateDialog open={donateOpen} onOpenChange={setDonateOpen} />
 			</div>
 		</div>
 	);
