@@ -7,8 +7,6 @@ export type PropertiesTab =
   | 'view-layer'
   | 'world'
   | 'modifiers'
-  | 'object-data'
-  | 'material'
   | 'render'
   | 'output';
 

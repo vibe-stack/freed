@@ -519,6 +519,9 @@ export const useSelectedObject = () => {
 
 export const useSelectedObjectId = () => useSceneStore((state) => state.selectedObjectId);
 
+export const useLight = (lightId: string) => useSceneStore((s) => s.lights[lightId]);
+export const useCameraResource = (cameraId: string) => useSceneStore((s) => s.cameras[cameraId]);
+
 export const useSceneHierarchy = () => {
   const rootObjects = useSceneStore((state) => state.rootObjects);
   const objects = useSceneStore((state) => state.objects);

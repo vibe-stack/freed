@@ -44,6 +44,8 @@ export interface Mesh {
   transform: Transform;
   visible: boolean;
   locked: boolean;
+  // Reference to material resource in geometry-store.materials
+  materialId?: string;
 }
 
 export interface Transform {

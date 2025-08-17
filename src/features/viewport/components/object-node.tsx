@@ -23,8 +23,8 @@ import { useViewportStore } from '@/stores/viewport-store';
 // Light helper wrappers
 const DirectionalLightNode: React.FC<{ color: Color; intensity: number }> = ({ color, intensity }) => {
   const ref = useRef<DirectionalLight>(null!);
-  // @ts-ignore - helper typing is overly strict in our env
-  useHelper(ref as any, DirectionalLightHelper as any);
+  // @ts-expect-error helper typing is overly strict in our env
+  useHelper(ref as unknown as never, DirectionalLightHelper as unknown as never);
   return <directionalLight ref={ref} color={color} intensity={intensity} />;
 };
 
@@ -37,8 +37,8 @@ const SpotLightNode: React.FC<{
   decay: number;
 }> = ({ color, intensity, distance, angle, penumbra, decay }) => {
   const ref = useRef<SpotLight>(null!);
-  // @ts-ignore - helper typing is overly strict in our env
-  useHelper(ref as any, SpotLightHelper as any);
+  // @ts-expect-error helper typing is overly strict in our env
+  useHelper(ref as unknown as never, SpotLightHelper as unknown as never);
   return (
     <spotLight ref={ref} color={color} intensity={intensity} distance={distance} angle={angle} penumbra={penumbra} decay={decay} />
   );
@@ -47,16 +47,16 @@ const SpotLightNode: React.FC<{
 const PointLightNode: React.FC<{ color: Color; intensity: number; distance: number; decay: number }>
   = ({ color, intensity, distance, decay }) => {
     const ref = useRef<PointLight>(null!);
-  // @ts-ignore - helper typing is overly strict in our env
-  useHelper(ref as any, PointLightHelper as any);
+  // @ts-expect-error helper typing is overly strict in our env
+  useHelper(ref as unknown as never, PointLightHelper as unknown as never);
     return <pointLight ref={ref} color={color} intensity={intensity} distance={distance} decay={decay} />;
   };
 
 const RectAreaLightNode: React.FC<{ color: Color; intensity: number; width: number; height: number }>
   = ({ color, intensity, width, height }) => {
     const ref = useRef<RectAreaLight>(null!);
-  // @ts-ignore - helper typing is overly strict in our env
-  useHelper(ref as any, RectAreaLightHelper as any);
+  // @ts-expect-error helper typing is overly strict in our env
+  useHelper(ref as unknown as never, RectAreaLightHelper as unknown as never);
     return <rectAreaLight ref={ref} color={color} intensity={intensity} width={width} height={height} />;
   };
 
@@ -64,16 +64,16 @@ const RectAreaLightNode: React.FC<{ color: Color; intensity: number; width: numb
 const PerspectiveCameraNode: React.FC<{ fov: number; near: number; far: number }>
   = ({ fov, near, far }) => {
     const ref = useRef<PerspectiveCamera>(null!);
-  // @ts-ignore - helper typing is overly strict in our env
-  useHelper(ref as any, CameraHelper as any);
+  // @ts-expect-error helper typing is overly strict in our env
+  useHelper(ref as unknown as never, CameraHelper as unknown as never);
     return <perspectiveCamera ref={ref} fov={fov} near={near} far={far} />;
   };
 
 const OrthographicCameraNode: React.FC<{ left: number; right: number; top: number; bottom: number; near: number; far: number }>
   = ({ left, right, top, bottom, near, far }) => {
     const ref = useRef<OrthographicCamera>(null!);
-  // @ts-ignore - helper typing is overly strict in our env
-  useHelper(ref as any, CameraHelper as any);
+  // @ts-expect-error helper typing is overly strict in our env
+  useHelper(ref as unknown as never, CameraHelper as unknown as never);
     return <orthographicCamera ref={ref} left={left} right={right} top={top} bottom={bottom} near={near} far={far} />;
   };
 
@@ -83,18 +83,20 @@ type Props = { objectId: string };
 const ObjectNode: React.FC<Props> = ({ objectId }) => {
   const scene = useSceneStore();
   const obj = scene.objects[objectId];
-  if (!obj) return null;
   const shading = useViewportStore((s) => s.shadingMode);
+  const tool = useToolStore();
 
   // Use live local transforms during active object tools for preview
-  const tool = useToolStore();
   const t = useMemo(() => {
+    if (!obj) return null;
     if (tool.isActive && tool.localData && tool.localData.kind === 'object-transform') {
       const lt = tool.localData.transforms[objectId];
       if (lt) return lt;
     }
     return obj.transform;
-  }, [tool.isActive, tool.localData, objectId, obj.transform]);
+  }, [tool.isActive, tool.localData, objectId, obj]);
+
+  if (!obj || !t) return null;
 
   return (
     <group

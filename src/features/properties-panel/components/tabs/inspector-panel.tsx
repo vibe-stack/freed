@@ -3,6 +3,10 @@
 import React from 'react';
 import { useSelectedObject, useSceneStore } from '@/stores/scene-store';
 import { DragInput } from '@/components/drag-input';
+import Switch from '@/components/switch';
+import { LightSection } from './sections/light-section';
+import { CameraSection } from './sections/camera-section';
+import { ObjectDataSection } from './sections/object-data-section';
 
 const Label: React.FC<{ label: string } & React.HTMLAttributes<HTMLDivElement>> = ({ label, children, className = '', ...rest }) => (
   <div className={`text-xs text-gray-400 ${className}`} {...rest}>
@@ -25,7 +29,7 @@ export const InspectorPanel: React.FC = () => {
   }
 
   const updateTransform = (partial: Partial<typeof selected.transform>) => {
-    scene.setTransform(selected.id, partial as any);
+    scene.setTransform(selected.id, partial);
   };
 
   return (
@@ -39,11 +43,11 @@ export const InspectorPanel: React.FC = () => {
           </Row>
           <Row>
             <div className="w-16 text-gray-400 text-xs">Visible</div>
-            <input type="checkbox" checked={selected.visible} onChange={(e) => scene.setVisible(selected.id, e.target.checked)} />
+            <Switch checked={selected.visible} onCheckedChange={(v) => scene.setVisible(selected.id, v)} />
           </Row>
           <Row>
             <div className="w-16 text-gray-400 text-xs">Locked</div>
-            <input type="checkbox" checked={selected.locked} onChange={(e) => scene.setLocked(selected.id, e.target.checked)} />
+            <Switch checked={selected.locked} onCheckedChange={(v) => scene.setLocked(selected.id, v)} />
           </Row>
         </div>
       </div>
@@ -75,12 +79,24 @@ export const InspectorPanel: React.FC = () => {
         </div>
       </div>
 
-      <div>
-        <div className="text-xs uppercase tracking-wide text-gray-400 mb-2">Instancing</div>
-        <div className="bg-white/5 border border-white/10 rounded p-2">
-          <div className="text-xs text-gray-500">Instancing options coming soon.</div>
+      {selected.type === 'mesh' && (
+        <div>
+          <div className="text-xs uppercase tracking-wide text-gray-400 mb-2">Object Data</div>
+          <ObjectDataSection objectId={selected.id} />
         </div>
-      </div>
+      )}
+
+      {selected.type === 'light' && selected.lightId && (
+        <div>
+          <LightSection lightId={selected.lightId} />
+        </div>
+      )}
+
+      {selected.type === 'camera' && selected.cameraId && (
+        <div>
+          <CameraSection cameraId={selected.cameraId} />
+        </div>
+      )}
     </div>
   );
 };

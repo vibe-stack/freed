@@ -64,18 +64,36 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     geo.setAttribute('normal', new Float32BufferAttribute(normals, 3));
     geo.computeBoundingSphere();
 
-    // Blender selection orange approx: #FF9900
+    // Material selection: use mesh.materialId when shading === 'material'
+    let color = new Color(0.8, 0.8, 0.85);
+    let roughness = 0.8;
+    let metalness = 0.05;
+    let emissive = new Color(0, 0, 0);
+    if (shading === 'material' && mesh.materialId) {
+      const matRes = geometryStore.materials.get(mesh.materialId);
+      if (matRes) {
+        color = new Color(matRes.color.x, matRes.color.y, matRes.color.z);
+        roughness = matRes.roughness;
+        metalness = matRes.metalness;
+        emissive = new Color(matRes.emissive.x, matRes.emissive.y, matRes.emissive.z);
+      }
+    }
+    // Highlight selection with orange override in non-material modes
+    if (isSelected && shading !== 'material') {
+      color = new Color('#ff9900');
+    }
     const material = new MeshStandardMaterial({
-      color: isSelected ? new Color('#ff9900') : new Color(0.8, 0.8, 0.85),
-      roughness: 0.8,
-      metalness: 0.05,
+      color,
+      roughness,
+      metalness,
+      emissive,
       wireframe: shading === 'wireframe',
       side: DoubleSide,
       flatShading: true,
     });
 
     return { geom: geo, mat: material };
-  }, [mesh, shading, isSelected]);
+  }, [mesh, shading, isSelected, geometryStore.materials]);
 
   if (!obj || !mesh || !geomAndMat) return null;
 

@@ -4,17 +4,19 @@ import React from 'react';
 import { useActivePropertiesTab, usePropertiesPanelStore, PropertiesTab } from '@/stores/properties-panel-store';
 import { InspectorPanel } from './tabs/inspector-panel';
 import { ScrollAreaHorizontal } from './scroll-area-horizontal';
+import type { LucideIcon } from 'lucide-react';
+import { Wrench, Box, Layers, Globe, Sliders, Camera, HardDrive } from 'lucide-react';
 
-const tabs: { key: PropertiesTab; label: string }[] = [
-  { key: 'inspector', label: 'Inspector' },
-  { key: 'scene', label: 'Scene' },
-  { key: 'view-layer', label: 'View Layer' },
-  { key: 'world', label: 'World' },
-  { key: 'modifiers', label: 'Modifiers' },
-  { key: 'object-data', label: 'Object Data' },
-  { key: 'material', label: 'Material' },
-  { key: 'render', label: 'Render' },
-  { key: 'output', label: 'Output' },
+type TabDef = { key: PropertiesTab; label: string; icon: LucideIcon };
+
+const tabs: TabDef[] = [
+  { key: 'inspector', label: 'Inspector', icon: Wrench },
+  { key: 'scene', label: 'Scene', icon: Box },
+  { key: 'view-layer', label: 'View Layer', icon: Layers },
+  { key: 'world', label: 'World', icon: Globe },
+  { key: 'modifiers', label: 'Modifiers', icon: Sliders },
+  { key: 'render', label: 'Render', icon: Camera },
+  { key: 'output', label: 'Output', icon: HardDrive },
 ];
 
 export const PropertiesPanel: React.FC = () => {
@@ -26,13 +28,15 @@ export const PropertiesPanel: React.FC = () => {
       <div className="border-b border-white/10">
         <ScrollAreaHorizontal>
           <div className="flex gap-1 px-2 py-1">
-            {tabs.map((t) => (
+            {tabs.map(({ key, label, icon: Icon }) => (
               <button
-                key={t.key}
-                className={`px-2 py-1 rounded text-xs whitespace-nowrap ${active === t.key ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}
-                onClick={() => setActiveTab(t.key)}
+                key={key}
+                className={`px-2 py-1 rounded flex items-center justify-center ${active === key ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}
+                onClick={() => setActiveTab(key)}
+                title={label}
+                aria-label={label}
               >
-                {t.label}
+                <Icon className="h-4 w-4" strokeWidth={1.75} />
               </button>
             ))}
           </div>

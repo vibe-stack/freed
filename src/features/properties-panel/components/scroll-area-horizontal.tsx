@@ -8,14 +8,15 @@ export const ScrollAreaHorizontal: React.FC<PropsWithChildren> = ({ children }) 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const wheelHandler = (e: WheelEvent) => {
-      if (e.deltaY !== 0 && (e.shiftKey || el.scrollWidth > el.clientWidth)) {
-        el.scrollLeft += e.deltaY;
-        e.preventDefault();
+    const wheelHandler: EventListener = (e) => {
+      const we = e as WheelEvent;
+      if (we.deltaY !== 0 && (we.shiftKey || el.scrollWidth > el.clientWidth)) {
+        el.scrollLeft += we.deltaY;
+        we.preventDefault();
       }
     };
     el.addEventListener('wheel', wheelHandler, { passive: false });
-    return () => el.removeEventListener('wheel', wheelHandler as any);
+    return () => el.removeEventListener('wheel', wheelHandler);
   }, []);
 
   return (
