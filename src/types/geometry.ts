@@ -85,7 +85,48 @@ export interface SceneObject {
   transform: Transform;
   visible: boolean;
   locked: boolean;
+  // If true, included in final render (camera icon)
+  render: boolean;
   meshId?: string; // For mesh objects
+  // Component references for non-mesh objects
+  lightId?: string; // For light objects
+  cameraId?: string; // For camera objects
+}
+
+// Scene component data types
+export type LightType = 'directional' | 'spot' | 'rectarea' | 'point';
+
+export interface Light {
+  id: string;
+  type: LightType;
+  color: Vector3; // 0-1 RGB
+  intensity: number;
+  // Common optional props
+  distance?: number; // for point/spot
+  decay?: number; // for physically correct falloff
+  // Spot specific
+  angle?: number; // radians
+  penumbra?: number; // 0-1
+  // RectArea specific
+  width?: number;
+  height?: number;
+}
+
+export type CameraType = 'perspective' | 'orthographic';
+
+export interface CameraResource {
+  id: string;
+  type: CameraType;
+  // Perspective
+  fov?: number; // degrees
+  // Orthographic
+  left?: number;
+  right?: number;
+  top?: number;
+  bottom?: number;
+  // Shared
+  near: number;
+  far: number;
 }
 
 // Animation types

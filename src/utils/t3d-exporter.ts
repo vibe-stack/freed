@@ -98,6 +98,7 @@ function sceneObjectToT3D(object: SceneObject): T3DSceneObject {
     },
     visible: object.visible,
     locked: object.locked,
+  render: object.render,
     meshId: object.meshId,
   };
 }

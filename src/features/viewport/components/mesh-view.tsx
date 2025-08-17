@@ -9,9 +9,9 @@ import { useSelectionStore, useViewMode } from '@/stores/selection-store';
 import { useToolStore } from '@/stores/tool-store';
 import { convertQuadToTriangles } from '@/utils/geometry';
 
-type Props = { objectId: string };
+type Props = { objectId: string; noTransform?: boolean };
 
-const MeshView: React.FC<Props> = ({ objectId }) => {
+const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
   const scene = useSceneStore();
   const geometryStore = useGeometryStore();
   const viewMode = useViewMode();
@@ -116,22 +116,28 @@ const MeshView: React.FC<Props> = ({ objectId }) => {
       ? (() => {})
       : (Mesh.prototype.raycast as unknown as (raycaster: Raycaster, intersects: Intersection[]) => void);
 
+  const meshEl = (
+    <mesh
+      geometry={geomAndMat.geom}
+      material={geomAndMat.mat as unknown as Material}
+      // Disable raycast when locked so clicks pass through
+      // In edit mode, disable raycast only for the specific object being edited
+      raycast={raycastFn}
+      onPointerDown={onPointerDown}
+      onDoubleClick={onDoubleClick}
+    />
+  );
+
+  if (noTransform) return meshEl;
+
   return (
     <group
       position={[t.position.x, t.position.y, t.position.z]}
       rotation={[t.rotation.x, t.rotation.y, t.rotation.z]}
       scale={[t.scale.x, t.scale.y, t.scale.z]}
       visible={obj.visible}
-      onPointerDown={onPointerDown}
-      onDoubleClick={onDoubleClick}
     >
-      <mesh
-        geometry={geomAndMat.geom}
-        material={geomAndMat.mat as unknown as Material}
-        // Disable raycast when locked so clicks pass through
-        // In edit mode, disable raycast only for the specific object being edited
-  raycast={raycastFn}
-      />
+      {meshEl}
     </group>
   );
 };

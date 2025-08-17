@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Menu } from '@base-ui-components/react/menu';
 import { useSelection, useSelectionStore } from '@/stores/selection-store';
 import { useViewportStore } from '@/stores/viewport-store';
 import { useSceneStore } from '@/stores/scene-store';
@@ -21,17 +22,16 @@ Pill.displayName = 'Pill';
 
 const SegButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { active?: boolean }>
   = ({ className = '', active = false, children, ...rest }) => (
-  <button
-    className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
-      active
-        ? 'bg-white/10 text-white'
-        : 'text-gray-300 hover:text-white hover:bg-white/5'
-    } ${className}`}
-    {...rest}
-  >
-    {children}
-  </button>
-);
+    <button
+      className={`px-3 py-1.5 text-xs rounded-md transition-colors ${active
+          ? 'bg-white/10 text-white'
+          : 'text-gray-300 hover:text-white hover:bg-white/5'
+        } ${className}`}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
 
 const TopToolbar: React.FC = () => {
   const selection = useSelection();
@@ -42,15 +42,6 @@ const TopToolbar: React.FC = () => {
   const shapeCreation = useShapeCreationStore();
   const clipboard = useClipboardStore();
   const [menuOpen, setMenuOpen] = React.useState(false);
-  const menuRef = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(e.target as Node)) setMenuOpen(false);
-    };
-    if (menuOpen) document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
-  }, [menuOpen]);
 
   const beginShape = (shape: 'cube' | 'plane' | 'cylinder' | 'cone' | 'uvsphere' | 'icosphere' | 'torus') => {
     let id = '';
@@ -79,6 +70,24 @@ const TopToolbar: React.FC = () => {
     // Start shape creation panel
     shapeCreation.start(shape, id);
     setMenuOpen(false);
+  };
+
+  const addLight = (type: 'directional' | 'spot' | 'rectarea' | 'point') => {
+    const id = scene.createLightObject(
+      `${type.charAt(0).toUpperCase() + type.slice(1)} Light`,
+      type
+    );
+    scene.selectObject(id);
+    if (selection.viewMode === 'object') selectionActions.selectObjects([id]);
+  };
+
+  const addCamera = (type: 'perspective' | 'orthographic') => {
+    const id = scene.createCameraObject(
+      type === 'perspective' ? 'Perspective Camera' : 'Orthographic Camera',
+      type
+    );
+    scene.selectObject(id);
+    if (selection.viewMode === 'object') selectionActions.selectObjects([id]);
   };
 
   const enterEdit = () => {
@@ -123,44 +132,67 @@ const TopToolbar: React.FC = () => {
         </div>
       </Pill>
 
-      {/* Edit controls for Object Mode */}
-      <Pill className="px-2 py-1">
-        <div className="flex items-center gap-1">
-          <SegButton onClick={() => selection.viewMode === 'object' && clipboard.copySelection()}>
-            Copy
-          </SegButton>
-          <SegButton onClick={() => selection.viewMode === 'object' && clipboard.cutSelection()}>
-            Cut
-          </SegButton>
-          <SegButton onClick={() => clipboard.paste()} disabled={!clipboard.hasClipboard}>
-            Paste
-          </SegButton>
-          <div className="mx-1 w-px h-4 bg-white/10" />
-          <SegButton onClick={() => {
-            if (selection.viewMode !== 'object' || selection.objectIds.length === 0) return;
-            selection.objectIds.forEach((id) => scene.removeObject(id));
-            selectionActions.clearSelection();
-          }}>
-            Delete
-          </SegButton>
-        </div>
-      </Pill>
-
-  <Pill className="px-2 py-1 relative" ref={menuRef}>
-        <div className="flex items-center gap-1">
-          <SegButton onClick={() => setMenuOpen((v) => !v)}>+ Add</SegButton>
-        </div>
-        {menuOpen && (
-          <div className="absolute left-0 mt-2 w-44 pointer-events-auto z-30 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1">
-            <button className="w-full text-left px-3 py-1.5 text-xs rounded hover:bg-white/5" onClick={() => beginShape('cube')}>Cube</button>
-            <button className="w-full text-left px-3 py-1.5 text-xs rounded hover:bg-white/5" onClick={() => beginShape('plane')}>Plane</button>
-            <button className="w-full text-left px-3 py-1.5 text-xs rounded hover:bg-white/5" onClick={() => beginShape('cylinder')}>Cylinder</button>
-            <button className="w-full text-left px-3 py-1.5 text-xs rounded hover:bg-white/5" onClick={() => beginShape('cone')}>Cone</button>
-            <button className="w-full text-left px-3 py-1.5 text-xs rounded hover:bg-white/5" onClick={() => beginShape('uvsphere')}>UV Sphere</button>
-            <button className="w-full text-left px-3 py-1.5 text-xs rounded hover:bg-white/5" onClick={() => beginShape('icosphere')}>Sphere</button>
-            <button className="w-full text-left px-3 py-1.5 text-xs rounded hover:bg-white/5" onClick={() => beginShape('torus')}>Torus</button>
-          </div>
-        )}
+      <Pill className="px-1 py-1 relative">
+        <Menu.Root open={menuOpen} onOpenChange={setMenuOpen}>
+          <Menu.Trigger className="px-3 py-1.5 text-xs rounded-md transition-colors text-gray-300 hover:text-white hover:bg-white/5">
+            +
+          </Menu.Trigger>
+          <Menu.Portal>
+            <Menu.Positioner sideOffset={6}>
+              <Menu.Popup className="pointer-events-auto z-30 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-44">
+                {/* Mesh submenu */}
+                <Menu.SubmenuRoot>
+                  <Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 rounded hover:bg-white/5">
+                    Mesh ▸
+                  </Menu.SubmenuTrigger>
+                  <Menu.Portal>
+                    <Menu.Positioner sideOffset={6}>
+                      <Menu.Popup className="bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-40">
+                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('cube')}>Cube</Menu.Item>
+                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('plane')}>Plane</Menu.Item>
+                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('cylinder')}>Cylinder</Menu.Item>
+                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('cone')}>Cone</Menu.Item>
+                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('uvsphere')}>UV Sphere</Menu.Item>
+                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('icosphere')}>Ico Sphere</Menu.Item>
+                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('torus')}>Torus</Menu.Item>
+                      </Menu.Popup>
+                    </Menu.Positioner>
+                  </Menu.Portal>
+                </Menu.SubmenuRoot>
+                {/* Light submenu */}
+                <Menu.SubmenuRoot>
+                  <Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 rounded hover:bg-white/5">
+                    Light ▸
+                  </Menu.SubmenuTrigger>
+                  <Menu.Portal>
+                    <Menu.Positioner sideOffset={6}>
+                      <Menu.Popup className="bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-40">
+                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addLight('directional')}>Directional</Menu.Item>
+                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addLight('spot')}>Spot</Menu.Item>
+                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addLight('point')}>Point</Menu.Item>
+                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addLight('rectarea')}>Area</Menu.Item>
+                      </Menu.Popup>
+                    </Menu.Positioner>
+                  </Menu.Portal>
+                </Menu.SubmenuRoot>
+                {/* Camera submenu */}
+                <Menu.SubmenuRoot>
+                  <Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 rounded hover:bg-white/5">
+                    Camera ▸
+                  </Menu.SubmenuTrigger>
+                  <Menu.Portal>
+                    <Menu.Positioner sideOffset={6}>
+                      <Menu.Popup className="bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-40">
+                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addCamera('perspective')}>Perspective</Menu.Item>
+                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addCamera('orthographic')}>Orthographic</Menu.Item>
+                      </Menu.Popup>
+                    </Menu.Positioner>
+                  </Menu.Portal>
+                </Menu.SubmenuRoot>
+              </Menu.Popup>
+            </Menu.Positioner>
+          </Menu.Portal>
+        </Menu.Root>
       </Pill>
     </div>
   );

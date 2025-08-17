@@ -5,14 +5,19 @@ import { Grid, GizmoHelper, GizmoViewport } from '@react-three/drei';
 import { useViewportStore } from '@/stores/viewport-store';
 import { useSceneStore } from '@/stores/scene-store';
 import { useViewMode } from '@/stores/selection-store';
-import MeshView from './mesh-view';
+import ObjectNode from './object-node';
 import EditModeOverlay from '@/features/edit-mode/components/edit-mode-overlay';
 import ObjectToolHandler from './object-tool-handler';
+import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 
 const SceneContent: React.FC = () => {
   const scene = useSceneStore();
   const viewport = useViewportStore();
   const viewMode = useViewMode();
+  React.useEffect(() => {
+    // Ensure rect area light is initialized once
+    try { RectAreaLightUniformsLib.init(); } catch {}
+  }, []);
 
   return (
     <>
@@ -32,7 +37,7 @@ const SceneContent: React.FC = () => {
         </GizmoHelper>
       )}
       {scene.rootObjects.map((id) => (
-        <MeshView key={id} objectId={id} />
+        <ObjectNode key={id} objectId={id} />
       ))}
       {viewMode === 'edit' && <EditModeOverlay />}
     </>

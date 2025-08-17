@@ -92,7 +92,7 @@ const MenuBar: React.FC = () => {
 						File
 					</Menu.Trigger>
 					<Menu.Portal>
-						<Menu.Positioner side="bottom" align="start" sideOffset={4}>
+						<Menu.Positioner side="bottom" align="start" sideOffset={4} className="z-90">
 							<Menu.Popup className="mt-0 w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-40">
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleNewScene}>Create New</Menu.Item>
 								<Menu.Separator className="my-1 h-px bg-white/10" />
@@ -113,7 +113,7 @@ const MenuBar: React.FC = () => {
 						Edit
 					</Menu.Trigger>
 					<Menu.Portal>
-						<Menu.Positioner side="bottom" align="start" sideOffset={4}>
+						<Menu.Positioner side="bottom" align="start" sideOffset={4} className="z-90">
 							<Menu.Popup className="mt-0 w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-40">
 								<Menu.Item className="px-3 py-1.5 text-gray-500">Undo</Menu.Item>
 								<Menu.Item className="px-3 py-1.5 text-gray-500">Redo</Menu.Item>
@@ -135,7 +135,7 @@ const MenuBar: React.FC = () => {
 						View
 					</Menu.Trigger>
 					<Menu.Portal>
-						<Menu.Positioner side="bottom" align="start" sideOffset={4}>
+						<Menu.Positioner side="bottom" align="start" sideOffset={4} className="z-90">
 							<Menu.Popup className="mt-0 w-48 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-40">
 								<Menu.Item className="px-3 py-1.5 text-gray-500">Zoom In</Menu.Item>
 								<Menu.Item className="px-3 py-1.5 text-gray-500">Zoom Out</Menu.Item>

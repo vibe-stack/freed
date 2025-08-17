@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { useMemo } from 'react';
-import { SceneObject, Transform } from '../types/geometry';
+import { SceneObject, Transform, Light, LightType, CameraResource, CameraType } from '../types/geometry';
 import { vec3 } from '../utils/geometry';
 import { nanoid } from 'nanoid';
 
@@ -10,6 +10,8 @@ interface SceneState {
   objects: Record<string, SceneObject>;
   rootObjects: string[]; // Objects with parentId === null
   selectedObjectId: string | null;
+  lights: Record<string, Light>;
+  cameras: Record<string, CameraResource>;
 }
 
 interface SceneActions {
@@ -30,13 +32,23 @@ interface SceneActions {
   // Visibility and locking
   setVisible: (objectId: string, visible: boolean) => void;
   setLocked: (objectId: string, locked: boolean) => void;
+  setRender: (objectId: string, render: boolean) => void;
+  setVisibleRecursive: (objectId: string, visible: boolean) => void;
+  setLockedRecursive: (objectId: string, locked: boolean) => void;
+  setRenderRecursive: (objectId: string, render: boolean) => void;
   
   // Utility functions
   createMeshObject: (name: string, meshId: string) => string;
+  createGroupObject: (name: string) => string;
+  createLightObject: (name: string, type: LightType) => string;
+  createCameraObject: (name: string, type: CameraType) => string;
+  groupObjects: (objectIds: string[], name?: string) => string | null;
+  ungroupObject: (groupId: string) => void;
   getObject: (objectId: string) => SceneObject | null;
   getChildren: (parentId: string | null) => SceneObject[];
   getHierarchy: () => SceneObject[];
   getSelectedObject: () => SceneObject | null;
+  getDescendants: (objectId: string) => string[];
 }
 
 type SceneStore = SceneState & SceneActions;
@@ -48,6 +60,8 @@ export const useSceneStore = create<SceneStore>()(
       objects: {},
       rootObjects: [],
       selectedObjectId: null,
+  lights: {},
+  cameras: {},
       
       // Actions
       addObject: (object: SceneObject) => {
@@ -90,6 +104,9 @@ export const useSceneStore = create<SceneStore>()(
           const removeRecursive = (id: string) => {
             const obj = state.objects[id];
             if (obj) {
+              // Clean up component references
+              if (obj.lightId) delete state.lights[obj.lightId];
+              if (obj.cameraId) delete state.cameras[obj.cameraId];
               obj.children.forEach((childId: string) => removeRecursive(childId));
               delete state.objects[id];
             }
@@ -241,6 +258,47 @@ export const useSceneStore = create<SceneStore>()(
           }
         });
       },
+      setRender: (objectId: string, render: boolean) => {
+        set((state) => {
+          const object = state.objects[objectId];
+          if (object) {
+            object.render = render;
+          }
+        });
+      },
+      setVisibleRecursive: (objectId: string, visible: boolean) => {
+        set((state) => {
+          const update = (id: string) => {
+            const obj = state.objects[id];
+            if (!obj) return;
+            obj.visible = visible;
+            obj.children.forEach(update);
+          };
+          update(objectId);
+        });
+      },
+      setLockedRecursive: (objectId: string, locked: boolean) => {
+        set((state) => {
+          const update = (id: string) => {
+            const obj = state.objects[id];
+            if (!obj) return;
+            obj.locked = locked;
+            obj.children.forEach(update);
+          };
+          update(objectId);
+        });
+      },
+      setRenderRecursive: (objectId: string, render: boolean) => {
+        set((state) => {
+          const update = (id: string) => {
+            const obj = state.objects[id];
+            if (!obj) return;
+            obj.render = render;
+            obj.children.forEach(update);
+          };
+          update(objectId);
+        });
+      },
       
       // Utility functions
       createMeshObject: (name: string, meshId: string) => {
@@ -257,11 +315,126 @@ export const useSceneStore = create<SceneStore>()(
           },
           visible: true,
           locked: false,
+          render: true,
           meshId,
         };
         
         get().addObject(object);
         return object.id;
+      },
+      createGroupObject: (name: string) => {
+        const object: SceneObject = {
+          id: nanoid(),
+          name,
+          type: 'group',
+          parentId: null,
+          children: [],
+          transform: {
+            position: vec3(0, 0, 0),
+            rotation: vec3(0, 0, 0),
+            scale: vec3(1, 1, 1),
+          },
+          visible: true,
+          locked: false,
+          render: true,
+        };
+        get().addObject(object);
+        return object.id;
+      },
+      createLightObject: (name: string, type: LightType) => {
+        const id = nanoid();
+        const light: Light = {
+          id,
+          type,
+          color: vec3(1, 1, 1),
+          intensity: 1,
+          ...(type === 'spot' ? { angle: Math.PI / 6, penumbra: 0.2, distance: 0, decay: 2 } : {}),
+          ...(type === 'rectarea' ? { width: 1, height: 1 } : {}),
+          ...(type === 'point' ? { distance: 0, decay: 2 } : {}),
+        };
+        set((state) => { state.lights[id] = light; });
+        const object: SceneObject = {
+          id: nanoid(),
+          name,
+          type: 'light',
+          parentId: null,
+          children: [],
+          transform: {
+            position: vec3(0, 2, 2),
+            rotation: vec3(0, 0, 0),
+            scale: vec3(1, 1, 1),
+          },
+          visible: true,
+          locked: false,
+          render: true,
+          lightId: id,
+        };
+        get().addObject(object);
+        return object.id;
+      },
+      createCameraObject: (name: string, type: CameraType) => {
+        const id = nanoid();
+        const cam: CameraResource = {
+          id,
+          type,
+          ...(type === 'perspective' ? { fov: 50 } : { left: -1, right: 1, top: 1, bottom: -1 }),
+          near: 0.1,
+          far: 1000,
+        };
+        set((state) => { state.cameras[id] = cam; });
+        const object: SceneObject = {
+          id: nanoid(),
+          name,
+          type: 'camera',
+          parentId: null,
+          children: [],
+          transform: {
+            position: vec3(0, 2.5, 5),
+            rotation: vec3(0, 0, 0),
+            scale: vec3(1, 1, 1),
+          },
+          visible: true,
+          locked: false,
+          render: true,
+          cameraId: id,
+        };
+        get().addObject(object);
+        return object.id;
+      },
+      groupObjects: (objectIds: string[], name: string = 'Group') => {
+        const state = get();
+        if (objectIds.length === 0) return null;
+        // Filter to only IDs that exist
+        const ids = objectIds.filter((id) => !!state.objects[id]);
+        if (ids.length === 0) return null;
+        // Prevent grouping with hierarchical conflicts: keep only top-most selections
+        const isDescendantOf = (a: string, b: string): boolean => {
+          let cur = state.objects[a]?.parentId;
+          while (cur) { if (cur === b) return true; cur = state.objects[cur]?.parentId || null; }
+          return false;
+        };
+        const topLevel = ids.filter((id) => !ids.some((other) => other !== id && isDescendantOf(id, other)));
+        // Determine common parent
+        const parents = new Set(topLevel.map((id) => state.objects[id]?.parentId ?? null));
+        const commonParent = parents.size === 1 ? topLevel.length > 0 ? (state.objects[topLevel[0]]?.parentId ?? null) : null : null;
+        // Create group under common parent
+        const groupId = get().createGroupObject(name);
+        // Place group under common parent
+        get().setParent(groupId, commonParent);
+        // Move selected under group, preserving their order in their original parent where possible
+        topLevel.forEach((cid) => get().setParent(cid, groupId));
+        return groupId;
+      },
+      ungroupObject: (groupId: string) => {
+        const state = get();
+        const group = state.objects[groupId];
+        if (!group || group.type !== 'group') return;
+        const parentId = group.parentId;
+        const children = [...group.children];
+        // Move children to group's parent
+        children.forEach((cid) => get().setParent(cid, parentId));
+        // Remove the group
+        get().removeObject(groupId);
       },
       
       getObject: (objectId: string) => {
@@ -294,11 +467,27 @@ export const useSceneStore = create<SceneStore>()(
         const state = get();
         return state.selectedObjectId ? state.objects[state.selectedObjectId] || null : null;
       },
+      getDescendants: (objectId: string) => {
+        const state = get();
+        const result: string[] = [];
+        const add = (id: string) => {
+          const obj = state.objects[id];
+          if (!obj) return;
+          obj.children.forEach((cid) => {
+            result.push(cid);
+            add(cid);
+          });
+        };
+        add(objectId);
+        return result;
+      },
       reset: () => {
         set((state) => {
           state.objects = {};
           state.rootObjects = [];
           state.selectedObjectId = null;
+          state.lights = {};
+          state.cameras = {};
         });
       },
     }))

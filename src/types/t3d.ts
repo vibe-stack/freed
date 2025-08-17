@@ -71,6 +71,7 @@ export interface T3DSceneObject {
   };
   visible: boolean;
   locked: boolean;
+  render: boolean;
   meshId?: string;
 }
 

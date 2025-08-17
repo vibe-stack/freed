@@ -115,6 +115,7 @@ function t3dToSceneObject(t3dObject: T3DSceneObject): SceneObject {
     transform,
     visible: t3dObject.visible,
     locked: t3dObject.locked,
+  render: t3dObject.render ?? true,
     meshId: t3dObject.meshId,
   };
 }
