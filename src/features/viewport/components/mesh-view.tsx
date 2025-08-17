@@ -99,7 +99,16 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     });
 
     return { geom: geo, mat: material };
-  }, [mesh, shading, isSelected, geometryStore.materials]);
+  }, [
+    // Rebuild when topology or vertex attributes change
+    mesh?.vertices,
+    mesh?.faces,
+    mesh?.materialId,
+    mesh?.shading,
+    shading,
+    isSelected,
+    geometryStore.materials,
+  ]);
 
   if (!obj || !mesh || !geomAndMat) return null;
 
