@@ -8,41 +8,77 @@ import { useViewportStore } from '@/stores/viewport-store';
 import { useSelectionStore } from '@/stores/selection-store';
 import { useToolStore } from '@/stores/tool-store';
 import { useShapeCreationStore } from '@/stores/shape-creation-store';
-import { exportAndDownload, WorkspaceData } from '@/utils/t3d-exporter';
+import { WorkspaceData, exportToT3D } from '@/utils/t3d-exporter';
 import { openImportDialog } from '@/utils/t3d-importer';
-import { Box, FileDown, FileUp, Heart } from 'lucide-react';
+import { Box, Download, FolderOpen, Save, Heart } from 'lucide-react';
 import DonateDialog from '@/components/donate-dialog';
+import ExportDialog from '@/features/export/components/export-dialog';
+import { useWorkspaceStore } from '@/stores/workspace-store';
+import { saveAs, saveWithHandle } from '@/utils/file-access';
 
 const MenuBar: React.FC = () => {
 	const [donateOpen, setDonateOpen] = useState(false);
+	const [exportOpen, setExportOpen] = useState(false);
 	const geometryStore = useGeometryStore();
 	const sceneStore = useSceneStore();
 	const viewportStore = useViewportStore();
 	const selectionStore = useSelectionStore();
 	const toolStore = useToolStore();
 	const shapeCreationStore = useShapeCreationStore();
+	const workspace = useWorkspaceStore();
 
-	const handleExport = useCallback(async () => {
-		const workspaceData: WorkspaceData = {
-			meshes: Array.from(geometryStore.meshes.values()),
-			materials: Array.from(geometryStore.materials.values()),
-			objects: Object.values(sceneStore.objects),
-			rootObjects: sceneStore.rootObjects,
-			viewport: {
-				camera: viewportStore.camera,
-				shadingMode: viewportStore.shadingMode,
-				showGrid: viewportStore.showGrid,
-				showAxes: viewportStore.showAxes,
-				gridSize: viewportStore.gridSize,
-				backgroundColor: viewportStore.backgroundColor,
-			},
-			selectedObjectId: sceneStore.selectedObjectId,
-		};
+	const buildWorkspaceData = useCallback((): WorkspaceData => ({
+		meshes: Array.from(geometryStore.meshes.values()),
+		materials: Array.from(geometryStore.materials.values()),
+		objects: Object.values(sceneStore.objects),
+		rootObjects: sceneStore.rootObjects,
+		viewport: {
+			camera: viewportStore.camera,
+			shadingMode: viewportStore.shadingMode,
+			showGrid: viewportStore.showGrid,
+			showAxes: viewportStore.showAxes,
+			gridSize: viewportStore.gridSize,
+			backgroundColor: viewportStore.backgroundColor,
+		},
+		selectedObjectId: sceneStore.selectedObjectId,
+	}), [geometryStore, sceneStore, viewportStore]);
+
+	// Save (T3D) with existing handle when possible
+	const handleSave = useCallback(async () => {
+		const data = buildWorkspaceData();
+		const blob = await exportToT3D(data);
+		if (workspace.fileHandle) {
+			const ok = await saveWithHandle(workspace.fileHandle, blob);
+			if (!ok) {
+				const timestamp = new Date().toISOString().split('T')[0];
+				const name = workspace.currentFileName ?? `scene_${timestamp}.t3d`;
+				const res = await saveAs(blob, name, 'application/zip');
+				if (res) workspace.setFileInfo(res.fileName, res.handle);
+			}
+		} else {
+			const timestamp = new Date().toISOString().split('T')[0];
+			const name = workspace.currentFileName ?? `scene_${timestamp}.t3d`;
+			const res = await saveAs(blob, name, 'application/zip');
+			if (res) workspace.setFileInfo(res.fileName, res.handle);
+		}
+	}, [buildWorkspaceData, workspace]);
+
+	// Save As (T3D)
+	const handleSaveAs = useCallback(async () => {
+		const data = buildWorkspaceData();
+		const blob = await exportToT3D(data);
 		const timestamp = new Date().toISOString().split('T')[0];
-		await exportAndDownload(workspaceData, `scene_${timestamp}.t3d`);
-	}, [geometryStore, sceneStore, viewportStore]);
+		const name = `scene_${timestamp}.t3d`;
+		const res = await saveAs(blob, name, 'application/zip');
+		if (res) workspace.setFileInfo(res.fileName, res.handle);
+	}, [buildWorkspaceData, workspace]);
 
-	const handleImport = useCallback(() => {
+	// Export (other formats) -> open dialog
+	const handleExport = useCallback(async () => {
+		setExportOpen(true);
+	}, []);
+
+	const handleOpen = useCallback(() => {
 		openImportDialog(
 			(data) => {
 				Array.from(geometryStore.meshes.keys()).forEach(id => geometryStore.removeMesh(id));
@@ -63,10 +99,12 @@ const MenuBar: React.FC = () => {
 				]);
 				if (data.viewport.showGrid !== viewportStore.showGrid) viewportStore.toggleGrid();
 				if (data.viewport.showAxes !== viewportStore.showAxes) viewportStore.toggleAxes();
+				// update workspace current file (cannot get real name without FS handle)
+				workspace.setFileInfo('scene.t3d', null);
 			},
 			(err) => console.error(err)
 		);
-	}, [geometryStore, sceneStore, viewportStore]);
+	}, [geometryStore, sceneStore, viewportStore, workspace]);
 
 	const handleNewScene = useCallback(() => {
 		geometryStore.reset();
@@ -94,13 +132,20 @@ const MenuBar: React.FC = () => {
 					<Menu.Portal>
 						<Menu.Positioner side="bottom" align="start" sideOffset={4} className="z-90">
 							<Menu.Popup className="mt-0 w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-40">
-								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleNewScene}>Create New</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleNewScene}>New</Menu.Item>
 								<Menu.Separator className="my-1 h-px bg-white/10" />
-								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleImport}>
-									<span className="inline-flex items-center gap-2"><FileUp className="w-4 h-4" /> Import…</span>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleOpen}>
+									<span className="inline-flex items-center gap-2"><FolderOpen className="w-4 h-4" /> Open…</span>
 								</Menu.Item>
-								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleExport}>
-									<span className="inline-flex items-center gap-2"><FileDown className="w-4 h-4" /> Export…</span>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleSave}>
+									<span className="inline-flex items-center gap-2"><Save className="w-4 h-4" /> Save</span>
+								</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleSaveAs}>
+									<span className="inline-flex items-center gap-2"><Save className="w-4 h-4" /> Save As…</span>
+								</Menu.Item>
+								<Menu.Separator className="my-1 h-px bg-white/10" />
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => setExportOpen(true)}>
+									<span className="inline-flex items-center gap-2"><Download className="w-4 h-4" /> Export…</span>
 								</Menu.Item>
 							</Menu.Popup>
 						</Menu.Positioner>
@@ -159,6 +204,7 @@ const MenuBar: React.FC = () => {
 					<Heart className="w-3.5 h-3.5" /> Donate
 				</button>
 				<DonateDialog open={donateOpen} onOpenChange={setDonateOpen} />
+				<ExportDialog open={exportOpen} onOpenChange={setExportOpen} />
 			</div>
 		</div>
 	);
