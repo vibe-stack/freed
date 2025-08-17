@@ -120,6 +120,8 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     <mesh
       geometry={geomAndMat.geom}
       material={geomAndMat.mat as unknown as Material}
+      castShadow={shading === 'material'}
+      receiveShadow={shading === 'material'}
       // Disable raycast when locked so clicks pass through
       // In edit mode, disable raycast only for the specific object being edited
       raycast={raycastFn}

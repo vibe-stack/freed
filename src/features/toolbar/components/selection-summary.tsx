@@ -59,19 +59,6 @@ export const SelectionSummary: React.FC = () => {
     }
   };
 
-  const getModeIcon = (viewMode: string, selectionMode?: string) => {
-    if (viewMode === 'object') {
-      return '🎯';
-    }
-    
-    switch (selectionMode) {
-      case 'vertex': return '•';
-      case 'edge': return '│';
-      case 'face': return '▢';
-      default: return '?';
-    }
-  };
-
   const getCurrentModeLabel = () => {
     if (selection.viewMode === 'object') {
       return 'OBJECT';
@@ -83,7 +70,6 @@ export const SelectionSummary: React.FC = () => {
     <div className="p-2">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className={`text-base ${getModeColor(selection.viewMode, selection.selectionMode)}`}>{getModeIcon(selection.viewMode, selection.selectionMode)}</span>
           <div>
             <div className="text-xs text-gray-200/90">{getSelectionText()} selected</div>
             {selectedMesh && (<div className="text-[10px] text-gray-400">in {selectedMesh.name}</div>)}
@@ -91,7 +77,6 @@ export const SelectionSummary: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className={`px-2 py-0.5 rounded text-[10px] ${getModeColor(selection.viewMode, selection.selectionMode)} bg-white/5 border border-white/10`}>{getCurrentModeLabel()}</div>
           <button onClick={clearSelection} className="px-2 py-0.5 text-[10px] rounded bg-white/5 hover:bg-white/10 text-gray-300" title="Clear selection (Alt+A or Esc)">Clear</button>
         </div>
       </div>

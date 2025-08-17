@@ -11,12 +11,14 @@ import CameraController from './camera-controller';
 
 const EditorViewport: React.FC = () => {
   const camera = useViewportStore((s) => s.camera);
+  const shadingMode = useViewportStore((s) => s.shadingMode);
 
   // Camera controller runs inside Canvas via component
 
   return (
     <div className="absolute inset-0">
       <Canvas
+        shadows={shadingMode === 'material'}
         camera={{
           fov: camera.fov,
           near: camera.near,
@@ -28,8 +30,13 @@ const EditorViewport: React.FC = () => {
         raycaster={{ params: { Mesh: {}, LOD: {}, Points: {}, Sprite: {}, Line2: { threshold: 0.1 }, Line: { threshold: 0.1 } } as unknown as RaycasterParameters }}
       >
         <CalmBg />
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[5, 8, 3]} intensity={0.8} />
+        {shadingMode !== 'material' && (
+          <>
+            {/* Headlight-style defaults for non-material modes; no shadows */}
+            <ambientLight intensity={0.5} />
+            <directionalLight position={[5, 8, 3]} intensity={0.8} />
+          </>
+        )}
         <CameraController />
         <OrbitControls
           makeDefault
