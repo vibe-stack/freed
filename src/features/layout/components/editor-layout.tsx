@@ -8,6 +8,7 @@ import { EditToolsToolbar } from '@/features/toolbar';
 import { SelectionSummary } from '@/features/toolbar/components/selection-summary';
 import { ToolIndicator } from '@/features/tools';
 import { EditorViewport } from '@/features/viewport';
+import { PropertiesPanel } from '@/features/properties-panel/components/properties-panel';
 import React from 'react';
 
 const EditorLayout: React.FC = () => {
@@ -28,9 +29,14 @@ const EditorLayout: React.FC = () => {
           <EditToolsToolbar />
         </div>
 
-        {/* Right Scene Hierarchy Panel */}
+        {/* Left Scene Hierarchy Panel */}
         <div className="absolute left-4 top-32 z-20">
           <SceneHierarchyPanel />
+        </div>
+
+        {/* Right Properties Panel */}
+        <div className="absolute right-4 top-32 z-20">
+          <PropertiesPanel />
         </div>
 
         {/* Bottom-left selection summary */}
