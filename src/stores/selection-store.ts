@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { Selection, SelectionMode, ViewMode } from '../types/geometry';
+import { useSceneStore } from './scene-store';
+import { useToolStore } from './tool-store';
 
 interface SelectionState {
   selection: Selection;
@@ -46,6 +48,8 @@ export const useSelectionStore = create<SelectionStore>()(
       // Actions
       setViewMode: (viewMode: ViewMode) => {
         set((state) => {
+          // Cancel any active tools when changing modes
+          useToolStore.getState().reset();
           state.selection.viewMode = viewMode;
           // Clear all selections when changing view modes
           state.selection.vertexIds = [];
@@ -56,6 +60,8 @@ export const useSelectionStore = create<SelectionStore>()(
           // In object mode, clear mesh selection
           if (viewMode === 'object') {
             state.selection.meshId = null;
+            // Ensure selection mode resets to vertex for next edit session
+            state.selection.selectionMode = 'vertex';
           }
         });
       },
@@ -75,25 +81,30 @@ export const useSelectionStore = create<SelectionStore>()(
       
       enterEditMode: (meshId: string) => {
         set((state) => {
+          useToolStore.getState().reset();
           state.selection.viewMode = 'edit';
           state.selection.meshId = meshId;
           state.selection.selectionMode = 'vertex';
-          // Clear all selections
+          // Clear edit selections but preserve object selection for return
           state.selection.vertexIds = [];
           state.selection.edgeIds = [];
           state.selection.faceIds = [];
-          state.selection.objectIds = [];
+          // Keep objectIds so we can restore selection when exiting edit mode
         });
       },
       
       exitEditMode: () => {
         set((state) => {
+          useToolStore.getState().reset();
           state.selection.viewMode = 'object';
           state.selection.meshId = null;
           // Clear component selections
           state.selection.vertexIds = [];
           state.selection.edgeIds = [];
           state.selection.faceIds = [];
+          // Preserve objectIds to maintain object selection when returning to object mode
+          // state.selection.objectIds = []; // Don't clear this!
+          state.selection.selectionMode = 'vertex';
         });
       },
       
@@ -181,15 +192,18 @@ export const useSelectionStore = create<SelectionStore>()(
         set((state) => {
           // Only allow in object mode
           if (state.selection.viewMode !== 'object') return;
+          // Filter out locked objects using scene store
+          const scene = useSceneStore.getState();
+          const filtered = objectIds.filter((id) => !scene.objects[id]?.locked);
           
           state.selection.meshId = null;
           
           if (additive) {
             const existingIds = new Set(state.selection.objectIds);
-            objectIds.forEach(id => existingIds.add(id));
+            filtered.forEach(id => existingIds.add(id));
             state.selection.objectIds = Array.from(existingIds);
           } else {
-            state.selection.objectIds = objectIds;
+            state.selection.objectIds = filtered;
           }
           
           // Clear other selection types
@@ -203,6 +217,9 @@ export const useSelectionStore = create<SelectionStore>()(
         set((state) => {
           // Only allow in object mode
           if (state.selection.viewMode !== 'object') return;
+          // Disallow toggling locked objects
+          const scene = useSceneStore.getState();
+          if (scene.objects[objectId]?.locked) return;
           
           const idx = state.selection.objectIds.indexOf(objectId);
           if (idx >= 0) {

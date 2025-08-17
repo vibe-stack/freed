@@ -1,4 +1,4 @@
-# Freed - 3D Web Editor
+# Gestalt - 3D Web Editor
 
 A React-first 3D editor with reactive geometry system, built with Next.js and modern web technologies.
 

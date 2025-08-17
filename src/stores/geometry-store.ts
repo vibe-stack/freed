@@ -82,6 +82,9 @@ export const useGeometryStore = create<GeometryStore>()(
             updater(mesh);
             // Ensure array identity changes so memoized consumers update
             mesh.vertices = mesh.vertices.slice();
+            // Also clone faces/edges arrays to propagate topology changes to renderers
+            mesh.faces = mesh.faces.slice();
+            mesh.edges = mesh.edges.slice();
           }
         });
       },

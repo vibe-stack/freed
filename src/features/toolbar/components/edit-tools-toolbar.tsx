@@ -33,9 +33,9 @@ export const EditToolsToolbar: React.FC = () => {
 
   const start = (id: Btn['id']) => {
     if (tool.isActive && tool.tool === id) return;
-    // Only start transform tools when there's a valid edit selection
+    // Allow object-space move/rotate/scale in Edit Mode even without a component selection (acts on all verts)
     if ((id === 'move' || id === 'rotate' || id === 'scale')) {
-      if (selection.viewMode !== 'edit' || !hasEditSelection) return;
+      if (selection.viewMode !== 'edit') return;
       tool.startOperation(id, null);
       return;
     }
@@ -71,7 +71,7 @@ export const EditToolsToolbar: React.FC = () => {
           const active = tool.isActive && tool.tool === b.id;
           const isTransform = b.id === 'move' || b.id === 'rotate' || b.id === 'scale';
           const disabled =
-            isTransform ? !hasEditSelection :
+            isTransform ? selection.viewMode !== 'edit' :
             b.id === 'extrude' ? selection.faceIds.length === 0 :
             b.id === 'inset' ? selection.faceIds.length === 0 :
             b.id === 'bevel' ? selection.faceIds.length === 0 :

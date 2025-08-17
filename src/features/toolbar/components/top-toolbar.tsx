@@ -85,6 +85,8 @@ const TopToolbar: React.FC = () => {
     if (selection.objectIds.length > 0) {
       const objId = selection.objectIds[0];
       const meshId = scene.objects[objId]?.meshId;
+      const locked = scene.objects[objId]?.locked;
+      if (locked) return;
       if (meshId) selectionActions.enterEditMode(meshId);
     }
   };
@@ -93,7 +95,15 @@ const TopToolbar: React.FC = () => {
     <div className="flex items-center gap-2">
       <Pill className="px-2 py-1">
         <div className="flex items-center gap-1">
-          <SegButton active={selection.viewMode === 'object'} onClick={() => selectionActions.setViewMode('object')}>Object</SegButton>
+          <SegButton
+            active={selection.viewMode === 'object'}
+            onClick={() => {
+              if (selection.viewMode === 'edit') selectionActions.exitEditMode();
+              else selectionActions.setViewMode('object');
+            }}
+          >
+            Object
+          </SegButton>
           <SegButton active={selection.viewMode === 'edit'} onClick={enterEdit}>Edit</SegButton>
           <div className="mx-1 w-px h-4 bg-white/10" />
           <SegButton active={selection.selectionMode === 'vertex'} onClick={() => selectionActions.setSelectionMode('vertex')}>V</SegButton>

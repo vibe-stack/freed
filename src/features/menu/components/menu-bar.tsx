@@ -81,7 +81,7 @@ const MenuBar: React.FC = () => {
 		<div className="h-8 w-full border-b border-white/10 bg-[#0b0e13]/80 backdrop-blur supports-[backdrop-filter]:bg-[#0b0e13]/60 flex items-center px-3 select-none z-30">
 			<div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
 				<Box className="w-4 h-4 text-gray-400" aria-hidden />
-				<span className="tracking-wide">Freed</span>
+				<span className="tracking-wide">Gestalt</span>
 			</div>
 			<div className="mx-2 h-4 w-px bg-white/10" />
 

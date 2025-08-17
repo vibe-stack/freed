@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FreeD 3D Editor",
+  title: "Gestalt 3D Editor",
   description: "A (soon) powerful 3D editing tool",
 };
 

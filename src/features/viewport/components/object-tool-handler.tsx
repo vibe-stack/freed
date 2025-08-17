@@ -49,6 +49,7 @@ export const ObjectToolHandler: React.FC = () => {
   const objs = ids
       .map((id) => sceneStore.objects[id])
       .filter(Boolean)
+      .filter((o) => !o.locked)
       .map((o) => ({
         id: o.id,
         pos: new Vector3(o.transform.position.x, o.transform.position.y, o.transform.position.z),
@@ -156,6 +157,8 @@ export const ObjectToolHandler: React.FC = () => {
         const local = state.localData?.kind === 'object-transform' ? state.localData.transforms : null;
         if (local) {
           Object.entries(local).forEach(([id, t]) => {
+            const obj = sceneStore.objects[id];
+            if (!obj || obj.locked) return;
             sceneStore.setTransform(id, {
               position: { ...t.position },
               rotation: { ...t.rotation },

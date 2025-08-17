@@ -50,7 +50,7 @@ export const DonateDialog: React.FC<{ open: boolean; onOpenChange: (v: boolean) 
           <Dialog.Popup className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] max-w-[92vw] rounded-lg border border-white/10 bg-[#0b0e13] p-4 shadow-xl text-sm text-gray-200">
               <div className="flex items-start gap-3">
                 <div className="flex-1">
-                  <Dialog.Title className="text-base font-semibold text-white">Thanks for supporting Freed</Dialog.Title>
+                  <Dialog.Title className="text-base font-semibold text-white">Thanks for supporting Gestalt</Dialog.Title>
                   <Dialog.Description className="mt-1 text-gray-400">
                     If you&apos;d like to contribute to ongoing development, you can donate using one of the addresses below.
                   </Dialog.Description>

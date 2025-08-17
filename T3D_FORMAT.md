@@ -2,7 +2,7 @@
 
 ## Overview
 
-The T3D (Three-D) file format is a custom 3D scene format designed for the Freed 3D Editor. It stores complete 3D scenes including meshes, materials, scene hierarchy, and viewport state in a structured, version-controlled format.
+The T3D (Three-D) file format is a custom 3D scene format designed for the Gestalt 3D Editor. It stores complete 3D scenes including meshes, materials, scene hierarchy, and viewport state in a structured, version-controlled format.
 
 ## Format Structure
 
@@ -23,7 +23,7 @@ A T3D file is a ZIP archive containing:
     "modified": "2025-08-14T10:30:00.000Z",
     "author": "User Name",
     "description": "Optional scene description",
-    "application": "Freed 3D Editor",
+    "application": "Gestalt 3D Editor",
     "applicationVersion": "0.1.0"
   },
   "meshes": [...],
