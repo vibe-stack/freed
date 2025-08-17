@@ -143,7 +143,7 @@ const TopToolbar: React.FC = () => {
                 {/* Mesh submenu */}
                 <Menu.SubmenuRoot>
                   <Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 rounded hover:bg-white/5">
-                    Mesh ▸
+                    Mesh
                   </Menu.SubmenuTrigger>
                   <Menu.Portal>
                     <Menu.Positioner sideOffset={6}>
@@ -162,7 +162,7 @@ const TopToolbar: React.FC = () => {
                 {/* Light submenu */}
                 <Menu.SubmenuRoot>
                   <Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 rounded hover:bg-white/5">
-                    Light ▸
+                    Light
                   </Menu.SubmenuTrigger>
                   <Menu.Portal>
                     <Menu.Positioner sideOffset={6}>
@@ -178,7 +178,7 @@ const TopToolbar: React.FC = () => {
                 {/* Camera submenu */}
                 <Menu.SubmenuRoot>
                   <Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 rounded hover:bg-white/5">
-                    Camera ▸
+                    Camera
                   </Menu.SubmenuTrigger>
                   <Menu.Portal>
                     <Menu.Positioner sideOffset={6}>
