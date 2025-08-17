@@ -202,7 +202,7 @@ export function DragInput({
           className={`flex-1 h-6 px-2 text-xs border rounded focus:outline-none min-w-0 w-0 ${
             disabled 
               ? 'bg-zinc-800/50 border-zinc-700/30 text-zinc-500 cursor-not-allowed'
-              : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 focus:border-emerald-500'
+              : 'bg-gray-500/10 border-gray-500/30 text-gray-300 focus:border-gray-500'
           }`}
         />
       ) : (
@@ -213,8 +213,8 @@ export function DragInput({
             "flex-1 h-6 px-2 text-xs border rounded flex items-center justify-between transition-colors select-none min-w-0",
             disabled 
               ? "bg-zinc-800/50 border-zinc-700/30 text-zinc-500 cursor-not-allowed"
-              : "bg-black/20 border-zinc-700/50 text-zinc-300 cursor-ew-resize hover:border-emerald-500/30 focus:border-emerald-500/50 focus:outline-none",
-            isDragging && !disabled && "bg-emerald-500/10 border-emerald-500/30"
+              : "bg-black/20 border-zinc-700/50 text-zinc-300 cursor-ew-resize hover:border-gray-500/30 focus:border-gray-500/50 focus:outline-none",
+            isDragging && !disabled && "bg-gray-500/10 border-gray-500/30"
           )}
           onMouseDown={handleMouseDown}
           onClick={handleClick}

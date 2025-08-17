@@ -94,29 +94,62 @@ export const calculateFaceNormal = (face: Face, vertices: Vertex[]): Vector3 => 
 };
 
 export const calculateVertexNormals = (mesh: Mesh): Vertex[] => {
-  // Create a map of vertex normals (accumulated from adjacent faces)
+  // Angle-weighted vertex normals for better smoothing at poles and valence anomalies
   const vertexNormals = new Map<string, Vector3>();
-  
-  // Initialize all vertex normals to zero
-  mesh.vertices.forEach(vertex => {
-    vertexNormals.set(vertex.id, vec3(0, 0, 0));
-  });
-  
-  // Accumulate normals from all faces
-  mesh.faces.forEach(face => {
-    const faceNormal = calculateFaceNormal(face, mesh.vertices);
-    
-    face.vertexIds.forEach(vertexId => {
-      const currentNormal = vertexNormals.get(vertexId) || vec3(0, 0, 0);
-      vertexNormals.set(vertexId, addVec3(currentNormal, faceNormal));
+  mesh.vertices.forEach(v => vertexNormals.set(v.id, vec3(0, 0, 0)));
+
+  const vmap = new Map(mesh.vertices.map(v => [v.id, v] as const));
+
+  const addWeighted = (vid: string, n: Vector3, w: number) => {
+    const cur = vertexNormals.get(vid)!;
+    vertexNormals.set(vid, {
+      x: cur.x + n.x * w,
+      y: cur.y + n.y * w,
+      z: cur.z + n.z * w,
     });
-  });
-  
-  // Normalize and return updated vertices
-  return mesh.vertices.map(vertex => ({
-    ...vertex,
-    normal: normalizeVec3(vertexNormals.get(vertex.id) || vec3(0, 1, 0)),
-  }));
+  };
+
+  for (const face of mesh.faces) {
+    if (face.vertexIds.length < 3) continue;
+    // Triangulate polygon for angle computation
+    const tris = (() => {
+      const ids = face.vertexIds;
+      if (ids.length === 3) return [ids as [string, string, string]];
+      const res: [string, string, string][] = [];
+      for (let i = 1; i < ids.length - 1; i++) res.push([ids[0], ids[i], ids[i + 1]]);
+      return res;
+    })();
+
+    for (const [aId, bId, cId] of tris) {
+      const a = vmap.get(aId)!; const b = vmap.get(bId)!; const c = vmap.get(cId)!;
+      const ab = subtractVec3(b.position, a.position);
+      const ac = subtractVec3(c.position, a.position);
+      const bc = subtractVec3(c.position, b.position);
+      const ba = subtractVec3(a.position, b.position);
+      const ca = subtractVec3(a.position, c.position);
+      const cb = subtractVec3(b.position, c.position);
+
+  // Face normal (area-weighted by triangle area via unnormalized cross product)
+  const fn = crossVec3(ab, ac);
+
+      const angle = (u: Vector3, v: Vector3) => {
+        const lu = Math.max(1e-12, lengthVec3(u));
+        const lv = Math.max(1e-12, lengthVec3(v));
+        const d = Math.max(-1, Math.min(1, dotVec3(u, v) / (lu * lv)));
+        return Math.acos(d);
+      };
+
+      const wa = angle(ab, ac);
+      const wb = angle(bc, ba);
+      const wc = angle(ca, cb);
+
+      addWeighted(aId, fn, wa);
+      addWeighted(bId, fn, wb);
+      addWeighted(cId, fn, wc);
+    }
+  }
+
+  return mesh.vertices.map(v => ({ ...v, normal: normalizeVec3(vertexNormals.get(v.id) || vec3(0, 1, 0)) }));
 };
 
 // Edge generation from faces
@@ -387,8 +420,8 @@ export const buildUVSphereGeometry = (
     for (let i = 0; i < ws; i++) {
       const a = firstRing[i];
       const b = firstRing[(i + 1) % ws];
-      // CCW seen from outside (upwards normal): a -> b -> top
-      faces.push(createFace([vertices[a].id, vertices[b].id, vertices[topIndex].id]));
+  // CCW seen from outside (upwards normal): a -> top -> b
+  faces.push(createFace([vertices[a].id, vertices[topIndex].id, vertices[b].id]));
     }
   }
 
@@ -411,8 +444,8 @@ export const buildUVSphereGeometry = (
     for (let i = 0; i < ws; i++) {
       const a = lastRing[i];
       const b = lastRing[(i + 1) % ws];
-      // CCW seen from outside (downwards normal): b -> a -> bottom
-      faces.push(createFace([vertices[b].id, vertices[a].id, vertices[bottomIndex].id]));
+  // CCW seen from outside (downwards normal): a -> b -> bottom
+  faces.push(createFace([vertices[a].id, vertices[b].id, vertices[bottomIndex].id]));
     }
   }
 

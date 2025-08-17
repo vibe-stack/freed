@@ -3,13 +3,12 @@
 import React from 'react';
 import { useGeometryStore } from '@/stores/geometry-store';
 import Switch from '@/components/switch';
-import { useGeometryStore as useGeo } from '@/stores/geometry-store';
+import clsx from 'clsx';
 
 type Props = { meshId: string };
 
 export const ShadingSection: React.FC<Props> = ({ meshId }) => {
   const geo = useGeometryStore();
-  const geoStore = useGeo();
   const mesh = geo.meshes.get(meshId);
   if (!mesh) return null;
 
@@ -28,27 +27,33 @@ export const ShadingSection: React.FC<Props> = ({ meshId }) => {
       </div>
       <div className="text-xs text-gray-400">
         <div className="mb-1">Mode</div>
-        <div className="flex gap-2">
-          <label className="flex items-center gap-1">
-            <input
-              type="radio"
-              name={`shading-${meshId}`}
-              className="accent-white/70"
-              checked={(mesh.shading ?? 'flat') === 'flat'}
-              onChange={() => update((m) => { m.shading = 'flat'; })}
-            />
+        <div className="inline-flex rounded-md overflow-hidden border border-white/10 bg-white/5">
+          <button
+            type="button"
+            className={clsx(
+              'px-2 py-1 text-[11px] transition-colors',
+              (mesh.shading ?? 'flat') === 'flat'
+                ? 'bg-white/15 text-gray-100'
+                : 'text-gray-400 hover:bg-white/10'
+            )}
+            onClick={() => update((m) => { m.shading = 'flat'; })}
+            aria-pressed={(mesh.shading ?? 'flat') === 'flat'}
+          >
             Flat
-          </label>
-          <label className="flex items-center gap-1">
-            <input
-              type="radio"
-              name={`shading-${meshId}`}
-              className="accent-white/70"
-              checked={(mesh.shading ?? 'flat') === 'smooth'}
-              onChange={() => update((m) => { m.shading = 'smooth'; geoStore.recalculateNormals(meshId); })}
-            />
+          </button>
+          <button
+            type="button"
+            className={clsx(
+              'px-2 py-1 text-[11px] transition-colors',
+              (mesh.shading ?? 'flat') === 'smooth'
+                ? 'bg-white/15 text-gray-100'
+                : 'text-gray-400 hover:bg-white/10'
+            )}
+            onClick={() => { update((m) => { m.shading = 'smooth'; }); geo.recalculateNormals(meshId); }}
+            aria-pressed={(mesh.shading ?? 'flat') === 'smooth'}
+          >
             Smooth
-          </label>
+          </button>
         </div>
       </div>
     </div>
