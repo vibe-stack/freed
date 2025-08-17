@@ -46,6 +46,10 @@ export interface Mesh {
   locked: boolean;
   // Reference to material resource in geometry-store.materials
   materialId?: string;
+  // Rendering flags
+  castShadow?: boolean;
+  receiveShadow?: boolean;
+  shading?: 'flat' | 'smooth';
 }
 
 export interface Transform {

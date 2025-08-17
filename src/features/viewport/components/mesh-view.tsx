@@ -29,8 +29,8 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
 
     const geo = new BufferGeometry();
     const vertexMap = new Map(mesh.vertices.map((v) => [v.id, v] as const));
-    const positions: number[] = [];
-    const normals: number[] = [];
+  const positions: number[] = [];
+  const normals: number[] = [];
 
     mesh.faces.forEach((face) => {
       const tris = convertQuadToTriangles(face.vertexIds);
@@ -56,7 +56,13 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
           p2.y,
           p2.z
         );
-        for (let i = 0; i < 3; i++) normals.push(faceNormal.x, faceNormal.y, faceNormal.z);
+    const useSmooth = (mesh.shading ?? 'flat') === 'smooth';
+        if (useSmooth) {
+          const n0 = v0.normal; const n1 = v1.normal; const n2 = v2.normal;
+          normals.push(n0.x, n0.y, n0.z, n1.x, n1.y, n1.z, n2.x, n2.y, n2.z);
+        } else {
+          for (let i = 0; i < 3; i++) normals.push(faceNormal.x, faceNormal.y, faceNormal.z);
+        }
       });
     });
 
@@ -89,7 +95,7 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
       emissive,
       wireframe: shading === 'wireframe',
       side: DoubleSide,
-      flatShading: true,
+      flatShading: (mesh.shading ?? 'flat') === 'flat',
     });
 
     return { geom: geo, mat: material };
@@ -138,8 +144,8 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     <mesh
       geometry={geomAndMat.geom}
       material={geomAndMat.mat as unknown as Material}
-      castShadow={shading === 'material'}
-      receiveShadow={shading === 'material'}
+      castShadow={!!mesh.castShadow && shading === 'material'}
+      receiveShadow={!!mesh.receiveShadow && shading === 'material'}
       // Disable raycast when locked so clicks pass through
       // In edit mode, disable raycast only for the specific object being edited
       raycast={raycastFn}

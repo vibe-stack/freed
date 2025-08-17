@@ -193,6 +193,9 @@ export const createMeshFromGeometry = (name: string, vertices: Vertex[], faces: 
     },
     visible: true,
     locked: false,
+  castShadow: true,
+  receiveShadow: true,
+  shading: 'flat',
   };
   mesh.vertices = calculateVertexNormals(mesh);
   return mesh;

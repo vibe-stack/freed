@@ -4,6 +4,7 @@ import React from 'react';
 import { useSceneStore } from '@/stores/scene-store';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { MaterialSection } from './material-section';
+import { ShadingSection } from './shading-section';
 
 type Props = { objectId: string };
 
@@ -25,7 +26,8 @@ export const ObjectDataSection: React.FC<Props> = ({ objectId }) => {
 
   return (
     <div className="space-y-2">
-  <MaterialSection materialId={mesh?.materialId} onAssignMaterial={assignMaterial} />
+      <MaterialSection materialId={mesh?.materialId} onAssignMaterial={assignMaterial} />
+      {mesh && <ShadingSection meshId={mesh.id} />}
     </div>
   );
 };
