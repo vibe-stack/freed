@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Menu } from '@base-ui-components/react/menu';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { useSceneStore } from '@/stores/scene-store';
@@ -10,7 +10,7 @@ import { useToolStore } from '@/stores/tool-store';
 import { useShapeCreationStore } from '@/stores/shape-creation-store';
 import { WorkspaceData, exportToT3D } from '@/utils/t3d-exporter';
 import { openImportDialog } from '@/utils/t3d-importer';
-import { Box, Download, FolderOpen, Save, Heart } from 'lucide-react';
+import { Box, Download, FolderOpen, Save, Heart, Check } from 'lucide-react';
 import DonateDialog from '@/components/donate-dialog';
 import ExportDialog from '@/features/export/components/export-dialog';
 import { useWorkspaceStore } from '@/stores/workspace-store';
@@ -18,6 +18,7 @@ import { saveAs, saveWithHandle } from '@/utils/file-access';
 import { useClipboardStore } from '@/stores/clipboard-store';
 import { geometryRedo, geometryUndo } from '@/stores/geometry-store';
 import { useRegisterShortcuts } from '@/components/shortcut-provider';
+import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
 
 const MenuBar: React.FC = () => {
 	const [donateOpen, setDonateOpen] = useState(false);
@@ -30,6 +31,26 @@ const MenuBar: React.FC = () => {
 	const shapeCreationStore = useShapeCreationStore();
 	const workspace = useWorkspaceStore();
 	const clipboard = useClipboardStore();
+
+	// Track undo/redo availability from zundo temporal API
+	const [canUndo, setCanUndo] = useState(false);
+	const [canRedo, setCanRedo] = useState(false);
+	useEffect(() => {
+		const temporalStore: any = (useGeometryStore as any).temporal;
+		if (!temporalStore?.getState) return;
+		const update = () => {
+			try {
+				const st = temporalStore.getState?.();
+				setCanUndo(Boolean(st?.pastStates?.length));
+				setCanRedo(Boolean(st?.futureStates?.length));
+			} catch { }
+		};
+		update();
+		const unsub = temporalStore.subscribe ? temporalStore.subscribe(update) : undefined;
+		return () => {
+			if (typeof unsub === 'function') unsub();
+		};
+	}, []);
 
 	const buildWorkspaceData = useCallback((): WorkspaceData => ({
 		meshes: Array.from(geometryStore.meshes.values()),
@@ -119,6 +140,57 @@ const MenuBar: React.FC = () => {
 		shapeCreationStore.reset();
 	}, [geometryStore, sceneStore, selectionStore, viewportStore, toolStore, shapeCreationStore]);
 
+	// View actions
+	const handleZoom = useCallback((scale: number) => {
+		const cam = viewportStore.camera;
+		const pos = new Vector3(cam.position.x, cam.position.y, cam.position.z);
+		const target = new Vector3(cam.target.x, cam.target.y, cam.target.z);
+		const dir = pos.clone().sub(target);
+		const dist = dir.length();
+		const newDist = Math.max(0.1, dist * scale);
+		const newPos = target.clone().add(dir.normalize().multiplyScalar(newDist));
+		viewportStore.setCamera({ position: { x: newPos.x, y: newPos.y, z: newPos.z } });
+	}, [viewportStore]);
+
+	const handleZoomIn = useCallback(() => handleZoom(0.8), [handleZoom]);
+	const handleZoomOut = useCallback(() => handleZoom(1.25), [handleZoom]);
+
+	const computeBoundsForObjects = useCallback((objectIds: string[]) => {
+		let min = new Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
+		let max = new Vector3(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY);
+		let any = false;
+
+		for (const oid of objectIds) {
+			const obj = sceneStore.objects[oid];
+			if (!obj || !obj.render || obj.type !== 'mesh' || !obj.meshId) continue;
+			const mesh = geometryStore.meshes.get(obj.meshId);
+			if (!mesh) continue;
+			const euler = new Euler(obj.transform.rotation.x, obj.transform.rotation.y, obj.transform.rotation.z);
+			const quat = new Quaternion().setFromEuler(euler);
+			const scale = new Vector3(obj.transform.scale.x, obj.transform.scale.y, obj.transform.scale.z);
+			const pos = new Vector3(obj.transform.position.x, obj.transform.position.y, obj.transform.position.z);
+			const mat = new Matrix4().compose(pos, quat, scale);
+			for (const v of mesh.vertices) {
+				const p = new Vector3(v.position.x, v.position.y, v.position.z).applyMatrix4(mat);
+				min.min(p); max.max(p); any = true;
+			}
+		}
+		if (!any) return null;
+		const center = min.clone().add(max).multiplyScalar(0.5);
+		const sizeVec = max.clone().sub(min);
+		const size = Math.max(sizeVec.x, sizeVec.y, sizeVec.z);
+		return { center: [center.x, center.y, center.z] as [number, number, number], size: size || 1 };
+	}, [geometryStore.meshes, sceneStore.objects]);
+
+	const handleFitToScreen = useCallback(() => {
+		const sel = selectionStore.selection;
+		let ids: string[] = [];
+		if (sel.viewMode === 'object' && sel.objectIds.length > 0) ids = sel.objectIds;
+		else ids = Object.keys(sceneStore.objects);
+		const bounds = computeBoundsForObjects(ids);
+		if (bounds) viewportStore.focusOnObject(bounds.center, bounds.size);
+	}, [selectionStore.selection, sceneStore.objects, computeBoundsForObjects, viewportStore]);
+
 	// Keyboard shortcuts: Open/Save/Save As/Export, Undo/Redo, Select All
 	useRegisterShortcuts([
 		{ key: 'o', meta: true, action: () => handleOpen(), description: 'Open (Cmd/Ctrl+O)', preventDefault: true },
@@ -184,8 +256,8 @@ const MenuBar: React.FC = () => {
 					<Menu.Portal>
 						<Menu.Positioner side="bottom" align="start" sideOffset={4} className="z-90">
 							<Menu.Popup className="mt-0 w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-40">
-								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => geometryUndo()}>Undo</Menu.Item>
-								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => geometryRedo()}>Redo</Menu.Item>
+								<Menu.Item disabled={!canUndo} className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200 data-[disabled]:opacity-50 data-[disabled]:pointer-events-none" onClick={() => geometryUndo()}>Undo</Menu.Item>
+								<Menu.Item disabled={!canRedo} className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200 data-[disabled]:opacity-50 data-[disabled]:pointer-events-none" onClick={() => geometryRedo()}>Redo</Menu.Item>
 								<Menu.Separator className="my-1 h-px bg-white/10" />
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => clipboard.cutSelection()}>Cut</Menu.Item>
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => clipboard.copySelection()}>Copy</Menu.Item>
@@ -211,14 +283,49 @@ const MenuBar: React.FC = () => {
 					</Menu.Trigger>
 					<Menu.Portal>
 						<Menu.Positioner side="bottom" align="start" sideOffset={4} className="z-90">
-							<Menu.Popup className="mt-0 w-48 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-40">
-								<Menu.Item className="px-3 py-1.5 text-gray-500">Zoom In</Menu.Item>
-								<Menu.Item className="px-3 py-1.5 text-gray-500">Zoom Out</Menu.Item>
-								<Menu.Item className="px-3 py-1.5 text-gray-500">Fit to Screen</Menu.Item>
+							<Menu.Popup className="mt-0 w-56 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-40">
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleZoomIn}>Zoom In</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleZoomOut}>Zoom Out</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleFitToScreen}>Fit to Screen</Menu.Item>
 								<Menu.Separator className="my-1 h-px bg-white/10" />
-								<Menu.Item className="px-3 py-1.5 text-gray-500">Toggle Grid</Menu.Item>
-								<Menu.Item className="px-3 py-1.5 text-gray-500">Toggle Axes</Menu.Item>
-								<Menu.Item className="px-3 py-1.5 text-gray-500">Shading Mode</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => viewportStore.toggleGrid()}>
+									<span className="flex items-center justify-between w-full">
+										<span>Toggle Grid</span>
+										{viewportStore.showGrid ? <Check className="w-3.5 h-3.5 text-gray-300" /> : <span className="w-3.5 h-3.5" />}
+									</span>
+								</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => viewportStore.toggleAxes()}>
+									<span className="flex items-center justify-between w-full">
+										<span>Toggle Axes</span>
+										{viewportStore.showAxes ? <Check className="w-3.5 h-3.5 text-gray-300" /> : <span className="w-3.5 h-3.5" />}
+									</span>
+								</Menu.Item>
+								<Menu.Separator className="my-1 h-px bg-white/10" />
+								<div className="px-3 py-1.5 text-[11px] uppercase tracking-wide text-gray-400">Shading</div>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => viewportStore.setShadingMode('wireframe')}>
+									<span className="flex items-center justify-between w-full">
+										<span>Wireframe</span>
+										{viewportStore.shadingMode === 'wireframe' ? <Check className="w-3.5 h-3.5 text-gray-300" /> : <span className="w-3.5 h-3.5" />}
+									</span>
+								</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => viewportStore.setShadingMode('solid')}>
+									<span className="flex items-center justify-between w-full">
+										<span>Solid</span>
+										{viewportStore.shadingMode === 'solid' ? <Check className="w-3.5 h-3.5 text-gray-300" /> : <span className="w-3.5 h-3.5" />}
+									</span>
+								</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => viewportStore.setShadingMode('material')}>
+									<span className="flex items-center justify-between w-full">
+										<span>Material</span>
+										{viewportStore.shadingMode === 'material' ? <Check className="w-3.5 h-3.5 text-gray-300" /> : <span className="w-3.5 h-3.5" />}
+									</span>
+								</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => viewportStore.setShadingMode('textured')}>
+									<span className="flex items-center justify-between w-full">
+										<span>Textured</span>
+										{viewportStore.shadingMode === 'textured' ? <Check className="w-3.5 h-3.5 text-gray-300" /> : <span className="w-3.5 h-3.5" />}
+									</span>
+								</Menu.Item>
 							</Menu.Popup>
 						</Menu.Positioner>
 					</Menu.Portal>
