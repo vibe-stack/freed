@@ -15,6 +15,7 @@ import { Color, Vector3 } from 'three';
 import { useSelectionVertices } from '@/features/edit-mode/hooks/use-selection-vertices';
 import { useSceneStore } from '@/stores/scene-store';
 import { useLoopcut } from '@/features/edit-mode/hooks/use-loopcut';
+import { computeEdgeLoopFaceSpans } from '@/utils/loopcut';
 
 const EditModeOverlay: React.FC = () => {
 	const selectionStore = useSelectionStore();
@@ -43,11 +44,42 @@ const EditModeOverlay: React.FC = () => {
 	const handleEdgeClick = (edgeId: string, event: ThreeEvent<PointerEvent>) => {
 		if (toolStore.isActive) return;
 		const isShiftPressed = event.shiftKey;
-		if (isShiftPressed) {
-			if (meshId) selectionStore.toggleEdgeSelection(meshId, edgeId);
-		} else {
-			if (meshId) selectionStore.selectEdges(meshId, [edgeId]);
+		const isAltPressed = (event as any).altKey === true;
+		const isCtrlPressed = (event as any).ctrlKey === true || (event as any).metaKey === true; // allow Cmd as Ctrl on macOS
+		if (!meshId) return;
+		if (isAltPressed && mesh) {
+			// Blender-like feel, adjusted for request:
+			// Alt+Click => edge RING (perpendicular side edges along spans)
+			// Ctrl+Alt (or Cmd+Alt on mac) => edge LOOP (chain across quads)
+			const spans = computeEdgeLoopFaceSpans(mesh, edgeId);
+			const keyFor = (a: string, b: string) => (a < b ? `${a}-${b}` : `${b}-${a}`);
+			const edgeIdByKey = new Map(mesh.edges.map(e => [keyFor(e.vertexIds[0], e.vertexIds[1]), e.id] as const));
+			const set = new Set<string>();
+			if (isCtrlPressed) {
+				// LOOP: include starting edge and across-faces parallels
+				set.add(edgeId);
+				for (const span of spans) {
+					const kA = keyFor(span.parallelA[0], span.parallelA[1]);
+					const kB = keyFor(span.parallelB[0], span.parallelB[1]);
+					const idA = edgeIdByKey.get(kA);
+					const idB = edgeIdByKey.get(kB);
+					if (idA) set.add(idA);
+					if (idB) set.add(idB);
+				}
+			} else {
+				// RING: choose the consistent "right" side edge per span, which connects the first vertices
+				for (const span of spans) {
+					const kSide = keyFor(span.parallelA[0], span.parallelB[0]);
+					const idSide = edgeIdByKey.get(kSide);
+					if (idSide) set.add(idSide);
+				}
+			}
+			selectionStore.selectEdges(meshId, Array.from(set), isShiftPressed);
+			return;
 		}
+		// Regular edge selection
+		if (isShiftPressed) selectionStore.toggleEdgeSelection(meshId, edgeId);
+		else selectionStore.selectEdges(meshId, [edgeId]);
 	};
 
 	const handleFaceClick = (faceId: string, event: ThreeEvent<PointerEvent>) => {
