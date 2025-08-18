@@ -99,6 +99,8 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
       wireframe: shading === 'wireframe',
       side: DoubleSide,
       flatShading: (mesh.shading ?? 'flat') === 'flat',
+      // Use back-face shadowing to mitigate acne on coplanar/thin meshes
+      shadowSide: 1, // BackSide in three constants
     });
 
     return { geom: geo, mat: material };

@@ -35,19 +35,23 @@ const DirectionalLightBare: React.FC<{ color: Color; intensity: number }> = ({ c
     if (!l) return;
     l.castShadow = true;
     l.shadow.mapSize.set(2048, 2048);
-    l.shadow.bias = -0.0005;
+  // A tiny negative bias and a higher normalBias reduce self-shadowing (acne)
+  l.shadow.bias = -0.0001;
     // @ts-ignore newer three supports normalBias on LightShadow
-    l.shadow.normalBias = 0.02;
+  l.shadow.normalBias = 0.07;
+  // Slight blur for PCFSoft
+  // @ts-ignore - radius may be unavailable on some three versions
+  l.shadow.radius = 2;
     // Tighter shadow camera helps reduce acne and peter-panning
     const cam = l.shadow.camera as any;
     if (cam) {
-      cam.near = 0.5;
-      cam.far = 500;
+      cam.near = 1.0;
+      cam.far = 200;
       if ('left' in cam) {
-        cam.left = -50;
-        cam.right = 50;
-        cam.top = 50;
-        cam.bottom = -50;
+        cam.left = -30;
+        cam.right = 30;
+        cam.top = 30;
+        cam.bottom = -30;
       }
       cam.updateProjectionMatrix?.();
     }
@@ -85,9 +89,11 @@ const SpotLightBare: React.FC<{
     if (!l) return;
     l.castShadow = true;
     l.shadow.mapSize.set(2048, 2048);
-    l.shadow.bias = -0.0005;
+  l.shadow.bias = -0.0001;
     // @ts-ignore normalBias may exist depending on three version
-    l.shadow.normalBias = 0.02;
+  l.shadow.normalBias = 0.07;
+  // @ts-ignore - radius may be unavailable on some three versions
+  l.shadow.radius = 2;
     const cam = l.shadow.camera as any;
     if (cam) {
       cam.near = 0.1;
@@ -125,9 +131,11 @@ const PointLightBare: React.FC<{ color: Color; intensity: number; distance: numb
       if (!l) return;
       l.castShadow = true;
       l.shadow.mapSize.set(1024, 1024);
-      l.shadow.bias = -0.0005;
+  l.shadow.bias = -0.0002;
       // @ts-ignore may or may not exist
-      l.shadow.normalBias = 0.02;
+  l.shadow.normalBias = 0.05;
+  // @ts-ignore - radius may be unavailable on some three versions
+  l.shadow.radius = 2;
     }, []);
     return <pointLight ref={ref} color={color} intensity={intensity} distance={distance} decay={decay} castShadow />;
   };
