@@ -8,6 +8,8 @@ import { useSceneStore } from '@/stores/scene-store';
 import { useSelectionStore, useViewMode } from '@/stores/selection-store';
 import { useToolStore } from '@/stores/tool-store';
 import { convertQuadToTriangles } from '@/utils/geometry';
+import { useObjectModifiers } from '@/stores/modifier-store';
+import { applyModifiersToMesh } from '@/utils/modifiers';
 
 type Props = { objectId: string; noTransform?: boolean };
 
@@ -23,16 +25,32 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
   const isSelected = useSelectionStore((s) => s.selection.objectIds.includes(objectId));
   const tool = useToolStore();
   const isLocked = !!obj?.locked;
+  const modifiers = useObjectModifiers(objectId);
+
+  // Evaluate modifier stack at render time (non-destructive). In edit mode for the target mesh, show base geometry to avoid breaking edit overlays.
+  const displayMesh = useMemo(() => {
+    if (!mesh) return undefined;
+    const editingThis = viewMode === 'edit' && obj?.meshId && obj.meshId === editMeshId;
+    if (editingThis) return mesh;
+    const activeMods = modifiers.filter((m) => m.enabled);
+    if (activeMods.length === 0) return mesh;
+    try {
+      return applyModifiersToMesh(mesh, activeMods);
+    } catch {
+      return mesh;
+    }
+  }, [mesh, modifiers, viewMode, editMeshId, obj?.meshId]);
 
   const geomAndMat = useMemo<{ geom: BufferGeometry; mat: MeshStandardMaterial } | null>(() => {
-    if (!mesh) return null;
+    const dmesh = displayMesh;
+    if (!dmesh) return null;
 
     const geo = new BufferGeometry();
-    const vertexMap = new Map(mesh.vertices.map((v) => [v.id, v] as const));
+    const vertexMap = new Map(dmesh.vertices.map((v) => [v.id, v] as const));
   const positions: number[] = [];
   const normals: number[] = [];
 
-    mesh.faces.forEach((face) => {
+    dmesh.faces.forEach((face) => {
       const tris = convertQuadToTriangles(face.vertexIds);
       tris.forEach((tri) => {
         const v0 = vertexMap.get(tri[0])!;
@@ -56,7 +74,7 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
           p2.y,
           p2.z
         );
-    const useSmooth = (mesh.shading ?? 'flat') === 'smooth';
+  const useSmooth = (dmesh.shading ?? 'flat') === 'smooth';
         if (useSmooth) {
           const n0 = v0.normal; const n1 = v1.normal; const n2 = v2.normal;
           normals.push(n0.x, n0.y, n0.z, n1.x, n1.y, n1.z, n2.x, n2.y, n2.z);
@@ -76,8 +94,8 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     let metalness = 0.05;
     let emissive = new Color(0, 0, 0);
   let emissiveIntensity = 1;
-  if (shading === 'material' && mesh.materialId) {
-      const matRes = geometryStore.materials.get(mesh.materialId);
+  if (shading === 'material' && dmesh.materialId) {
+      const matRes = geometryStore.materials.get(dmesh.materialId);
       if (matRes) {
         color = new Color(matRes.color.x, matRes.color.y, matRes.color.z);
         roughness = matRes.roughness;
@@ -98,7 +116,7 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
   emissiveIntensity,
       wireframe: shading === 'wireframe',
       side: DoubleSide,
-      flatShading: (mesh.shading ?? 'flat') === 'flat',
+      flatShading: (dmesh.shading ?? 'flat') === 'flat',
       // Use back-face shadowing to mitigate acne on coplanar/thin meshes
       shadowSide: 1, // BackSide in three constants
     });
@@ -106,16 +124,16 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     return { geom: geo, mat: material };
   }, [
     // Rebuild when topology or vertex attributes change
-    mesh?.vertices,
-    mesh?.faces,
-    mesh?.materialId,
-    mesh?.shading,
+    displayMesh?.vertices,
+    displayMesh?.faces,
+    displayMesh?.materialId,
+    displayMesh?.shading,
     shading,
     isSelected,
     geometryStore.materials,
   ]);
 
-  if (!obj || !mesh || !geomAndMat) return null;
+  if (!obj || !displayMesh || !geomAndMat) return null;
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (viewMode === 'object') {
@@ -158,8 +176,8 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     <mesh
       geometry={geomAndMat.geom}
       material={geomAndMat.mat as unknown as Material}
-      castShadow={!!mesh.castShadow && shading === 'material'}
-      receiveShadow={!!mesh.receiveShadow && shading === 'material'}
+  castShadow={!!displayMesh.castShadow && shading === 'material'}
+  receiveShadow={!!displayMesh.receiveShadow && shading === 'material'}
       // Disable raycast when locked so clicks pass through
       // In edit mode, disable raycast only for the specific object being edited
       raycast={raycastFn}

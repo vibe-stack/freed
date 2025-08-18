@@ -6,6 +6,7 @@ import { InspectorPanel } from './tabs/inspector-panel';
 import { WorldPanel } from './tabs/world-panel';
 import type { LucideIcon } from 'lucide-react';
 import { Wrench, Box, Layers, Globe, Sliders, Camera, HardDrive } from 'lucide-react';
+import ModifiersPanel from '@/features/properties-panel/components/tabs/modifiers-panel';
 
 type TabDef = { key: PropertiesTab; label: string; icon: LucideIcon };
 
@@ -43,7 +44,8 @@ export const PropertiesPanel: React.FC = () => {
       </div>
       <div className="flex-1 min-h-0 h-[60dvh] overflow-auto">
         {active === 'inspector' && <InspectorPanel />}
-        {active === 'world' && <WorldPanel />}
+  {active === 'world' && <WorldPanel />}
+  {active === 'modifiers' && <ModifiersPanel />}
         {active !== 'inspector' && active !== 'world' && (
           <div className="p-3 text-xs text-gray-500">
             {tabs.find((t) => t.key === active)?.label} panel coming soon.

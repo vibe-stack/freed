@@ -5,6 +5,7 @@ import { useGeometryStore } from './geometry-store';
 import { useSelectionStore } from './selection-store';
 import { useViewportStore } from './viewport-store';
 import { useSceneStore } from './scene-store';
+import { useModifiersStore } from './modifier-store';
 import StarryLoader from '@/components/starry-loader';
 
 // Store provider component that initializes stores and provides context
@@ -38,12 +39,14 @@ export const useAllStores = () => {
   const selectionStore = useSelectionStore();
   const viewportStore = useViewportStore();
   const sceneStore = useSceneStore();
+  const modifiersStore = useModifiersStore();
   
   return {
     geometry: geometryStore,
     selection: selectionStore,
     viewport: viewportStore,
     scene: sceneStore,
+  modifiers: modifiersStore,
   };
 };
 
@@ -76,6 +79,8 @@ export const logStoreStates = () => {
     selectedObjectId: sceneState.selectedObjectId,
     hierarchy: sceneState.getHierarchy(),
   });
+  const modifiersState = useModifiersStore.getState();
+  console.log('Modifiers Store:', modifiersState.stacks);
   
   console.groupEnd();
 };
