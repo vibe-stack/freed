@@ -156,8 +156,8 @@ const MenuBar: React.FC = () => {
 	const handleZoomOut = useCallback(() => handleZoom(1.25), [handleZoom]);
 
 	const computeBoundsForObjects = useCallback((objectIds: string[]) => {
-		let min = new Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
-		let max = new Vector3(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY);
+		const min = new Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
+		const max = new Vector3(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY);
 		let any = false;
 
 		for (const oid of objectIds) {

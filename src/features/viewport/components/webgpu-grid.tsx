@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Color, GridHelper, type ColorRepresentation } from 'three';
+import { Color, GridHelper, Object3D, type ColorRepresentation } from 'three';
 
 type GridProps = {
   // Compatibility props (subset used)
@@ -28,7 +28,7 @@ type GridProps = {
 
 const toColor = (c: ColorRepresentation | undefined, fallback: string): Color => new Color((c ?? fallback) as any);
 
-const WebGPUGrid = React.forwardRef<any, GridProps>(
+const WebGPUGrid = React.forwardRef<Object3D, GridProps>(
   (
     {
       args = [10, 10],
@@ -50,13 +50,14 @@ const WebGPUGrid = React.forwardRef<any, GridProps>(
       fadeFrom,
       followCamera,
       ...rest
-    },
-    ref
+    }: GridProps,
+  ref: React.ForwardedRef<Object3D>
   ) => {
     const [sizeIn, divisions] = args;
     const size = infiniteGrid ? Math.max(1000, sizeIn) * 100 : sizeIn;
 
     const helper = useMemo(() => {
+WebGPUGrid.displayName = "WebGPUGrid";
       const grid = new GridHelper(size, Math.max(1, divisions), toColor(sectionColor, '#646464'), toColor(cellColor, '#3c3c3c'));
       // Make it a little more overlay-friendly
       const mat = grid.material as any;

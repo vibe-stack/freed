@@ -37,7 +37,6 @@ export const WorldEffects: React.FC = () => {
   // Update renderer settings when they change
   useEffect(() => {
   // three newer versions removed physicallyCorrectLights; keep for compatibility
-  // @ts-ignore - property may not exist in current three typings
     if ('physicallyCorrectLights' in gl) gl.physicallyCorrectLights = renderer.physicallyCorrectLights as any;
     gl.toneMapping = toneMap[renderer.toneMapping] ?? THREE.ACESFilmicToneMapping;
     gl.toneMappingExposure = renderer.exposure;
@@ -64,7 +63,6 @@ export const WorldEffects: React.FC = () => {
         <fog attach="fog" args={[fogColor, fog.near, fog.far]} />
       )}
       {fog.type === 'exp2' && (
-        // @ts-ignore - fogExp2 is valid in R3F jsx
         <fogExp2 attach="fog" args={[fogColor, fog.density]} />
       )}
 

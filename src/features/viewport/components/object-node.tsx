@@ -35,10 +35,8 @@ const DirectionalLightBare: React.FC<{ color: Color; intensity: number }> = ({ c
     l.shadow.mapSize.set(2048, 2048);
   // A tiny negative bias and a higher normalBias reduce self-shadowing (acne)
   l.shadow.bias = -0.0001;
-    // @ts-ignore newer three supports normalBias on LightShadow
   l.shadow.normalBias = 0.07;
   // Slight blur for PCFSoft
-  // @ts-ignore - radius may be unavailable on some three versions
   l.shadow.radius = 2;
     // Tighter shadow camera helps reduce acne and peter-panning
     const cam = l.shadow.camera as any;
@@ -88,9 +86,7 @@ const SpotLightBare: React.FC<{
     l.castShadow = true;
     l.shadow.mapSize.set(2048, 2048);
   l.shadow.bias = -0.0001;
-    // @ts-ignore normalBias may exist depending on three version
   l.shadow.normalBias = 0.07;
-  // @ts-ignore - radius may be unavailable on some three versions
   l.shadow.radius = 2;
     const cam = l.shadow.camera as any;
     if (cam) {
@@ -130,9 +126,7 @@ const PointLightBare: React.FC<{ color: Color; intensity: number; distance: numb
       l.castShadow = true;
       l.shadow.mapSize.set(1024, 1024);
   l.shadow.bias = -0.0002;
-      // @ts-ignore may or may not exist
   l.shadow.normalBias = 0.05;
-  // @ts-ignore - radius may be unavailable on some three versions
   l.shadow.radius = 2;
     }, []);
     return <pointLight ref={ref} color={color} intensity={intensity} distance={distance} decay={decay} castShadow />;

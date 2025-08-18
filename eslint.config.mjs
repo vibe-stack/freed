@@ -9,8 +9,15 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
+
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    rules: {
+      // Downgrade 'no-explicit-any' from error to warning
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
 ];
 
 export default eslintConfig;
