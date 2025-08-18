@@ -15,6 +15,9 @@ import DonateDialog from '@/components/donate-dialog';
 import ExportDialog from '@/features/export/components/export-dialog';
 import { useWorkspaceStore } from '@/stores/workspace-store';
 import { saveAs, saveWithHandle } from '@/utils/file-access';
+import { useClipboardStore } from '@/stores/clipboard-store';
+import { geometryRedo, geometryUndo } from '@/stores/geometry-store';
+import { useRegisterShortcuts } from '@/components/shortcut-provider';
 
 const MenuBar: React.FC = () => {
 	const [donateOpen, setDonateOpen] = useState(false);
@@ -26,6 +29,7 @@ const MenuBar: React.FC = () => {
 	const toolStore = useToolStore();
 	const shapeCreationStore = useShapeCreationStore();
 	const workspace = useWorkspaceStore();
+	const clipboard = useClipboardStore();
 
 	const buildWorkspaceData = useCallback((): WorkspaceData => ({
 		meshes: Array.from(geometryStore.meshes.values()),
@@ -115,6 +119,26 @@ const MenuBar: React.FC = () => {
 		shapeCreationStore.reset();
 	}, [geometryStore, sceneStore, selectionStore, viewportStore, toolStore, shapeCreationStore]);
 
+	// Keyboard shortcuts: Open/Save/Save As/Export, Undo/Redo, Select All
+	useRegisterShortcuts([
+		{ key: 'o', meta: true, action: () => handleOpen(), description: 'Open (Cmd/Ctrl+O)', preventDefault: true },
+		{ key: 'o', ctrl: true, action: () => handleOpen(), description: 'Open (Ctrl+O)', preventDefault: true },
+		{ key: 's', meta: true, action: () => handleSave(), description: 'Save (Cmd/Ctrl+S)', preventDefault: true },
+		{ key: 's', ctrl: true, action: () => handleSave(), description: 'Save (Ctrl+S)', preventDefault: true },
+		{ key: 's', meta: true, shift: true, action: () => handleSaveAs(), description: 'Save As (Cmd/Ctrl+Shift+S)', preventDefault: true },
+		{ key: 's', ctrl: true, shift: true, action: () => handleSaveAs(), description: 'Save As (Ctrl+Shift+S)', preventDefault: true },
+		{ key: 'e', meta: true, action: () => setExportOpen(true), description: 'Export (Cmd/Ctrl+E)', preventDefault: true },
+		{ key: 'e', ctrl: true, action: () => setExportOpen(true), description: 'Export (Ctrl+E)', preventDefault: true },
+		// Undo/Redo handling (geometry-only per request)
+		{ key: 'z', meta: true, action: () => geometryUndo(), description: 'Undo (Cmd+Z)', preventDefault: true },
+		{ key: 'z', ctrl: true, action: () => geometryUndo(), description: 'Undo (Ctrl+Z)', preventDefault: true },
+		{ key: 'z', meta: true, shift: true, action: () => geometryRedo(), description: 'Redo (Cmd+Shift+Z)', preventDefault: true },
+		{ key: 'y', ctrl: true, action: () => geometryRedo(), description: 'Redo (Ctrl+Y)', preventDefault: true },
+		// Select All
+		{ key: 'a', meta: true, action: () => useSelectionStore.getState().selectAll(), description: 'Select All (Cmd/Ctrl+A)', preventDefault: true },
+		{ key: 'a', ctrl: true, action: () => useSelectionStore.getState().selectAll(), description: 'Select All (Ctrl+A)', preventDefault: true },
+	]);
+
 	return (
 		<div className="h-8 w-full border-b border-white/10 bg-[#0b0e13]/80 backdrop-blur supports-[backdrop-filter]:bg-[#0b0e13]/60 flex items-center px-3 select-none z-30">
 			<div className="flex items-center gap-2 text-sm text-gray-300 font-medium">
@@ -160,15 +184,21 @@ const MenuBar: React.FC = () => {
 					<Menu.Portal>
 						<Menu.Positioner side="bottom" align="start" sideOffset={4} className="z-90">
 							<Menu.Popup className="mt-0 w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-40">
-								<Menu.Item className="px-3 py-1.5 text-gray-500">Undo</Menu.Item>
-								<Menu.Item className="px-3 py-1.5 text-gray-500">Redo</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => geometryUndo()}>Undo</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => geometryRedo()}>Redo</Menu.Item>
 								<Menu.Separator className="my-1 h-px bg-white/10" />
-								<Menu.Item className="px-3 py-1.5 text-gray-500">Cut</Menu.Item>
-								<Menu.Item className="px-3 py-1.5 text-gray-500">Copy</Menu.Item>
-								<Menu.Item className="px-3 py-1.5 text-gray-500">Paste</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => clipboard.cutSelection()}>Cut</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => clipboard.copySelection()}>Copy</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => clipboard.paste()}>Paste</Menu.Item>
 								<Menu.Separator className="my-1 h-px bg-white/10" />
-								<Menu.Item className="px-3 py-1.5 text-gray-500">Delete</Menu.Item>
-								<Menu.Item className="px-3 py-1.5 text-gray-500">Select All</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => {
+									const sel = useSelectionStore.getState().selection;
+									if (sel.viewMode === 'object' && sel.objectIds.length > 0) {
+										sel.objectIds.forEach((id) => useSceneStore.getState().removeObject(id));
+										useSelectionStore.getState().clearSelection();
+									}
+								}}>Delete</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => useSelectionStore.getState().selectAll()}>Select All</Menu.Item>
 							</Menu.Popup>
 						</Menu.Positioner>
 					</Menu.Portal>

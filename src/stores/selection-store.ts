@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { Selection, SelectionMode, ViewMode } from '../types/geometry';
 import { useSceneStore } from './scene-store';
+import { useGeometryStore } from './geometry-store';
 import { useToolStore } from './tool-store';
 
 interface SelectionState {
@@ -19,6 +20,7 @@ interface SelectionActions {
   selectObjects: (objectIds: string[], additive?: boolean) => void;
   toggleObjectSelection: (objectId: string) => void;
   clearSelection: () => void;
+  selectAll: () => void;
   toggleVertexSelection: (meshId: string, vertexId: string) => void;
   toggleEdgeSelection: (meshId: string, edgeId: string) => void;
   toggleFaceSelection: (meshId: string, faceId: string) => void;
@@ -243,6 +245,44 @@ export const useSelectionStore = create<SelectionStore>()(
           state.selection.objectIds = [];
           // Keep mode and meshId
         });
+      },
+
+      selectAll: () => {
+        const sel = get().selection;
+        if (sel.viewMode === 'object') {
+          const scene = useSceneStore.getState();
+          const all = Object.values(scene.objects)
+            .filter((o) => !o.locked)
+            .map((o) => o.id);
+          set((state) => {
+            state.selection.objectIds = all;
+            state.selection.vertexIds = [];
+            state.selection.edgeIds = [];
+            state.selection.faceIds = [];
+            state.selection.meshId = null;
+          });
+        } else if (sel.viewMode === 'edit' && sel.meshId) {
+          const meshId = sel.meshId;
+          // Gather vertex/edge/face ids from geometry store
+          const geo = useGeometryStore.getState();
+          const mesh = geo.meshes.get(meshId);
+          if (!mesh) return;
+          set((state) => {
+            if (state.selection.selectionMode === 'vertex') {
+              state.selection.vertexIds = mesh.vertices.map((v) => v.id);
+              state.selection.edgeIds = [];
+              state.selection.faceIds = [];
+            } else if (state.selection.selectionMode === 'edge') {
+              state.selection.edgeIds = mesh.edges.map((e) => e.id);
+              state.selection.vertexIds = [];
+              state.selection.faceIds = [];
+            } else {
+              state.selection.faceIds = mesh.faces.map((f) => f.id);
+              state.selection.vertexIds = [];
+              state.selection.edgeIds = [];
+            }
+          });
+        }
       },
       
       toggleVertexSelection: (meshId: string, vertexId: string) => {

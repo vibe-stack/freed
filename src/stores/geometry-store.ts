@@ -15,6 +15,7 @@ import {
   buildEdgesFromFaces,
 } from '../utils/geometry';
 import { enableMapSet } from 'immer';
+import { temporal } from 'zundo';
 
 enableMapSet();
 
@@ -52,8 +53,9 @@ interface GeometryActions {
 type GeometryStore = GeometryState & GeometryActions;
 
 export const useGeometryStore = create<GeometryStore>()(
-  subscribeWithSelector(
-    immer((set, _get) => ({
+  temporal(
+    subscribeWithSelector(
+      immer((set, _get) => ({
       // Initial state
       meshes: new Map(),
       materials: new Map(),
@@ -201,7 +203,15 @@ export const useGeometryStore = create<GeometryStore>()(
           }
         });
       },
-    }))
+      }))
+    ),
+    {
+      partialize: (state) => ({
+        meshes: state.meshes,
+        materials: state.materials,
+        selectedMeshId: state.selectedMeshId,
+      }),
+    }
   )
 );
 
@@ -222,3 +232,18 @@ export const useSelectedMesh = () => {
 
 export const useMesh = (meshId: string) => useGeometryStore((state) => state.meshes.get(meshId));
 export const useSelectedMeshId = () => useGeometryStore((state) => state.selectedMeshId);
+
+// Helpers for undo/redo of geometry edits
+export const geometryUndo = () => {
+  try {
+    const api = (useGeometryStore as any).temporal?.getState?.();
+    api?.undo?.();
+  } catch {}
+};
+
+export const geometryRedo = () => {
+  try {
+    const api = (useGeometryStore as any).temporal?.getState?.();
+    api?.redo?.();
+  } catch {}
+};

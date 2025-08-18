@@ -13,21 +13,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Ensure we only run client-side to avoid SSR issues
   React.useEffect(() => {
     setIsClient(true);
-    
-    // Create a default cube for testing - only on client
-    const geometryStore = useGeometryStore.getState();
-    const sceneStore = useSceneStore.getState();
-    
-    try {
-      const cubeId = geometryStore.createCube(2);
-      const cube = geometryStore.meshes.get(cubeId);
-      
-      if (cube) {
-        sceneStore.createMeshObject('Default Cube', cubeId);
-      }
-    } catch (error) {
-      console.error('Error creating default cube:', error);
-    }
   }, []);
 
   // Don't render until we're on the client
