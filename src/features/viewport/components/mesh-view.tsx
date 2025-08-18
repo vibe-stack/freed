@@ -174,6 +174,8 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
       rotation={[t.rotation.x, t.rotation.y, t.rotation.z]}
       scale={[t.scale.x, t.scale.y, t.scale.z]}
       visible={obj.visible}
+      castShadow
+      receiveShadow
     >
       {meshEl}
     </group>

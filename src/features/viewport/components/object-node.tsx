@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useSceneStore } from '@/stores/scene-store';
 import MeshView from './mesh-view';
 import { useToolStore } from '@/stores/tool-store';
@@ -30,7 +30,29 @@ const DirectionalLightNode: React.FC<{ color: Color; intensity: number }> = ({ c
 
 const DirectionalLightBare: React.FC<{ color: Color; intensity: number }> = ({ color, intensity }) => {
   const ref = useRef<DirectionalLight>(null!);
-  return <directionalLight ref={ref} color={color} intensity={intensity} />;
+  useEffect(() => {
+    const l = ref.current;
+    if (!l) return;
+    l.castShadow = true;
+    l.shadow.mapSize.set(2048, 2048);
+    l.shadow.bias = -0.0005;
+    // @ts-ignore newer three supports normalBias on LightShadow
+    l.shadow.normalBias = 0.02;
+    // Tighter shadow camera helps reduce acne and peter-panning
+    const cam = l.shadow.camera as any;
+    if (cam) {
+      cam.near = 0.5;
+      cam.far = 500;
+      if ('left' in cam) {
+        cam.left = -50;
+        cam.right = 50;
+        cam.top = 50;
+        cam.bottom = -50;
+      }
+      cam.updateProjectionMatrix?.();
+    }
+  }, []);
+  return <directionalLight ref={ref} color={color} intensity={intensity} castShadow />;
 };
 
 const SpotLightNode: React.FC<{
@@ -58,8 +80,32 @@ const SpotLightBare: React.FC<{
   decay: number;
 }> = ({ color, intensity, distance, angle, penumbra, decay }) => {
   const ref = useRef<SpotLight>(null!);
+  useEffect(() => {
+    const l = ref.current;
+    if (!l) return;
+    l.castShadow = true;
+    l.shadow.mapSize.set(2048, 2048);
+    l.shadow.bias = -0.0005;
+    // @ts-ignore normalBias may exist depending on three version
+    l.shadow.normalBias = 0.02;
+    const cam = l.shadow.camera as any;
+    if (cam) {
+      cam.near = 0.1;
+      cam.far = Math.max(50, l.distance || 50);
+      cam.updateProjectionMatrix?.();
+    }
+  }, []);
   return (
-    <spotLight ref={ref} color={color} intensity={intensity} distance={distance} angle={angle} penumbra={penumbra} decay={decay} />
+    <spotLight
+      ref={ref}
+      color={color}
+      intensity={intensity}
+      distance={distance}
+      angle={angle}
+      penumbra={penumbra}
+      decay={decay}
+      castShadow
+    />
   );
 };
 
@@ -74,7 +120,16 @@ const PointLightNode: React.FC<{ color: Color; intensity: number; distance: numb
 const PointLightBare: React.FC<{ color: Color; intensity: number; distance: number; decay: number }>
   = ({ color, intensity, distance, decay }) => {
     const ref = useRef<PointLight>(null!);
-    return <pointLight ref={ref} color={color} intensity={intensity} distance={distance} decay={decay} />;
+    useEffect(() => {
+      const l = ref.current;
+      if (!l) return;
+      l.castShadow = true;
+      l.shadow.mapSize.set(1024, 1024);
+      l.shadow.bias = -0.0005;
+      // @ts-ignore may or may not exist
+      l.shadow.normalBias = 0.02;
+    }, []);
+    return <pointLight ref={ref} color={color} intensity={intensity} distance={distance} decay={decay} castShadow />;
   };
 
 const RectAreaLightNode: React.FC<{ color: Color; intensity: number; width: number; height: number }>

@@ -5,22 +5,31 @@ import { useGeometryStore } from './geometry-store';
 import { useSelectionStore } from './selection-store';
 import { useViewportStore } from './viewport-store';
 import { useSceneStore } from './scene-store';
+import StarryLoader from '@/components/starry-loader';
 
 // Store provider component that initializes stores and provides context
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isClient, setIsClient] = React.useState(false);
-  
-  // Ensure we only run client-side to avoid SSR issues
+  const [hydrated, setHydrated] = React.useState(false);
+  const [showSplash, setShowSplash] = React.useState(true);
+
+  // Hydration flag
   React.useEffect(() => {
-    setIsClient(true);
+    setHydrated(true);
   }, []);
 
-  // Don't render until we're on the client
-  if (!isClient) {
-    return React.createElement('div', null, 'Loading...');
-  }
+  // When hydrated, schedule hiding splash after min duration (handled inside StarryLoader too)
+  const handleSplashDone = React.useCallback(() => {
+    setShowSplash(false);
+  }, []);
 
-  return React.createElement(React.Fragment, null, children);
+  return React.createElement(
+    React.Fragment,
+    null,
+    children,
+    showSplash
+      ? React.createElement(StarryLoader, { onDone: handleSplashDone })
+      : null,
+  );
 };
 
 // Hook to access all stores (for debugging/development)
