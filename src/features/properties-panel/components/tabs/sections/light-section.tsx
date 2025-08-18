@@ -55,18 +55,7 @@ export const LightSection: React.FC<Props> = ({ lightId }) => {
         </div>
       )}
 
-      {light.type === 'rectarea' && (
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <div className="text-gray-400 mb-1 text-xs">Width</div>
-            <DragInput value={light.width ?? 1} step={0.1} precision={2} onChange={(v) => set({ width: Math.max(0.01, v) })} />
-          </div>
-          <div>
-            <div className="text-gray-400 mb-1 text-xs">Height</div>
-            <DragInput value={light.height ?? 1} step={0.1} precision={2} onChange={(v) => set({ height: Math.max(0.01, v) })} />
-          </div>
-        </div>
-      )}
+  {/* RectAreaLight controls removed for WebGPU compatibility */}
     </div>
   );
 };

@@ -13,11 +13,9 @@ import {
   DirectionalLight,
   SpotLight,
   PointLight,
-  RectAreaLight,
   PerspectiveCamera,
   OrthographicCamera,
 } from 'three';
-import { RectAreaLightHelper } from 'three/examples/jsm/helpers/RectAreaLightHelper.js';
 import { useHelper } from '@react-three/drei';
 import { useViewportStore } from '@/stores/viewport-store';
 // Light helper wrappers
@@ -140,19 +138,7 @@ const PointLightBare: React.FC<{ color: Color; intensity: number; distance: numb
     return <pointLight ref={ref} color={color} intensity={intensity} distance={distance} decay={decay} castShadow />;
   };
 
-const RectAreaLightNode: React.FC<{ color: Color; intensity: number; width: number; height: number }>
-  = ({ color, intensity, width, height }) => {
-    const ref = useRef<RectAreaLight>(null!);
-  // @ts-expect-error helper typing is overly strict in our env
-  useHelper(ref as unknown as never, RectAreaLightHelper as unknown as never);
-    return <rectAreaLight ref={ref} color={color} intensity={intensity} width={width} height={height} />;
-  };
-
-const RectAreaLightBare: React.FC<{ color: Color; intensity: number; width: number; height: number }>
-  = ({ color, intensity, width, height }) => {
-    const ref = useRef<RectAreaLight>(null!);
-    return <rectAreaLight ref={ref} color={color} intensity={intensity} width={width} height={height} />;
-  };
+// RectAreaLight removed for WebGPU compatibility
 
 // Camera helper wrappers
 const PerspectiveCameraNode: React.FC<{ fov: number; near: number; far: number }>
@@ -242,14 +228,6 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
                   penumbra={light.penumbra ?? 0}
                   decay={light.decay ?? 2}
                 />
-              )
-            );
-          case 'rectarea':
-            return (
-              isMaterial ? (
-                <RectAreaLightBare color={color} intensity={light.intensity} width={light.width ?? 1} height={light.height ?? 1} />
-              ) : (
-                <RectAreaLightNode color={color} intensity={0} width={light.width ?? 1} height={light.height ?? 1} />
               )
             );
           case 'point':

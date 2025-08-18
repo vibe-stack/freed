@@ -72,7 +72,7 @@ const TopToolbar: React.FC = () => {
     setMenuOpen(false);
   };
 
-  const addLight = (type: 'directional' | 'spot' | 'rectarea' | 'point') => {
+  const addLight = (type: 'directional' | 'spot' | 'point') => {
     const id = scene.createLightObject(
       `${type.charAt(0).toUpperCase() + type.slice(1)} Light`,
       type
@@ -170,7 +170,6 @@ const TopToolbar: React.FC = () => {
                         <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addLight('directional')}>Directional</Menu.Item>
                         <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addLight('spot')}>Spot</Menu.Item>
                         <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addLight('point')}>Point</Menu.Item>
-                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addLight('rectarea')}>Area</Menu.Item>
                       </Menu.Popup>
                     </Menu.Positioner>
                   </Menu.Portal>

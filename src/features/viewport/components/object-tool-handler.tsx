@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useThree } from '@react-three/fiber';
-import { Line } from '@react-three/drei';
 import { Vector3, Euler, Camera } from 'three';
 import { useToolStore } from '@/stores/tool-store';
 import { useSelectionStore } from '@/stores/selection-store';
@@ -215,8 +214,13 @@ export const ObjectToolHandler: React.FC = () => {
   }
 
   return showAxis && axisPoints ? (
-    // Render a bidirectional axis line through the selection center
-    <Line points={axisPoints} color={axisColor} lineWidth={2} dashed={false} transparent opacity={0.9} depthTest={false} />
+    // Render a bidirectional axis line through the selection center using native line
+    <line>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[new Float32Array([...axisPoints[0], ...axisPoints[1]]), 3]} />
+      </bufferGeometry>
+      <lineBasicMaterial color={axisColor} depthTest={false} depthWrite={false} transparent opacity={0.9} />
+    </line>
   ) : null;
 };
 

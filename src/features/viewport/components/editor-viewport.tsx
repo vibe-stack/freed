@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
+import { WebGPURenderer } from 'three/webgpu';
+import { WebGLRenderer } from 'three';
 import type { RaycasterParameters } from 'three';
 import { OrbitControls } from '@react-three/drei';
 import { useViewportStore } from '@/stores/viewport-store';
@@ -21,6 +23,17 @@ const EditorViewport: React.FC = () => {
   return (
     <div className="absolute inset-0">
       <Canvas
+        gl={async (props) => {
+          try {
+            if ('gpu' in navigator) {
+              const renderer = new WebGPURenderer(props as any);
+              await renderer.init();
+              return renderer;
+            }
+          } catch { }
+          // Fallback to WebGL if WebGPU is unavailable
+          return new WebGLRenderer(props as any);
+        }}
         shadows={renderer.shadows && shadingMode === 'material'}
         camera={{
           fov: camera.fov,
@@ -48,7 +61,7 @@ const EditorViewport: React.FC = () => {
           dampingFactor={0.1}
         />
         <SceneContent />
-  <WorldEffects />
+        <WorldEffects />
       </Canvas>
     </div>
   );

@@ -341,7 +341,7 @@ export const useSceneStore = create<SceneStore>()(
         get().addObject(object);
         return object.id;
       },
-      createLightObject: (name: string, type: LightType) => {
+  createLightObject: (name: string, type: LightType) => {
         const id = nanoid();
         const light: Light = {
           id,
@@ -349,7 +349,6 @@ export const useSceneStore = create<SceneStore>()(
           color: vec3(1, 1, 1),
           intensity: 1,
           ...(type === 'spot' ? { angle: Math.PI / 6, penumbra: 0.2, distance: 0, decay: 2 } : {}),
-          ...(type === 'rectarea' ? { width: 1, height: 1 } : {}),
           ...(type === 'point' ? { distance: 0, decay: 2 } : {}),
         };
         set((state) => { state.lights[id] = light; });

@@ -3,45 +3,14 @@
 import React, { Fragment, useEffect, useMemo } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Environment } from '@react-three/drei';
-import { EffectComposer, Bloom, DepthOfField } from '@react-three/postprocessing';
-import { BlendFunction, KernelSize, Resolution } from 'postprocessing';
+// Postprocessing is not WebGPU compatible in this setup; disable for now
 import * as THREE from 'three';
 import { useBloom, useDoF, useEnvironment, useFog, useRendererSettings } from '@/stores/world-store';
 
 const toThreeColor = (rgb: { x: number; y: number; z: number }) => new THREE.Color(rgb.x, rgb.y, rgb.z);
 
-const blendMap: Record<string, BlendFunction> = {
-  NORMAL: BlendFunction.NORMAL,
-  SCREEN: BlendFunction.SCREEN,
-  ADD: BlendFunction.ADD,
-  MULTIPLY: BlendFunction.MULTIPLY,
-  OVERLAY: BlendFunction.OVERLAY,
-  SOFT_LIGHT: BlendFunction.SOFT_LIGHT,
-  DARKEN: BlendFunction.DARKEN,
-  LIGHTEN: BlendFunction.LIGHTEN,
-  COLOR_DODGE: BlendFunction.COLOR_DODGE,
-  COLOR_BURN: BlendFunction.COLOR_BURN,
-  HARD_LIGHT: BlendFunction.HARD_LIGHT,
-  DIFFERENCE: BlendFunction.DIFFERENCE,
-  EXCLUSION: BlendFunction.EXCLUSION,
-  HUE: BlendFunction.HUE,
-  SATURATION: BlendFunction.SATURATION,
-  COLOR: BlendFunction.COLOR,
-  LUMINOSITY: BlendFunction.LUMINOSITY,
-  ALPHA: BlendFunction.ALPHA,
-  NEGATION: BlendFunction.NEGATION,
-  SUBTRACT: BlendFunction.SUBTRACT,
-  DIVIDE: BlendFunction.DIVIDE,
-  VIVID_LIGHT: BlendFunction.VIVID_LIGHT,
-};
-
-const kernelMap: Record<string, KernelSize> = {
-  VERY_SMALL: KernelSize.VERY_SMALL,
-  SMALL: KernelSize.SMALL,
-  MEDIUM: KernelSize.MEDIUM,
-  LARGE: KernelSize.LARGE,
-  HUGE: KernelSize.HUGE,
-};
+// const blendMap ... removed with postprocessing
+// const kernelMap ... removed with postprocessing
 
 const toneMap: Record<string, THREE.ToneMapping> = {
   None: THREE.NoToneMapping,
@@ -99,33 +68,7 @@ export const WorldEffects: React.FC = () => {
         <fogExp2 attach="fog" args={[fogColor, fog.density]} />
       )}
 
-      {/* Postprocessing */}
-      {bloom.enabled || dof.enabled ? (
-        <EffectComposer>
-          <Fragment>
-            {bloom.enabled ? (
-              <Bloom
-                intensity={bloom.intensity}
-                luminanceThreshold={bloom.luminanceThreshold}
-                luminanceSmoothing={bloom.luminanceSmoothing}
-                mipmapBlur={bloom.mipmapBlur}
-                kernelSize={kernelMap[bloom.kernelSize]}
-                resolutionX={bloom.resolutionX || Resolution.AUTO_SIZE}
-                resolutionY={bloom.resolutionY || Resolution.AUTO_SIZE}
-                blendFunction={blendMap[bloom.blendFunction]}
-              />
-            ) : null}
-            {dof.enabled ? (
-              <DepthOfField
-                focusDistance={dof.focusDistance}
-                focalLength={dof.focalLength}
-                bokehScale={dof.bokehScale}
-                blendFunction={blendMap[dof.blendFunction]}
-              />
-            ) : null}
-          </Fragment>
-        </EffectComposer>
-      ) : null}
+  {/* Postprocessing disabled for WebGPU: EffectComposer/Bloom/DepthOfField removed */}
     </>
   );
 };

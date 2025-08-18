@@ -101,7 +101,7 @@ export interface SceneObject {
 }
 
 // Scene component data types
-export type LightType = 'directional' | 'spot' | 'rectarea' | 'point';
+export type LightType = 'directional' | 'spot' | 'point';
 
 export interface Light {
   id: string;
@@ -114,9 +114,7 @@ export interface Light {
   // Spot specific
   angle?: number; // radians
   penumbra?: number; // 0-1
-  // RectArea specific
-  width?: number;
-  height?: number;
+  // RectArea removed for WebGPU in-editor compatibility
 }
 
 export type CameraType = 'perspective' | 'orthographic';
