@@ -56,6 +56,7 @@ export interface T3DMaterial {
   roughness: number;
   metalness: number;
   emissive: { x: number; y: number; z: number };
+  emissiveIntensity?: number;
 }
 
 export interface T3DSceneObject {

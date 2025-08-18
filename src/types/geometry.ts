@@ -65,6 +65,7 @@ export interface Material {
   roughness: number;
   metalness: number;
   emissive: Vector3;
+  emissiveIntensity: number;
 }
 
 // View and Selection types

@@ -33,11 +33,11 @@ export const MaterialSection: React.FC<Props> = ({ materialId, onAssignMaterial 
           ))}
         </select>
         {/* Minimal add material: create a default PBR material */}
-        <button
+    <button
           className="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded border border-white/10"
           onClick={() => {
             const id = crypto.randomUUID();
-            geo.addMaterial({ id, name: `Mat ${materials.length + 1}` , color: { x: 0.8, y: 0.8, z: 0.85 }, roughness: 0.8, metalness: 0.05, emissive: { x:0, y:0, z:0 } });
+      geo.addMaterial({ id, name: `Mat ${materials.length + 1}` , color: { x: 0.8, y: 0.8, z: 0.85 }, roughness: 0.8, metalness: 0.05, emissive: { x:0, y:0, z:0 }, emissiveIntensity: 1 });
             onAssignMaterial?.(id);
           }}
         >
@@ -56,6 +56,10 @@ export const MaterialSection: React.FC<Props> = ({ materialId, onAssignMaterial 
           </div>
           <ColorInput label="Color" value={material.color} onChange={(v) => update((m) => { m.color = v; })} />
           <ColorInput label="Emissive" value={material.emissive} onChange={(v) => update((m) => { m.emissive = v; })} />
+          <div>
+            <div className="text-gray-400 mb-1">Emissive Intensity</div>
+            <DragInput value={material.emissiveIntensity ?? 1} step={0.05} precision={2} onChange={(v) => update((m) => { m.emissiveIntensity = Math.max(0, v); })} />
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <div className="text-gray-400 mb-1">Roughness</div>

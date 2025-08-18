@@ -3,6 +3,7 @@
 import React from 'react';
 import { useActivePropertiesTab, usePropertiesPanelStore, PropertiesTab } from '@/stores/properties-panel-store';
 import { InspectorPanel } from './tabs/inspector-panel';
+import { WorldPanel } from './tabs/world-panel';
 import type { LucideIcon } from 'lucide-react';
 import { Wrench, Box, Layers, Globe, Sliders, Camera, HardDrive } from 'lucide-react';
 
@@ -42,7 +43,8 @@ export const PropertiesPanel: React.FC = () => {
       </div>
       <div className="flex-1 min-h-0 h-[60dvh] overflow-auto">
         {active === 'inspector' && <InspectorPanel />}
-        {active !== 'inspector' && (
+        {active === 'world' && <WorldPanel />}
+        {active !== 'inspector' && active !== 'world' && (
           <div className="p-3 text-xs text-gray-500">
             {tabs.find((t) => t.key === active)?.label} panel coming soon.
           </div>

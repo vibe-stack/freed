@@ -36,56 +36,56 @@ export const useViewportStore = create<ViewportStore>()(
       showGrid: true,
       showAxes: true,
       gridSize: 10,
-  backgroundColor: vec3(0.14, 0.14, 0.14),
-      
+      backgroundColor: vec3(0.01, 0.01, 0.01),
+
       // Actions
       setCamera: (camera: Partial<CameraState>) => {
         set((state) => {
           Object.assign(state.camera, camera);
         });
       },
-      
+
       setShadingMode: (mode: ShadingMode) => {
         set((state) => {
           state.shadingMode = mode;
         });
       },
-      
+
       toggleGrid: () => {
         set((state) => {
           state.showGrid = !state.showGrid;
         });
       },
-      
+
       toggleAxes: () => {
         set((state) => {
           state.showAxes = !state.showAxes;
         });
       },
-      
+
       setGridSize: (size: number) => {
         set((state) => {
           state.gridSize = Math.max(1, size);
         });
       },
-      
+
       setBackgroundColor: (color: [number, number, number]) => {
         set((state) => {
           state.backgroundColor = vec3(color[0], color[1], color[2]);
         });
       },
-      
+
       resetCamera: () => {
         set((state) => {
           state.camera = { ...defaultCameraState };
         });
       },
-      
+
       focusOnObject: (center: [number, number, number], size: number) => {
         set((state) => {
           const distance = size * 2.5; // Adjust multiplier as needed
           const direction = vec3(1, 1, 1); // Default viewing direction
-          
+
           // Normalize direction
           const length = Math.sqrt(direction.x * direction.x + direction.y * direction.y + direction.z * direction.z);
           const normalizedDirection = {
@@ -93,7 +93,7 @@ export const useViewportStore = create<ViewportStore>()(
             y: direction.y / length,
             z: direction.z / length,
           };
-          
+
           state.camera.target = vec3(center[0], center[1], center[2]);
           state.camera.position = vec3(
             center[0] + normalizedDirection.x * distance,

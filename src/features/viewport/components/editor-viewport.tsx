@@ -8,17 +8,20 @@ import { useViewportStore } from '@/stores/viewport-store';
 import CalmBg from './calm-bg';
 import SceneContent from './scene-content';
 import CameraController from './camera-controller';
+import WorldEffects from './world-effects';
+import { useRendererSettings } from '@/stores/world-store';
 
 const EditorViewport: React.FC = () => {
   const camera = useViewportStore((s) => s.camera);
   const shadingMode = useViewportStore((s) => s.shadingMode);
+  const renderer = useRendererSettings();
 
   // Camera controller runs inside Canvas via component
 
   return (
     <div className="absolute inset-0">
       <Canvas
-        shadows={shadingMode === 'material'}
+        shadows={renderer.shadows && shadingMode === 'material'}
         camera={{
           fov: camera.fov,
           near: camera.near,
@@ -45,6 +48,7 @@ const EditorViewport: React.FC = () => {
           dampingFactor={0.1}
         />
         <SceneContent />
+  <WorldEffects />
       </Canvas>
     </div>
   );

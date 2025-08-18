@@ -75,13 +75,15 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     let roughness = 0.8;
     let metalness = 0.05;
     let emissive = new Color(0, 0, 0);
-    if (shading === 'material' && mesh.materialId) {
+  let emissiveIntensity = 1;
+  if (shading === 'material' && mesh.materialId) {
       const matRes = geometryStore.materials.get(mesh.materialId);
       if (matRes) {
         color = new Color(matRes.color.x, matRes.color.y, matRes.color.z);
         roughness = matRes.roughness;
         metalness = matRes.metalness;
         emissive = new Color(matRes.emissive.x, matRes.emissive.y, matRes.emissive.z);
+    emissiveIntensity = matRes.emissiveIntensity ?? 1;
       }
     }
     // Highlight selection with orange override in non-material modes
@@ -93,6 +95,7 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
       roughness,
       metalness,
       emissive,
+  emissiveIntensity,
       wireframe: shading === 'wireframe',
       side: DoubleSide,
       flatShading: (mesh.shading ?? 'flat') === 'flat',

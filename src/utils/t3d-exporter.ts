@@ -78,6 +78,7 @@ function materialToT3D(material: Material): T3DMaterial {
     roughness: material.roughness,
     metalness: material.metalness,
     emissive: vector3ToT3D(material.emissive),
+  emissiveIntensity: material.emissiveIntensity,
   };
 }
 

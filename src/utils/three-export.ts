@@ -90,16 +90,18 @@ export function buildThreeScene(input: ExportBuildInput): Scene {
     let roughness = 0.8;
     let metalness = 0.05;
     let emissive = new ThreeColor(0, 0, 0);
-    if (mesh.materialId) {
+  let emissiveIntensity = 1;
+  if (mesh.materialId) {
       const matRes = input.materials.get(mesh.materialId);
       if (matRes) {
         color = new ThreeColor(matRes.color.x, matRes.color.y, matRes.color.z);
         roughness = matRes.roughness;
         metalness = matRes.metalness;
         emissive = new ThreeColor(matRes.emissive.x, matRes.emissive.y, matRes.emissive.z);
+    emissiveIntensity = matRes.emissiveIntensity ?? 1;
       }
     }
-    const mat = new MeshStandardMaterial({ color, roughness, metalness, emissive });
+  const mat = new MeshStandardMaterial({ color, roughness, metalness, emissive, emissiveIntensity });
     const threeMesh = new ThreeMesh(geo, mat);
     threeMesh.castShadow = !!mesh.castShadow;
     threeMesh.receiveShadow = !!mesh.receiveShadow;
