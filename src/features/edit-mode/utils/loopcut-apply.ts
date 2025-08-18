@@ -1,4 +1,4 @@
-import { computeEdgeLoopFaceSpans } from '@/utils/loopcut';
+import { computeEdgeLoopFaceSpans, type FaceSpan } from '@/utils/loopcut';
 import { buildEdgesFromFaces, createFace, createVertex } from '@/utils/geometry';
 import type { Mesh } from '@/types/geometry';
 
@@ -9,11 +9,14 @@ export const applyLoopCut = (
     meshId: string,
     hoverEdgeId: string,
     segments: number,
-    slideT: number
+    slideT: number,
+    precomputedSpans?: FaceSpan[] | null
 ) => {
     const N = Math.max(1, Math.floor(segments));
     updateMesh(meshId, (m: Mesh) => {
-        const spans = computeEdgeLoopFaceSpans(m, hoverEdgeId);
+        const spans = (precomputedSpans && precomputedSpans.length > 0)
+            ? precomputedSpans
+            : computeEdgeLoopFaceSpans(m, hoverEdgeId);
         if (spans.length === 0) return;
 
         const vmap = new Map(m.vertices.map((v) => [v.id, v] as const));

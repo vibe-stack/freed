@@ -40,27 +40,36 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
   const batched = useMemo(() => {
     const vertexMap = new Map(vertices.map(v => [v.id, v] as const));
     const count = edges.length;
-    const positions = new Float32Array(count * 2 * 3);
-    const colors = new Float32Array(count * 2 * 3);
-    const sel = new Set(selectedEdgeIds);
-    for (let i = 0; i < count; i++) {
-      const e = edges[i];
-      const v0 = vertexMap.get(e.vertexIds[0]);
-      const v1 = vertexMap.get(e.vertexIds[1]);
-      if (!v0 || !v1) continue;
-      const o = i * 6;
-      positions[o + 0] = v0.position.x; positions[o + 1] = v0.position.y; positions[o + 2] = v0.position.z;
-      positions[o + 3] = v1.position.x; positions[o + 4] = v1.position.y; positions[o + 5] = v1.position.z;
-      const c = sel.has(e.id) ? ORANGE : BLACK;
-      for (let j = 0; j < 2; j++) {
-        const k = o + j * 3;
-        colors[k + 0] = c.r; colors[k + 1] = c.g; colors[k + 2] = c.b;
-      }
-    }
     const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
-    geometry.computeBoundingSphere();
+    if (count === 0) {
+      // Avoid zero-sized GPU buffers with WebGPU. Provide a minimal placeholder and drawRange=0.
+      const positions = new Float32Array(6);
+      const colors = new Float32Array([0, 0, 0, 0, 0, 0]);
+      geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
+      geometry.setDrawRange(0, 0);
+    } else {
+      const positions = new Float32Array(count * 2 * 3);
+      const colors = new Float32Array(count * 2 * 3);
+      const sel = new Set(selectedEdgeIds);
+      for (let i = 0; i < count; i++) {
+        const e = edges[i];
+        const v0 = vertexMap.get(e.vertexIds[0]);
+        const v1 = vertexMap.get(e.vertexIds[1]);
+        if (!v0 || !v1) continue;
+        const o = i * 6;
+        positions[o + 0] = v0.position.x; positions[o + 1] = v0.position.y; positions[o + 2] = v0.position.z;
+        positions[o + 3] = v1.position.x; positions[o + 4] = v1.position.y; positions[o + 5] = v1.position.z;
+        const c = sel.has(e.id) ? ORANGE : BLACK;
+        for (let j = 0; j < 2; j++) {
+          const k = o + j * 3;
+          colors[k + 0] = c.r; colors[k + 1] = c.g; colors[k + 2] = c.b;
+        }
+      }
+      geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
+      geometry.computeBoundingSphere();
+    }
     return { geometry };
   }, [edges, vertices, selectedEdgeIds]);
 
@@ -71,7 +80,7 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
     }
   }, []);
 
-  const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
+  const handleClick = (event: ThreeEvent<PointerEvent>) => {
     if (selectionMode !== 'edge') return;
     event.stopPropagation();
     // Approximate picking by finding nearest segment to intersection point
@@ -103,7 +112,7 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
   return (
   <lineSegments
       ref={lineRef}
-      onPointerDown={handlePointerDown}
+      onClick={handleClick}
       // Important: disable raycasting when not in edge mode so it doesn't steal clicks
       raycast={selectionMode === 'edge' ? (LineSegments.prototype.raycast as unknown as any) : (() => {})}
     >

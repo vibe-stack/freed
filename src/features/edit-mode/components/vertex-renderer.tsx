@@ -43,6 +43,9 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
   const mesh = geometryStore.meshes.get(meshId);
   const selectedRef = useRef<InstancedMesh | null>(null);
   const unselectedRef = useRef<InstancedMesh | null>(null);
+  // Keep stable mapping from instance index -> vertex id for picking
+  const indexToUnselectedId = useRef<string[]>([]);
+  const indexToSelectedId = useRef<string[]>([]);
   const tmp = useMemo(() => new Object3D(), []);
   const boxGeo = useMemo(() => new BoxGeometry(0.5, 0.5, 0.5), []);
   const blackMat = useMemo(() => new MeshBasicMaterial({ color: BLACK, depthTest: false, depthWrite: false }), []);
@@ -55,6 +58,23 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
     const overrides = new Map(localVertices.map(v => [v.id, v] as const));
     return base.map(v => overrides.get(v.id) || v);
   }, [mesh?.vertices, localVertices]);
+
+  // Maintain instance index mapping arrays to resolve instanceId -> vertexId on click
+  useEffect(() => {
+    const unSelIds: string[] = [];
+    const selIds: string[] = [];
+    const selSet = new Set(selectedVertexIds);
+    for (const v of vertices) {
+      if (selSet.has(v.id)) selIds.push(v.id);
+      else unSelIds.push(v.id);
+    }
+    indexToUnselectedId.current = unSelIds;
+    indexToSelectedId.current = selIds;
+    // Ensure capacity equals total vertices (stays stable). This avoids GPU buffer reallocation thrash.
+    const cap = Math.max(1, vertices.length);
+    if (unselectedRef.current) unselectedRef.current.count = cap;
+    if (selectedRef.current) selectedRef.current.count = cap;
+  }, [vertices, selectedVertexIds]);
   
   const { selectedVerts, unselectedVerts } = useMemo(() => {
     const selSet = new Set(selectedVertexIds);
@@ -74,8 +94,16 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
   useFrame(() => {
     const update = (ref: InstancedMesh | null, arr: { position: Vector3 }[]) => {
       if (!ref) return;
-      const count = arr.length;
-      for (let i = 0; i < count; i++) {
+      const capacity = ref.count; // capacity fixed at mesh.vertices.length
+      // First, hide all instances by setting zero scale
+      for (let i = 0; i < capacity; i++) {
+        tmp.position.set(0, 0, 0);
+        tmp.scale.set(0, 0, 0);
+        tmp.updateMatrix();
+        ref.setMatrixAt(i, tmp.matrix);
+      }
+      // Then update active subset
+      for (let i = 0; i < arr.length; i++) {
         const v = arr[i];
         // local position inside the object's transform group
         tmp.position.copy(v.position);
@@ -99,7 +127,6 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
         tmp.updateMatrix();
         ref.setMatrixAt(i, tmp.matrix);
       }
-      ref.count = count;
       ref.instanceMatrix.needsUpdate = true;
     };
 
@@ -107,22 +134,22 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
     update(selectedRef.current, selectedVerts);
   });
 
-  const handleUnselectedPointerDown = (e: ThreeEvent<PointerEvent>) => {
+  const handleUnselectedClick = (e: ThreeEvent<PointerEvent>) => {
     if (selectionMode !== 'vertex') return;
     e.stopPropagation();
-    const idx: number = e.instanceId ?? -1;
-    if (idx < 0) return;
-    const v = unselectedVerts[idx];
-    if (v) onVertexClick(v.id, e);
+  const idx: number = e.instanceId ?? -1;
+  if (idx < 0) return;
+  const id = indexToUnselectedId.current[idx];
+  if (id) onVertexClick(id, e);
   };
 
-  const handleSelectedPointerDown = (e: ThreeEvent<PointerEvent>) => {
+  const handleSelectedClick = (e: ThreeEvent<PointerEvent>) => {
     if (selectionMode !== 'vertex') return;
     e.stopPropagation();
-    const idx: number = e.instanceId ?? -1;
-    if (idx < 0) return;
-    const v = selectedVerts[idx];
-    if (v) onVertexClick(v.id, e);
+  const idx: number = e.instanceId ?? -1;
+  if (idx < 0) return;
+  const id = indexToSelectedId.current[idx];
+  if (id) onVertexClick(id, e);
   };
 
   return (
@@ -130,11 +157,11 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
       {/* Unselected vertices */}
       <instancedMesh
         ref={unselectedRef}
-  // Use total vertices count as capacity so instanceId stays stable across selections
-  args={[boxGeo, blackMat, Math.max(1, (mesh?.vertices.length ?? unselectedVerts.length))]}
-        onPointerDown={handleUnselectedPointerDown}
-  // Only raycast in vertex mode; otherwise don't steal clicks
-  raycast={selectionMode === 'vertex' ? (InstancedMesh.prototype.raycast as unknown as any) : (() => {})}
+    // Capacity equals total vertex count to keep instanceId stable
+    args={[boxGeo, blackMat, Math.max(1, (mesh?.vertices.length ?? 1))]}
+  onClick={handleUnselectedClick}
+    // Only raycast in vertex mode; otherwise don't steal clicks
+    raycast={selectionMode === 'vertex' ? (InstancedMesh.prototype.raycast as unknown as any) : (() => {})}
         renderOrder={3000}
       >
         {/* geometry and material provided via args */}
@@ -143,9 +170,9 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
       {/* Selected vertices */}
       <instancedMesh
         ref={selectedRef}
-  args={[boxGeo, orangeMat, Math.max(1, (mesh?.vertices.length ?? selectedVerts.length))]}
-        onPointerDown={handleSelectedPointerDown}
-  raycast={selectionMode === 'vertex' ? (InstancedMesh.prototype.raycast as unknown as any) : (() => {})}
+    args={[boxGeo, orangeMat, Math.max(1, (mesh?.vertices.length ?? 1))]}
+  onClick={handleSelectedClick}
+    raycast={selectionMode === 'vertex' ? (InstancedMesh.prototype.raycast as unknown as any) : (() => {})}
         renderOrder={3001}
       >
         {/* geometry and material provided via args */}

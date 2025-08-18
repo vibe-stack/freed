@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BufferGeometry, Float32BufferAttribute, Mesh as ThreeMesh, Raycaster, Vector2 as ThreeVector2, Vector3 } from 'three';
+import { BufferGeometry, Float32BufferAttribute, Mesh as ThreeMesh, Raycaster, Vector2 as ThreeVector2, Vector3, Matrix4, Euler, Quaternion } from 'three';
 import { useThree } from '@react-three/fiber';
 import { useToolStore } from '@/stores/tool-store';
 import { useGeometryStore } from '@/stores/geometry-store';
@@ -32,33 +32,22 @@ export function useLoopcut(mesh: Mesh | null, meshId: string | null, objTransfor
     const lastMouseRef = useRef<{ x: number; y: number } | null>(null);
     const slideAxisRef = useRef<{ x: number; y: number } | null>(null); // screen-space axis for sliding
 
-    // Helper: apply object transform (local -> world)
+    // Helper: apply object transform (local -> world) using proper matrix composition
     const toWorld = useMemo(() => {
-        const sx = objTransform.scale.x || 1e-6;
-        const sy = objTransform.scale.y || 1e-6;
-        const sz = objTransform.scale.z || 1e-6;
-        const rx = objTransform.rotation.x, ry = objTransform.rotation.y, rz = objTransform.rotation.z;
-        return (p: Vector3) => {
-            const s = new Vector3(p.x * sx, p.y * sy, p.z * sz);
-            // Z
-            let x = s.x * Math.cos(rz) - s.y * Math.sin(rz);
-            let y = s.x * Math.sin(rz) + s.y * Math.cos(rz);
-            let z = s.z;
-            // Y
-            const x2 = x * Math.cos(ry) + z * Math.sin(ry);
-            const z2 = -x * Math.sin(ry) + z * Math.cos(ry);
-            x = x2; z = z2;
-            // X
-            const y2 = y * Math.cos(rx) - z * Math.sin(rx);
-            const z3 = y * Math.sin(rx) + z * Math.cos(rx);
-            y = y2; z = z3;
-            return new Vector3(
-                x + objTransform.position.x,
-                y + objTransform.position.y,
-                z + objTransform.position.z,
-            );
-        };
-    }, [objTransform]);
+        const m = new Matrix4();
+        const euler = new Euler(objTransform.rotation.x, objTransform.rotation.y, objTransform.rotation.z, 'XYZ');
+        const q = new Quaternion().setFromEuler(euler);
+        m.compose(
+            new Vector3(objTransform.position.x, objTransform.position.y, objTransform.position.z),
+            q,
+            new Vector3(
+                Math.max(1e-6, objTransform.scale.x),
+                Math.max(1e-6, objTransform.scale.y),
+                Math.max(1e-6, objTransform.scale.z)
+            )
+        );
+        return (p: Vector3) => p.clone().applyMatrix4(m);
+    }, [objTransform.position.x, objTransform.position.y, objTransform.position.z, objTransform.rotation.x, objTransform.rotation.y, objTransform.rotation.z, objTransform.scale.x, objTransform.scale.y, objTransform.scale.z]);
 
     useEffect(() => {
         if (!toolStore.isActive || toolStore.tool !== 'loopcut') {
@@ -240,8 +229,13 @@ export function useLoopcut(mesh: Mesh | null, meshId: string | null, objTransfor
 
         const onMouseDown = (e: MouseEvent) => {
             if (e.button !== 0) return;
+            // Prevent other handlers from reacting to this click while loopcut is active
+            try { e.preventDefault(); } catch {}
+            try { e.stopPropagation(); } catch {}
+            try { (e as any).stopImmediatePropagation?.(); } catch {}
             if (phase === 'choose') {
                 // Lock current loop and enter slide
+                console.log("choose phase", mesh, hoverEdgeId)
                 if (!mesh || !hoverEdgeId) return;
                 const spans = computeEdgeLoopFaceSpans(mesh, hoverEdgeId);
                 setLockedEdgeId(hoverEdgeId);
@@ -290,14 +284,24 @@ export function useLoopcut(mesh: Mesh | null, meshId: string | null, objTransfor
                     slideAxisRef.current = { x: 1, y: 0 };
                 }
             } else {
-                if (!mesh || !meshId || !lockedEdgeId) { toolStore.endOperation(false); return; }
-                // Commit using locked loop
-                applyLoopCut(geometryStore.updateMesh, geometryStore.recalculateNormals, meshId, lockedEdgeId, segments, slideT);
+                console.log("application phase", mesh, meshId, lockedEdgeId)
+                // If we don't yet have a locked edge, ignore this click instead of canceling the tool.
+                if (!mesh || !meshId || !lockedEdgeId) { return; }
+                // Commit using locked loop; pass spans for stability across external mutations
+                applyLoopCut(
+                    geometryStore.updateMesh,
+                    geometryStore.recalculateNormals,
+                    meshId,
+                    lockedEdgeId,
+                    segments,
+                    slideT,
+                    lockedSpans
+                );
                 toolStore.endOperation(true);
             }
         };
 
-        const onMouseMove = (e: MouseEvent) => {
+    const onMouseMove = (e: MouseEvent) => {
             lastMouseRef.current = { x: e.clientX, y: e.clientY };
             if (phase === 'slide') {
                 setSlideT((t) => {
@@ -322,19 +326,61 @@ export function useLoopcut(mesh: Mesh | null, meshId: string | null, objTransfor
             }
         };
 
-        const onKeyDown = (e: KeyboardEvent) => {
-            if (e.key.toLowerCase() === 'escape') toolStore.endOperation(false);
+        const onPointerDown = (e: PointerEvent) => {
+            if (e.button !== 0) return;
+            try { e.preventDefault(); } catch {}
+            try { e.stopPropagation(); } catch {}
+            try { (e as any).stopImmediatePropagation?.(); } catch {}
+            // Delegate to mouse handler logic to keep behavior identical
+            onMouseDown(e as unknown as MouseEvent);
         };
 
-        document.addEventListener('mousemove', onMouseMove, { passive: true });
-        document.addEventListener('wheel', onWheel, { passive: false, capture: true });
-        document.addEventListener('mousedown', onMouseDown);
+        const onKeyDown = (e: KeyboardEvent) => {
+            const key = e.key.toLowerCase();
+            if (key === 'escape') toolStore.endOperation(false);
+            if (key === 'enter') {
+                // Allow keyboard commit as a fallback when mouse clicks are intercepted
+                if (!mesh || !meshId) return;
+                if (phase === 'slide' && lockedEdgeId) {
+                    applyLoopCut(
+                        geometryStore.updateMesh,
+                        geometryStore.recalculateNormals,
+                        meshId,
+                        lockedEdgeId,
+                        segments,
+                        slideT,
+                        lockedSpans
+                    );
+                    toolStore.endOperation(true);
+                } else if (phase === 'choose' && hoverEdgeId) {
+                    const spans = computeEdgeLoopFaceSpans(mesh, hoverEdgeId);
+                    applyLoopCut(
+                        geometryStore.updateMesh,
+                        geometryStore.recalculateNormals,
+                        meshId,
+                        hoverEdgeId,
+                        segments,
+                        0.5,
+                        spans
+                    );
+                    toolStore.endOperation(true);
+                }
+            }
+        };
+
+    document.addEventListener('mousemove', onMouseMove, { passive: true });
+    document.addEventListener('wheel', onWheel, { passive: false, capture: true });
+    // Use capture so other handlers that stopPropagation() (e.g., after object transforms)
+    // don't swallow the click needed to lock/commit the loop cut.
+    document.addEventListener('pointerdown', onPointerDown, { capture: true });
+    document.addEventListener('mousedown', onMouseDown, { capture: true });
         document.addEventListener('keydown', onKeyDown);
 
         return () => {
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('wheel', onWheel, { capture: true } as AddEventListenerOptions);
-            document.removeEventListener('mousedown', onMouseDown);
+            document.removeEventListener('pointerdown', onPointerDown, { capture: true } as AddEventListenerOptions);
+            document.removeEventListener('mousedown', onMouseDown, { capture: true } as AddEventListenerOptions);
             document.removeEventListener('keydown', onKeyDown);
         };
     }, [toolStore, toolStore.isActive, toolStore.tool, mesh, meshId, camera, gl.domElement, segments, objTransform, phase, slideT, toWorld, hoverEdgeId, lockedEdgeId, lockedSpans, geometryStore.updateMesh, geometryStore.recalculateNormals]);

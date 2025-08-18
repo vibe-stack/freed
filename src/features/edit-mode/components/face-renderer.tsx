@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useRef } from 'react';
-import { Color, Vector3, BufferGeometry, Float32BufferAttribute, Mesh } from 'three';
+import { Color, Vector3, BufferGeometry, Float32BufferAttribute, Mesh, DoubleSide } from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import { useGeometryStore } from '../../../stores/geometry-store';
 import { Vertex } from '../../../types/geometry';
@@ -85,7 +85,7 @@ export const FaceRenderer: React.FC<FaceRendererProps> = ({
       geoUn.setAttribute('normal', new Float32BufferAttribute(new Float32Array(normUn), 3));
       geoUn.computeBoundingSphere();
     }
-    return { geoSel, geoUn, triToFaceSel, triToFaceUn };
+  return { geoSel, geoUn, triToFaceSel, triToFaceUn, hasSel: posSel.length > 0, hasUn: posUn.length > 0 };
   }, [faces, vertices, selectedFaceIds]);
 
   // no-op: picking handled on batched meshes
@@ -93,44 +93,45 @@ export const FaceRenderer: React.FC<FaceRendererProps> = ({
   return (
     <>
       {/* Unselected faces */}
-  <mesh
-        ref={meshUnRef}
-        renderOrder={999}
-        // Disable raycast when not in face mode so vertices/edges receive events
-        raycast={selectionMode === 'face' ? (Mesh.prototype.raycast as unknown as any) : (() => {})}
-        onPointerDown={(e: ThreeEvent<PointerEvent>) => {
-        if (selectionMode !== 'face') return;
-        e.stopPropagation();
-        const triIdx: number = e.faceIndex ?? -1; // faceIndex is the triangle index
-        if (triIdx < 0) return;
-        const fid = batched.triToFaceUn[triIdx] as string | undefined;
-        if (fid) onFaceClick(fid, e);
-      }}>
-        <bufferGeometry>
-      <bufferAttribute attach="attributes-position" args={[(batched.geoUn.getAttribute('position')?.array as Float32Array) || new Float32Array(0), 3]} />
-      <bufferAttribute attach="attributes-normal" args={[(batched.geoUn.getAttribute('normal')?.array as Float32Array) || new Float32Array(0), 3]} />
-        </bufferGeometry>
-        <meshBasicMaterial color={GREY} side={2} transparent opacity={0.5} depthWrite={false} />
-      </mesh>
-  {/* Selected faces */}
-  <mesh
-    ref={meshSelRef}
-    renderOrder={1000}
-    raycast={selectionMode === 'face' ? (Mesh.prototype.raycast as unknown as any) : (() => {})}
-    onPointerDown={(e: ThreeEvent<PointerEvent>) => {
-        if (selectionMode !== 'face') return;
-        e.stopPropagation();
-        const triIdx: number = e.faceIndex ?? -1;
-        if (triIdx < 0) return;
-        const fid = batched.triToFaceSel[triIdx] as string | undefined;
-        if (fid) onFaceClick(fid, e);
-      }}>
-        <bufferGeometry>
-      <bufferAttribute attach="attributes-position" args={[(batched.geoSel.getAttribute('position')?.array as Float32Array) || new Float32Array(0), 3]} />
-      <bufferAttribute attach="attributes-normal" args={[(batched.geoSel.getAttribute('normal')?.array as Float32Array) || new Float32Array(0), 3]} />
-        </bufferGeometry>
-        <meshBasicMaterial color={ORANGE} side={2} transparent opacity={0.5} depthWrite={false} />
-      </mesh>
+      {batched.hasUn && (
+        <mesh
+          ref={meshUnRef}
+          renderOrder={999}
+          // Disable raycast when not in face mode so vertices/edges receive events
+          raycast={selectionMode === 'face' ? (Mesh.prototype.raycast as unknown as any) : (() => {})}
+          onClick={(e: ThreeEvent<PointerEvent>) => {
+            if (selectionMode !== 'face') return;
+            e.stopPropagation();
+            const triIdx: number = e.faceIndex ?? -1; // faceIndex is the triangle index
+            if (triIdx < 0) return;
+            const fid = batched.triToFaceUn[triIdx] as string | undefined;
+            if (fid) onFaceClick(fid, e);
+          }}
+        >
+          {/* Use built BufferGeometry to avoid zero-sized GPU buffers issues on WebGPU */}
+          <primitive attach="geometry" object={batched.geoUn} />
+          <meshBasicMaterial color={GREY} side={DoubleSide} transparent opacity={0.5} depthWrite={false} />
+        </mesh>
+      )}
+      {/* Selected faces */}
+      {batched.hasSel && (
+        <mesh
+          ref={meshSelRef}
+          renderOrder={1000}
+          raycast={selectionMode === 'face' ? (Mesh.prototype.raycast as unknown as any) : (() => {})}
+          onClick={(e: ThreeEvent<PointerEvent>) => {
+            if (selectionMode !== 'face') return;
+            e.stopPropagation();
+            const triIdx: number = e.faceIndex ?? -1;
+            if (triIdx < 0) return;
+            const fid = batched.triToFaceSel[triIdx] as string | undefined;
+            if (fid) onFaceClick(fid, e);
+          }}
+        >
+          <primitive attach="geometry" object={batched.geoSel} />
+          <meshBasicMaterial color={ORANGE} side={DoubleSide} transparent opacity={0.5} depthWrite={false} />
+        </mesh>
+      )}
     </>
   );
 };

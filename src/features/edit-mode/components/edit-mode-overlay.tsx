@@ -137,23 +137,24 @@ const EditModeOverlay: React.FC = () => {
 				rotation={[objTransform.rotation.x, objTransform.rotation.y, objTransform.rotation.z]}
 				scale={[objTransform.scale.x, objTransform.scale.y, objTransform.scale.z]}
 			>
-				{toolStore.isActive && toolStore.tool === 'loopcut' && (
-					<group>
-						{loopcutLines.map((ln, idx) => {
-							const positions = new Float32Array([
-								ln.a.x, ln.a.y, ln.a.z,
-								ln.b.x, ln.b.y, ln.b.z,
-							]);
-							return (
-								<line key={idx}>
-									<bufferGeometry>
-										<bufferAttribute attach="attributes-position" args={[positions, 3]} />
-									</bufferGeometry>
-									<lineBasicMaterial color={new Color(1, 1, 0)} depthTest={false} depthWrite={false} transparent opacity={0.9} />
-								</line>
-							);
-						})}
-					</group>
+				{toolStore.isActive && toolStore.tool === 'loopcut' && loopcutLines.length > 0 && (
+					<lineSegments>
+						<bufferGeometry>
+							<bufferAttribute
+								attach="attributes-position"
+								args={[
+									new Float32Array(
+										loopcutLines.flatMap((ln) => [
+											ln.a.x, ln.a.y, ln.a.z,
+											ln.b.x, ln.b.y, ln.b.z,
+										])
+									),
+									3,
+								]}
+							/>
+						</bufferGeometry>
+						<lineBasicMaterial color={new Color(1, 1, 0)} depthTest={false} depthWrite={false} transparent opacity={0.9} />
+					</lineSegments>
 				)}
 				{selection.selectionMode === 'vertex' && (
 					<VertexRenderer
