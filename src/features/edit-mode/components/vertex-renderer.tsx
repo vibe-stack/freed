@@ -130,8 +130,11 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
       {/* Unselected vertices */}
       <instancedMesh
         ref={unselectedRef}
-        args={[boxGeo, blackMat, Math.max(1, unselectedVerts.length)]}
+  // Use total vertices count as capacity so instanceId stays stable across selections
+  args={[boxGeo, blackMat, Math.max(1, (mesh?.vertices.length ?? unselectedVerts.length))]}
         onPointerDown={handleUnselectedPointerDown}
+  // Only raycast in vertex mode; otherwise don't steal clicks
+  raycast={selectionMode === 'vertex' ? (InstancedMesh.prototype.raycast as unknown as any) : (() => {})}
         renderOrder={3000}
       >
         {/* geometry and material provided via args */}
@@ -140,8 +143,9 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
       {/* Selected vertices */}
       <instancedMesh
         ref={selectedRef}
-        args={[boxGeo, orangeMat, Math.max(1, selectedVerts.length)]}
+  args={[boxGeo, orangeMat, Math.max(1, (mesh?.vertices.length ?? selectedVerts.length))]}
         onPointerDown={handleSelectedPointerDown}
+  raycast={selectionMode === 'vertex' ? (InstancedMesh.prototype.raycast as unknown as any) : (() => {})}
         renderOrder={3001}
       >
         {/* geometry and material provided via args */}

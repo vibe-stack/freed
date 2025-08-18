@@ -101,7 +101,12 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
   };
 
   return (
-  <lineSegments ref={lineRef} onPointerDown={handlePointerDown}>
+  <lineSegments
+      ref={lineRef}
+      onPointerDown={handlePointerDown}
+      // Important: disable raycasting when not in edge mode so it doesn't steal clicks
+      raycast={selectionMode === 'edge' ? (LineSegments.prototype.raycast as unknown as any) : (() => {})}
+    >
       <bufferGeometry attach="geometry">
         <bufferAttribute attach="attributes-position" args={[batched.geometry.getAttribute('position')!.array as Float32Array, 3]} />
         <bufferAttribute attach="attributes-color" args={[batched.geometry.getAttribute('color')!.array as Float32Array, 3]} />

@@ -93,7 +93,12 @@ export const FaceRenderer: React.FC<FaceRendererProps> = ({
   return (
     <>
       {/* Unselected faces */}
-  <mesh ref={meshUnRef} renderOrder={999} onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+  <mesh
+        ref={meshUnRef}
+        renderOrder={999}
+        // Disable raycast when not in face mode so vertices/edges receive events
+        raycast={selectionMode === 'face' ? (Mesh.prototype.raycast as unknown as any) : (() => {})}
+        onPointerDown={(e: ThreeEvent<PointerEvent>) => {
         if (selectionMode !== 'face') return;
         e.stopPropagation();
         const triIdx: number = e.faceIndex ?? -1; // faceIndex is the triangle index
@@ -107,8 +112,12 @@ export const FaceRenderer: React.FC<FaceRendererProps> = ({
         </bufferGeometry>
         <meshBasicMaterial color={GREY} side={2} transparent opacity={0.5} depthWrite={false} />
       </mesh>
-      {/* Selected faces */}
-  <mesh ref={meshSelRef} renderOrder={1000} onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+  {/* Selected faces */}
+  <mesh
+    ref={meshSelRef}
+    renderOrder={1000}
+    raycast={selectionMode === 'face' ? (Mesh.prototype.raycast as unknown as any) : (() => {})}
+    onPointerDown={(e: ThreeEvent<PointerEvent>) => {
         if (selectionMode !== 'face') return;
         e.stopPropagation();
         const triIdx: number = e.faceIndex ?? -1;
