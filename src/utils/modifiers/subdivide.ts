@@ -1,126 +1,9 @@
 import { nanoid } from 'nanoid';
 import type { Mesh, Vertex, Face, Vector3 } from '@/types/geometry';
 import { buildEdgesFromFaces, calculateVertexNormals, convertQuadToTriangles } from '@/utils/geometry';
+import type { SubdivideModifierSettings } from './types';
 
-export type ModifierType = 'mirror' | 'subdivide';
-
-export type MirrorAxis = 'x' | 'y' | 'z';
-
-export interface MirrorModifierSettings {
-  axis: MirrorAxis;
-  merge?: boolean;
-  mergeThreshold?: number; // world units
-}
-
-export interface SubdivideModifierSettings {
-  level: number; // 1..3 typical
-  smooth?: boolean; // apply Laplacian smoothing after subdivision
-  smoothIterations?: number; // 0..5
-  smoothStrength?: number; // 0..1 (lambda)
-}
-
-export type ModifierSettings =
-  | { type: 'mirror'; value: MirrorModifierSettings }
-  | { type: 'subdivide'; value: SubdivideModifierSettings };
-
-export interface ModifierStackItem {
-  id: string;
-  type: ModifierType;
-  enabled: boolean;
-  // settings stored as simple object per type
-  settings: any;
-}
-
-export const createDefaultSettings = (type: ModifierType): any => {
-  switch (type) {
-    case 'mirror':
-      return { axis: 'x', merge: true, mergeThreshold: 0.0001 } as MirrorModifierSettings;
-    case 'subdivide':
-  return { level: 1, smooth: true, smoothIterations: 1, smoothStrength: 0.2 } as SubdivideModifierSettings;
-    default:
-      return {};
-  }
-};
-
-export function applyModifiersToMesh(base: Mesh, stack: ModifierStackItem[]): Mesh {
-  // Start from a shallow copy of base but with cloned topology arrays
-  let cur: Mesh = {
-    ...base,
-    vertices: base.vertices.map(v => ({ ...v, position: { ...v.position }, normal: { ...v.normal }, uv: { ...v.uv } })),
-    faces: base.faces.map(f => ({ ...f, vertexIds: [...f.vertexIds] })),
-    edges: base.edges.slice(),
-  };
-
-  for (const item of stack) {
-    if (!item.enabled) continue;
-    switch (item.type) {
-      case 'mirror':
-        cur = mirrorModifier(cur, item.settings as MirrorModifierSettings);
-        break;
-      case 'subdivide':
-        cur = subdivideModifier(cur, item.settings as SubdivideModifierSettings);
-        break;
-      default:
-        break;
-    }
-  }
-
-  // Rebuild edges and normals once at end for stability
-  const edges = buildEdgesFromFaces(cur.vertices, cur.faces);
-  const vertices = calculateVertexNormals({ ...cur, edges } as Mesh);
-  return { ...cur, edges, vertices };
-}
-
-function mirrorModifier(mesh: Mesh, settings: MirrorModifierSettings): Mesh {
-  const axis = settings.axis ?? 'x';
-  const merge = settings.merge ?? true;
-  const threshold = settings.mergeThreshold ?? 0.0001;
-
-  const originalVertices = mesh.vertices;
-  const mirroredMap = new Map<string, string>(); // original id -> mirrored id
-  const vertices: Vertex[] = mesh.vertices.map(v => ({ ...v, position: { ...v.position }, normal: { ...v.normal }, uv: { ...v.uv } }));
-
-  const mirrorCoord = (p: Vector3): Vector3 => {
-    if (axis === 'x') return { x: -p.x, y: p.y, z: p.z };
-    if (axis === 'y') return { x: p.x, y: -p.y, z: p.z };
-    return { x: p.x, y: p.y, z: -p.z };
-  };
-
-  const coordValue = (p: Vector3) => (axis === 'x' ? p.x : axis === 'y' ? p.y : p.z);
-
-  for (const v of originalVertices) {
-    const p = v.position;
-    // Optionally snap to plane
-    const snapped: Vector3 = { ...p };
-    if (merge && Math.abs(coordValue(snapped)) <= threshold) {
-      if (axis === 'x') snapped.x = 0; else if (axis === 'y') snapped.y = 0; else snapped.z = 0;
-    }
-    // mirrored clone
-    const mv: Vertex = {
-      ...v,
-      id: nanoid(),
-      position: mirrorCoord(snapped),
-      // normals will be recomputed later; copy now
-      normal: { ...v.normal },
-      uv: { ...v.uv },
-      selected: false,
-    };
-    vertices.push(mv);
-    mirroredMap.set(v.id, mv.id);
-  }
-
-  const faces: Face[] = mesh.faces.map(f => ({ ...f, vertexIds: [...f.vertexIds] }));
-  // mirrored faces with reversed winding
-  for (const f of mesh.faces) {
-    const mirroredIds = f.vertexIds.map((id) => mirroredMap.get(id)!)
-      .reverse();
-    faces.push({ ...f, id: nanoid(), vertexIds: mirroredIds, selected: false });
-  }
-
-  return { ...mesh, vertices, faces };
-}
-
-function subdivideModifier(mesh: Mesh, settings: SubdivideModifierSettings): Mesh {
+export function subdivideModifier(mesh: Mesh, settings: SubdivideModifierSettings): Mesh {
   const level = Math.min(Math.max(Math.floor(settings.level ?? 1), 1), 3);
   let cur: Mesh = mesh;
   for (let i = 0; i < level; i++) {
@@ -136,7 +19,7 @@ function subdivideModifier(mesh: Mesh, settings: SubdivideModifierSettings): Mes
   return cur;
 }
 
-function subdivideOnce(mesh: Mesh): Mesh {
+export function subdivideOnce(mesh: Mesh): Mesh {
   // Triangulate all faces first (supports quads)
   const triangles: { verts: string[] }[] = [];
   for (const f of mesh.faces) {
@@ -188,7 +71,7 @@ function subdivideOnce(mesh: Mesh): Mesh {
   return { ...mesh, vertices: newVertices, faces: newFaces };
 }
 
-function laplacianSmooth(mesh: Mesh, iterations: number, lambda: number): Mesh {
+export function laplacianSmooth(mesh: Mesh, iterations: number, lambda: number): Mesh {
   // Build neighbor map (vertex id -> set of neighbor vertex ids)
   const neighbors = new Map<string, Set<string>>();
   const ensure = (id: string) => { if (!neighbors.has(id)) neighbors.set(id, new Set()); return neighbors.get(id)!; };

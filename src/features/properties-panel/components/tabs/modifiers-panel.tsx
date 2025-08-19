@@ -4,7 +4,18 @@ import React from 'react';
 import { useSelectedObject } from '@/stores/scene-store';
 import { useModifiersStore, useObjectModifiers } from '@/stores/modifier-store';
 import { Eye, EyeOff, GripVertical, Trash2, Plus, ChevronUp, ChevronDown, Wand2 } from 'lucide-react';
-import { DragInput } from '@/components/drag-input';
+import { ArraySettings } from '@/features/properties-panel/components/tabs/modifiers/array-settings';
+import { WeldSettings } from '@/features/properties-panel/components/tabs/modifiers/weld-settings';
+import { TriangulateSettings } from '@/features/properties-panel/components/tabs/modifiers/triangulate-settings';
+import { EdgeSplitSettings } from '@/features/properties-panel/components/tabs/modifiers/edge-split-settings';
+import { DecimateSettings } from '@/features/properties-panel/components/tabs/modifiers/decimate-settings';
+import { SolidifySettings } from '@/features/properties-panel/components/tabs/modifiers/solidify-settings';
+import { ScrewSettings } from '@/features/properties-panel/components/tabs/modifiers/screw-settings';
+import { BevelSettings } from '@/features/properties-panel/components/tabs/modifiers/bevel-settings';
+import { RemeshSettings } from '@/features/properties-panel/components/tabs/modifiers/remesh-settings';
+import { MirrorSettings } from '@/features/properties-panel/components/tabs/modifiers/mirror-settings';
+import { SubdivideSettings } from '@/features/properties-panel/components/tabs/modifiers/subdivide-settings';
+import { VolumeToMeshSettings } from '@/features/properties-panel/components/tabs/modifiers/volume-to-mesh-settings';
 
 const PanelSection: React.FC<{ title: string } & React.HTMLAttributes<HTMLDivElement>> = ({ title, children, className = '', ...rest }) => (
   <div className={`p-2 bg-white/5 border border-white/10 rounded ${className}`} {...rest}>
@@ -26,7 +37,7 @@ export const ModifiersPanel: React.FC = () => {
     return <div className="p-3 text-xs text-gray-500">Select a mesh object to add modifiers.</div>;
   }
 
-  const add = (type: 'mirror' | 'subdivide') => actions.addModifier(selected.id, type);
+  const add = (type: Parameters<typeof actions.addModifier>[1]) => actions.addModifier(selected.id, type);
 
   return (
     <div className="p-3 space-y-3 text-gray-200 text-sm">
@@ -35,11 +46,11 @@ export const ModifiersPanel: React.FC = () => {
           {mods.length === 0 && (
             <div className="text-xs text-gray-500">No modifiers. Add one below.</div>
           )}
-          {mods.map((m, i) => (
+      {mods.map((m, i) => (
             <div key={m.id} className="flex items-center gap-2 bg-black/20 rounded px-2 py-1 border border-white/10">
               <GripVertical className="h-4 w-4 text-gray-500" />
               <div className="flex-1 truncate">
-                <div className="text-xs font-medium">{m.type === 'mirror' ? 'Mirror' : 'Subdivide'}</div>
+        <div className="text-xs font-medium">{labelForType(m.type)}</div>
               </div>
               <SmallButton onClick={() => actions.moveModifier(selected.id, i, Math.max(0, i - 1))} title="Move up" aria-label="Move up"><ChevronUp className="h-4 w-4" /></SmallButton>
               <SmallButton onClick={() => actions.moveModifier(selected.id, i, Math.min(mods.length - 1, i + 1))} title="Move down" aria-label="Move down"><ChevronDown className="h-4 w-4" /></SmallButton>
@@ -54,114 +65,58 @@ export const ModifiersPanel: React.FC = () => {
       </PanelSection>
 
       {mods.map((m) => (
-        <PanelSection key={`settings-${m.id}`} title={`${m.type === 'mirror' ? 'Mirror' : 'Subdivide'} Settings`}>
+        <PanelSection key={`settings-${m.id}`} title={`${labelForType(m.type)} Settings`}>
           <div className="flex flex-col gap-2">
-            {m.type === 'mirror' ? (
-              <MirrorSettings objectId={selected.id} id={m.id} />
-            ) : (
-              <SubdivideSettings objectId={selected.id} id={m.id} />
-            )}
+            {m.type === 'mirror' && <MirrorSettings objectId={selected.id} id={m.id} />}
+            {m.type === 'subdivide' && <SubdivideSettings objectId={selected.id} id={m.id} />} 
+            {m.type === 'array' && <ArraySettings objectId={selected.id} id={m.id} />}
+            {m.type === 'weld' && <WeldSettings objectId={selected.id} id={m.id} />}
+            {m.type === 'triangulate' && <TriangulateSettings objectId={selected.id} id={m.id} />}
+            {m.type === 'edge-split' && <EdgeSplitSettings objectId={selected.id} id={m.id} />}
+            {m.type === 'decimate' && <DecimateSettings objectId={selected.id} id={m.id} />}
+            {m.type === 'solidify' && <SolidifySettings objectId={selected.id} id={m.id} />}
+            {m.type === 'screw' && <ScrewSettings objectId={selected.id} id={m.id} />}
+            {m.type === 'bevel' && <BevelSettings objectId={selected.id} id={m.id} />}
+            {m.type === 'remesh' && <RemeshSettings objectId={selected.id} id={m.id} />}
+            {m.type === 'volume-to-mesh' && <VolumeToMeshSettings objectId={selected.id} id={m.id} />}
           </div>
         </PanelSection>
       ))}
 
       <PanelSection title="Add Modifier">
-        <div className="flex gap-2">
-          <button className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-gray-100 text-xs" onClick={() => add('mirror')}><Plus className="inline h-3 w-3 mr-1" />Mirror</button>
-          <button className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-gray-100 text-xs" onClick={() => add('subdivide')}><Plus className="inline h-3 w-3 mr-1" />Subdivide</button>
+        <div className="grid grid-cols-2 gap-2">
+      {(
+            [
+        'mirror','subdivide','array','weld','triangulate','edge-split','decimate','solidify','screw','bevel','remesh','volume-to-mesh'
+            ] as const
+          ).map((t) => (
+            <button key={t} className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-gray-100 text-xs" onClick={() => add(t)}>
+              <Plus className="inline h-3 w-3 mr-1" />{labelForType(t)}
+            </button>
+          ))}
         </div>
       </PanelSection>
     </div>
   );
 };
 
-const MirrorSettings: React.FC<{ objectId: string; id: string }> = ({ objectId, id }) => {
-  const actions = useModifiersStore();
-  const mods = useObjectModifiers(objectId);
-  const mod = mods.find((m) => m.id === id);
-  if (!mod) return null;
-  const s = mod.settings as { axis: 'x'|'y'|'z'; merge?: boolean; mergeThreshold?: number };
-
-  return (
-    <div className="flex flex-col gap-2 text-xs">
-      <div className="flex items-center justify-between">
-        <label className="text-gray-400">Axis</label>
-        <select
-          className="bg-black/40 border border-white/10 rounded px-2 py-1 text-gray-200"
-          value={s.axis}
-          onChange={(e) => actions.updateModifierSettings(objectId, id, (st) => { st.axis = e.target.value; })}
-        >
-          <option value="x">X</option>
-          <option value="y">Y</option>
-          <option value="z">Z</option>
-        </select>
-      </div>
-      <div className="flex items-center justify-between">
-        <label className="text-gray-400">Merge</label>
-        <input type="checkbox" checked={!!s.merge} onChange={(e) => actions.updateModifierSettings(objectId, id, (st) => { st.merge = e.target.checked; })} />
-      </div>
-      <div className="flex items-center justify-between">
-        <label className="text-gray-400">Threshold</label>
-        <DragInput
-          compact
-          value={s.mergeThreshold ?? 0.0001}
-          precision={4}
-          step={0.0001}
-          onChange={(v) => actions.updateModifierSettings(objectId, id, (st) => { st.mergeThreshold = v; })}
-        />
-      </div>
-    </div>
-  );
-};
-
-const SubdivideSettings: React.FC<{ objectId: string; id: string }> = ({ objectId, id }) => {
-  const actions = useModifiersStore();
-  const mods = useObjectModifiers(objectId);
-  const mod = mods.find((m) => m.id === id);
-  if (!mod) return null;
-  const s = mod.settings as { level: number; smooth?: boolean; smoothIterations?: number; smoothStrength?: number };
-  return (
-    <div className="flex flex-col gap-2 text-xs">
-      <div className="flex items-center justify-between">
-        <label className="text-gray-400">Level</label>
-        <DragInput
-          compact
-          min={1}
-          max={3}
-          step={1}
-          value={Math.max(1, Math.min(3, Math.round(s.level ?? 1)))}
-          onChange={(v) => actions.updateModifierSettings(objectId, id, (st) => { st.level = Math.max(1, Math.min(3, Math.round(v))); })}
-        />
-      </div>
-      <div className="flex items-center justify-between">
-        <label className="text-gray-400">Smooth</label>
-        <input type="checkbox" checked={!!s.smooth} onChange={(e) => actions.updateModifierSettings(objectId, id, (st) => { st.smooth = e.target.checked; })} />
-      </div>
-      <div className="flex items-center justify-between">
-        <label className="text-gray-400">Smooth Iterations</label>
-        <DragInput
-          compact
-          min={0}
-          max={5}
-          step={1}
-          value={Math.max(0, Math.min(5, Math.round(s.smoothIterations ?? 1)))}
-          onChange={(v) => actions.updateModifierSettings(objectId, id, (st) => { st.smoothIterations = Math.max(0, Math.min(5, Math.round(v))); })}
-        />
-      </div>
-      <div className="flex items-center justify-between">
-        <label className="text-gray-400">Smooth Strength</label>
-        <DragInput
-          compact
-          min={0}
-          max={1}
-          step={0.01}
-          precision={2}
-          value={Math.max(0, Math.min(1, s.smoothStrength ?? 0.2))}
-          onChange={(v) => actions.updateModifierSettings(objectId, id, (st) => { st.smoothStrength = Math.max(0, Math.min(1, v)); })}
-        />
-      </div>
-    </div>
-  );
-};
 
 export default ModifiersPanel;
+
+function labelForType(type: string) {
+  switch (type) {
+    case 'mirror': return 'Mirror';
+    case 'subdivide': return 'Subdivide';
+    case 'array': return 'Array';
+    case 'weld': return 'Weld';
+    case 'triangulate': return 'Triangulate';
+    case 'edge-split': return 'Edge Split';
+    case 'decimate': return 'Decimate';
+    case 'solidify': return 'Solidify';
+    case 'screw': return 'Screw';
+    case 'bevel': return 'Bevel';
+    case 'remesh': return 'Remesh';
+  case 'volume-to-mesh': return 'Volume to Mesh';
+    default: return type;
+  }
+}

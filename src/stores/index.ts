@@ -79,8 +79,8 @@ export const logStoreStates = () => {
     selectedObjectId: sceneState.selectedObjectId,
     hierarchy: sceneState.getHierarchy(),
   });
-  const modifiersState = useModifiersStore.getState();
-  console.log('Modifiers Store:', modifiersState.stacks);
+  const geoForMods = useGeometryStore.getState();
+  console.log('Modifiers (from geometry store):', geoForMods.modifierStacks);
   
   console.groupEnd();
 };

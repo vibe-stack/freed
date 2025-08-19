@@ -3,6 +3,9 @@ import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { useMemo } from 'react';
 import { Mesh, Material } from '../types/geometry';
+import { nanoid } from 'nanoid';
+import { useSceneStore } from './scene-store';
+import { applyModifiersToMesh, type ModifierStackItem, type ModifierType, createDefaultSettings } from '../utils/modifiers';
 import {
   createCubeMesh,
   calculateVertexNormals,
@@ -23,6 +26,8 @@ interface GeometryState {
   meshes: Map<string, Mesh>;
   materials: Map<string, Material>;
   selectedMeshId: string | null;
+  // Map objectId -> array stack top-to-bottom
+  modifierStacks: Record<string, ModifierStackItem[]>;
 }
 
 interface GeometryActions {
@@ -48,6 +53,15 @@ interface GeometryActions {
   createTorus: (ringRadius?: number, tubeRadius?: number, radialSegments?: number, tubularSegments?: number) => string;
   replaceGeometry: (meshId: string, vertices: Mesh['vertices'], faces: Mesh['faces']) => void;
   recalculateNormals: (meshId: string) => void;
+
+  // Modifier operations (by Scene objectId)
+  addModifier: (objectId: string, type: ModifierType) => string; // returns modifier id
+  removeModifier: (objectId: string, modifierId: string) => void;
+  moveModifier: (objectId: string, fromIndex: number, toIndex: number) => void;
+  setModifierEnabled: (objectId: string, modifierId: string, enabled: boolean) => void;
+  updateModifierSettings: (objectId: string, modifierId: string, updater: (settings: any) => void) => void;
+  applyModifier: (objectId: string, modifierId: string) => void;
+  clearAllModifiers: (objectId: string) => void;
 }
 
 type GeometryStore = GeometryState & GeometryActions;
@@ -60,6 +74,7 @@ export const useGeometryStore = create<GeometryStore>()(
       meshes: new Map(),
       materials: new Map(),
       selectedMeshId: null,
+  modifierStacks: {},
       
       // Mesh operations
       addMesh: (mesh: Mesh) => {
@@ -203,6 +218,106 @@ export const useGeometryStore = create<GeometryStore>()(
           }
         });
       },
+
+      // Modifier operations
+      addModifier: (objectId, type) => {
+        const id = nanoid();
+        set((state) => {
+          const stack = state.modifierStacks[objectId] ?? [];
+          const next = [...stack, { id, type, enabled: true, settings: createDefaultSettings(type) }];
+          state.modifierStacks[objectId] = next;
+        });
+        return id;
+      },
+
+      removeModifier: (objectId, modifierId) => {
+        set((state) => {
+          const stack = state.modifierStacks[objectId];
+          if (!stack) return;
+          const idx = stack.findIndex((m: ModifierStackItem) => m.id === modifierId);
+          if (idx >= 0) {
+            const next = stack.slice(0, idx).concat(stack.slice(idx + 1));
+            state.modifierStacks[objectId] = next;
+          }
+        });
+      },
+
+      moveModifier: (objectId, fromIndex, toIndex) => {
+        set((state) => {
+          const stack = state.modifierStacks[objectId];
+          if (!stack) return;
+          const from = Math.max(0, Math.min(fromIndex, stack.length - 1));
+          const to = Math.max(0, Math.min(toIndex, stack.length - 1));
+          if (from === to) return;
+          const next = stack.slice();
+          const [item] = next.splice(from, 1);
+          next.splice(to, 0, item);
+          state.modifierStacks[objectId] = next;
+        });
+      },
+
+      setModifierEnabled: (objectId, modifierId, enabled) => {
+        set((state) => {
+          const stack = state.modifierStacks[objectId];
+          if (!stack) return;
+          const idx = stack.findIndex((m: ModifierStackItem) => m.id === modifierId);
+          if (idx >= 0) {
+            const prev = stack[idx];
+            const next = stack.slice();
+            next[idx] = { ...prev, enabled };
+            state.modifierStacks[objectId] = next;
+          }
+        });
+      },
+
+      updateModifierSettings: (objectId, modifierId, updater) => {
+        set((state) => {
+          const stack = state.modifierStacks[objectId];
+          if (!stack) return;
+          const idx = stack.findIndex((m: ModifierStackItem) => m.id === modifierId);
+          if (idx >= 0) {
+            const prev = stack[idx];
+            const nextSettings = { ...prev.settings };
+            updater(nextSettings);
+            const next = stack.slice();
+            next[idx] = { ...prev, settings: nextSettings };
+            state.modifierStacks[objectId] = next;
+          }
+        });
+      },
+
+      applyModifier: (objectId, modifierId) => {
+        // Group geometry replacement and stack trimming into a single history step
+        const scene = useSceneStore.getState();
+        set((state) => {
+          const obj = scene.objects[objectId];
+          if (!obj || obj.type !== 'mesh' || !obj.meshId) return;
+          const mesh = state.meshes.get(obj.meshId);
+          if (!mesh) return;
+
+          const stack = (state.modifierStacks[objectId] ?? []) as ModifierStackItem[];
+          const idx = stack.findIndex((m) => m.id === modifierId);
+          if (idx < 0) return;
+
+          const toApply = stack.slice(0, idx + 1);
+          const evaluated: Mesh = applyModifiersToMesh(mesh, toApply);
+
+          // Bake into base mesh (inline to keep a single set)
+          mesh.vertices = evaluated.vertices;
+          mesh.faces = evaluated.faces;
+          mesh.edges = buildEdgesFromFaces(mesh.vertices, mesh.faces);
+          mesh.vertices = calculateVertexNormals(mesh);
+
+          // Trim applied modifiers from the stack
+          const next = stack.slice();
+          next.splice(0, idx + 1);
+          state.modifierStacks[objectId] = next;
+        });
+      },
+
+      clearAllModifiers: (objectId) => {
+        set((state) => { delete state.modifierStacks[objectId]; });
+      },
       }))
     ),
     {
@@ -210,6 +325,7 @@ export const useGeometryStore = create<GeometryStore>()(
         meshes: state.meshes,
         materials: state.materials,
         selectedMeshId: state.selectedMeshId,
+        modifierStacks: state.modifierStacks,
       }),
     }
   )
