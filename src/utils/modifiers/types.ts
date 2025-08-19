@@ -34,7 +34,7 @@ export type ModifierSettings =
   | { type: 'subdivide'; value: SubdivideModifierSettings }
   | { type: 'array'; value: ArrayModifierSettings }
   | { type: 'weld'; value: WeldModifierSettings }
-  | { type: 'triangulate'; value: {} }
+  | { type: 'triangulate'; value: TriangulateModifierSettings }
   | { type: 'edge-split'; value: EdgeSplitModifierSettings }
   | { type: 'decimate'; value: DecimateModifierSettings }
   | { type: 'solidify'; value: SolidifyModifierSettings }
@@ -79,9 +79,15 @@ export interface ScrewModifierSettings {
   height: number; // total height along axis (Z)
 }
 
+export type TriangulateModifierSettings = Record<string, never>;
+
 export interface BevelModifierSettings {
   width: number; // world units
   segments: number; // 1..5
+  miter?: 'sharp' | 'chamfer' | 'arc';
+  angleThreshold?: number; // degrees 0..180
+  clampWidth?: boolean; // prevent width larger than local edge distances
+  cullDegenerate?: boolean; // drop near-zero-area faces
 }
 
 export interface RemeshModifierSettings {

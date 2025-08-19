@@ -44,9 +44,9 @@ export const PropertiesPanel: React.FC = () => {
       </div>
       <div className="flex-1 min-h-0 h-[60dvh] overflow-auto">
         {active === 'inspector' && <InspectorPanel />}
-  {active === 'world' && <WorldPanel />}
-  {active === 'modifiers' && <ModifiersPanel />}
-        {active !== 'inspector' && active !== 'world' && (
+        {active === 'world' && <WorldPanel />}
+        {active === 'modifiers' && <ModifiersPanel />}
+        {active !== 'inspector' && active !== 'world' && active !== 'modifiers' && (
           <div className="p-3 text-xs text-gray-500">
             {tabs.find((t) => t.key === active)?.label} panel coming soon.
           </div>

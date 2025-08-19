@@ -34,7 +34,7 @@ export const createDefaultSettings = (type: ModifierType): any => {
     case 'screw':
       return { steps: 8, angle: 360, height: 1 } as ScrewModifierSettings;
     case 'bevel':
-      return { width: 0.02, segments: 1 } as BevelModifierSettings;
+      return { width: 0.02, segments: 1, miter: 'chamfer', angleThreshold: 30, clampWidth: true, cullDegenerate: true } as BevelModifierSettings;
     case 'remesh':
       return { mode: 'quads', voxelSize: 0.1 } as RemeshModifierSettings;
     case 'volume-to-mesh':
