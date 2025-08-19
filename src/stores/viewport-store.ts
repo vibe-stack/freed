@@ -13,6 +13,8 @@ interface ViewportActions {
   setBackgroundColor: (color: [number, number, number]) => void;
   resetCamera: () => void;
   focusOnObject: (center: [number, number, number], size: number) => void;
+  setAutoOrbitInterval: (sec: 0 | 1 | 3 | 5) => void;
+  toggleAutoOrbitInterval: () => void; // cycles 0 -> 1 -> 3 -> 5 -> 0
   reset: () => void;
 }
 
@@ -37,6 +39,7 @@ export const useViewportStore = create<ViewportStore>()(
       showAxes: true,
       gridSize: 10,
       backgroundColor: vec3(0.01, 0.01, 0.01),
+  autoOrbitIntervalSec: 0,
 
       // Actions
       setCamera: (camera: Partial<CameraState>) => {
@@ -75,6 +78,20 @@ export const useViewportStore = create<ViewportStore>()(
         });
       },
 
+      setAutoOrbitInterval: (sec: 0 | 1 | 3 | 5) => {
+        set((state) => {
+          state.autoOrbitIntervalSec = sec;
+        });
+      },
+
+      toggleAutoOrbitInterval: () => {
+        set((state) => {
+          const current = state.autoOrbitIntervalSec ?? 0;
+          const next = current === 0 ? 1 : current === 1 ? 3 : current === 3 ? 5 : 0;
+          state.autoOrbitIntervalSec = next as 0 | 1 | 3 | 5;
+        });
+      },
+
       resetCamera: () => {
         set((state) => {
           state.camera = { ...defaultCameraState };
@@ -110,6 +127,7 @@ export const useViewportStore = create<ViewportStore>()(
           state.showAxes = true;
           state.gridSize = 10;
           state.backgroundColor = vec3(.1, .1, .1);
+          state.autoOrbitIntervalSec = 0;
         });
       },
     }))

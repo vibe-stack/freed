@@ -10,7 +10,7 @@ import { useToolStore } from '@/stores/tool-store';
 import { useShapeCreationStore } from '@/stores/shape-creation-store';
 import { WorkspaceData, exportToT3D } from '@/utils/t3d-exporter';
 import { openImportDialog } from '@/utils/t3d-importer';
-import { Box, Download, FolderOpen, Save, Heart, Check } from 'lucide-react';
+import { Box, Download, FolderOpen, Save, Heart, Check, Orbit } from 'lucide-react';
 import DonateDialog from '@/components/donate-dialog';
 import ExportDialog from '@/features/export/components/export-dialog';
 import { useWorkspaceStore } from '@/stores/workspace-store';
@@ -333,6 +333,14 @@ const MenuBar: React.FC = () => {
 			</div>
 
 			<div className="ml-auto flex items-center gap-2 text-[11px] text-gray-400">
+				{/* Auto Orbit toggle (cycles 0 -> 1 -> 3 -> 5) */}
+				<button
+					className="inline-flex items-center rounded p-1 text-gray-400 hover:text-gray-200 hover:bg-white/5"
+					onClick={() => useViewportStore.getState().toggleAutoOrbitInterval()}
+					title="Auto orbit"
+				>
+					<Orbit className="w-4 h-4" />
+				</button>
 				{/* SPONSORING AREA */}
 				<button
 					className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-rose-300 hover:text-white hover:bg-rose-500/20 border border-rose-500/30"
