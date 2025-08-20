@@ -171,5 +171,5 @@ export interface ViewportState {
   gridSize: number;
   backgroundColor: Vector3;
   // Auto-orbit interval in seconds; 0 disables. Used for subtle recording orbits.
-  autoOrbitIntervalSec?: 0 | 1 | 3 | 5;
+  autoOrbitIntervalSec?: 0 | 1 | 5 | 15;
 }

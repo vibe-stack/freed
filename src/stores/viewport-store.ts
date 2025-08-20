@@ -13,8 +13,8 @@ interface ViewportActions {
   setBackgroundColor: (color: [number, number, number]) => void;
   resetCamera: () => void;
   focusOnObject: (center: [number, number, number], size: number) => void;
-  setAutoOrbitInterval: (sec: 0 | 1 | 3 | 5) => void;
-  toggleAutoOrbitInterval: () => void; // cycles 0 -> 1 -> 3 -> 5 -> 0
+  setAutoOrbitInterval: (sec: 0 | 1 | 5 | 15) => void;
+  toggleAutoOrbitInterval: () => void; // cycles 0 -> 1 -> 5 -> 15 -> 0
   reset: () => void;
 }
 
@@ -78,7 +78,7 @@ export const useViewportStore = create<ViewportStore>()(
         });
       },
 
-      setAutoOrbitInterval: (sec: 0 | 1 | 3 | 5) => {
+      setAutoOrbitInterval: (sec: 0 | 1 | 5 | 15) => {
         set((state) => {
           state.autoOrbitIntervalSec = sec;
         });
@@ -87,8 +87,8 @@ export const useViewportStore = create<ViewportStore>()(
       toggleAutoOrbitInterval: () => {
         set((state) => {
           const current = state.autoOrbitIntervalSec ?? 0;
-          const next = current === 0 ? 1 : current === 1 ? 3 : current === 3 ? 5 : 0;
-          state.autoOrbitIntervalSec = next as 0 | 1 | 3 | 5;
+          const next = current === 0 ? 1 : current === 1 ? 5 : current === 5 ? 15 : 0;
+          state.autoOrbitIntervalSec = next as 0 | 1 | 5 | 15;
         });
       },
 
