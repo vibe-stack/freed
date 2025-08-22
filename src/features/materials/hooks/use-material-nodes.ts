@@ -15,8 +15,8 @@ export function useMaterialNodes(materialId?: string) {
   // Rebuild factory when graph structure changes
   return useMemo(() => {
     if (!materialId || !graph) return null;
-    const { createStandardNodeMaterial } = buildTSLMaterialFactory(graph);
-    // Construct material immediately for R3F consumption
-    return createStandardNodeMaterial(THREE);
+  const { createStandardNodeMaterial } = buildTSLMaterialFactory(graph);
+  // Construct material immediately for R3F consumption
+  return createStandardNodeMaterial();
   }, [materialId, graph?.nodes, graph?.edges]);
 }
