@@ -10,12 +10,16 @@ import { ToolIndicator } from '@/features/tools';
 import { EditorViewport } from '@/features/viewport';
 import { PropertiesPanel } from '@/features/properties-panel/components/properties-panel';
 import React from 'react';
+import ShaderEditor from '@/features/materials/components/shader-editor';
+import { useShaderEditorStore } from '@/stores/shader-editor-store';
 
 const EditorLayout: React.FC = () => {
+  const shaderOpen = useShaderEditorStore((s) => s.open);
+  const setShaderOpen = useShaderEditorStore((s) => s.setOpen);
   return (
     <div className="w-screen h-screen overflow-hidden bg-[#0e1116] text-gray-200">
       {/* Top OS-like Menu Bar */}
-      <MenuBar />
+  <MenuBar onOpenShaderEditor={() => setShaderOpen(true)} />
 
       {/* Main content area */}
       <div className="relative w-full h-[calc(100vh-32px)]">{/* 32px menu height */}
@@ -53,6 +57,9 @@ const EditorLayout: React.FC = () => {
         <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 z-20">
           <ShapeAdjustPanel />
         </div>
+
+  {/* Shader Editor Panel */}
+  <ShaderEditor open={shaderOpen} onOpenChange={setShaderOpen} />
       </div>
     </div>
   );

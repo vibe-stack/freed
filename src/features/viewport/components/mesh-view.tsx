@@ -10,6 +10,7 @@ import { useToolStore } from '@/stores/tool-store';
 import { convertQuadToTriangles } from '@/utils/geometry';
 import { useObjectModifiers } from '@/stores/modifier-store';
 import { applyModifiersToMesh } from '@/utils/modifiers';
+import { useMaterialNodes } from '@/features/materials/hooks/use-material-nodes';
 
 type Props = { objectId: string; noTransform?: boolean };
 
@@ -88,7 +89,7 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     geo.setAttribute('normal', new Float32BufferAttribute(normals, 3));
     geo.computeBoundingSphere();
 
-    // Material selection: use mesh.materialId when shading === 'material'
+  // Material selection: use mesh.materialId when shading === 'material'
     let color = new Color(0.8, 0.8, 0.85);
     let roughness = 0.8;
     let metalness = 0.05;
@@ -108,7 +109,7 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     if (isSelected && shading !== 'material') {
       color = new Color('#ff9900');
     }
-    const material = new MeshStandardMaterial({
+  const material = new MeshStandardMaterial({
       color,
       roughness,
       metalness,
@@ -132,6 +133,9 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     isSelected,
     geometryStore.materials,
   ]);
+
+  // Node-based material integration
+  const nodeMaterial = useMaterialNodes(displayMesh?.materialId);
 
   if (!obj || !displayMesh || !geomAndMat) return null;
 
@@ -172,12 +176,20 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
       ? (() => {})
       : (Mesh.prototype.raycast as unknown as (raycaster: Raycaster, intersects: Intersection[]) => void);
 
+  // If we have a TSL node material, prefer it always (TSL-only system)
+  const activeMaterial: Material = (nodeMaterial as unknown as Material) ?? (geomAndMat.mat as unknown as Material);
+  // Apply viewport flags to node material too
+  if (nodeMaterial) {
+    (nodeMaterial as any).wireframe = shading === 'wireframe';
+    (nodeMaterial as any).flatShading = (displayMesh.shading ?? 'flat') === 'flat';
+  }
+
   const meshEl = (
     <mesh
       geometry={geomAndMat.geom}
-      material={geomAndMat.mat as unknown as Material}
-  castShadow={!!displayMesh.castShadow && shading === 'material'}
-  receiveShadow={!!displayMesh.receiveShadow && shading === 'material'}
+      material={activeMaterial}
+      castShadow={!!displayMesh.castShadow}
+      receiveShadow={!!displayMesh.receiveShadow}
       // Disable raycast when locked so clicks pass through
       // In edit mode, disable raycast only for the specific object being edited
       raycast={raycastFn}

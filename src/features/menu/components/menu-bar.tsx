@@ -20,7 +20,8 @@ import { geometryRedo, geometryUndo } from '@/stores/geometry-store';
 import { useRegisterShortcuts } from '@/components/shortcut-provider';
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
 
-const MenuBar: React.FC = () => {
+type Props = { onOpenShaderEditor?: () => void };
+const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 	const [donateOpen, setDonateOpen] = useState(false);
 	const [exportOpen, setExportOpen] = useState(false);
 	const geometryStore = useGeometryStore();
@@ -301,6 +302,7 @@ const MenuBar: React.FC = () => {
 									</span>
 								</Menu.Item>
 								<Menu.Separator className="my-1 h-px bg-white/10" />
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => onOpenShaderEditor?.()}>Shader Editor…</Menu.Item>
 								<div className="px-3 py-1.5 text-[11px] uppercase tracking-wide text-gray-400">Shading</div>
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => viewportStore.setShadingMode('wireframe')}>
 									<span className="flex items-center justify-between w-full">

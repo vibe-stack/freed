@@ -5,11 +5,13 @@ import { useGeometryStore } from '@/stores/geometry-store';
 import type { Material as MatType } from '@/types/geometry';
 import { DragInput } from '@/components/drag-input';
 import { ColorInput } from '@/components/color-input';
+import { useShaderEditorStore } from '@/stores/shader-editor-store';
 
 type Props = { materialId?: string; onAssignMaterial?: (id: string | undefined) => void };
 
 export const MaterialSection: React.FC<Props> = ({ materialId, onAssignMaterial }) => {
   const geo = useGeometryStore();
+  const openShaderEditor = useShaderEditorStore((s) => s.openFor);
   const material = materialId ? geo.materials.get(materialId) : undefined;
   const materials = Array.from(geo.materials.values());
 
@@ -38,11 +40,22 @@ export const MaterialSection: React.FC<Props> = ({ materialId, onAssignMaterial 
           onClick={() => {
             const id = crypto.randomUUID();
       geo.addMaterial({ id, name: `Mat ${materials.length + 1}` , color: { x: 0.8, y: 0.8, z: 0.85 }, roughness: 0.8, metalness: 0.05, emissive: { x:0, y:0, z:0 }, emissiveIntensity: 1 });
+      // Ensure shader graph exists for TSL-only and open the editor
+      geo.ensureDefaultGraph(id);
             onAssignMaterial?.(id);
+      openShaderEditor(id);
           }}
         >
           + New
         </button>
+        {material && (
+          <button
+            className="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded border border-white/10"
+            onClick={() => openShaderEditor(material.id)}
+          >
+            Open Shader Editor
+          </button>
+        )}
       </div>
       {material && (
         <div className="space-y-2 text-xs text-gray-300">

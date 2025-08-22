@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { useMemo } from 'react';
 import { Mesh, Material } from '../types/geometry';
+import type { ShaderGraph } from '@/types/shader';
 import { nanoid } from 'nanoid';
 import { useSceneStore } from './scene-store';
 import { applyModifiersToMesh, type ModifierStackItem, type ModifierType, createDefaultSettings } from '../utils/modifiers';
@@ -25,6 +26,8 @@ enableMapSet();
 interface GeometryState {
   meshes: Map<string, Mesh>;
   materials: Map<string, Material>;
+  // Material shader graphs
+  shaderGraphs: Map<string, ShaderGraph>; // key: materialId
   selectedMeshId: string | null;
   // Map objectId -> array stack top-to-bottom
   modifierStacks: Record<string, ModifierStackItem[]>;
@@ -42,6 +45,12 @@ interface GeometryActions {
   addMaterial: (material: Material) => void;
   removeMaterial: (materialId: string) => void;
   updateMaterial: (materialId: string, updater: (material: Material) => void) => void;
+
+  // Shader graph operations (by material)
+  ensureDefaultGraph: (materialId: string) => void;
+  setShaderGraph: (materialId: string, graph: ShaderGraph) => void;
+  updateShaderGraph: (materialId: string, updater: (graph: ShaderGraph) => void) => void;
+  removeShaderGraph: (materialId: string) => void;
   
   // Utility operations
   createCube: (size?: number) => string;
@@ -73,6 +82,7 @@ export const useGeometryStore = create<GeometryStore>()(
       // Initial state
       meshes: new Map(),
       materials: new Map(),
+  shaderGraphs: new Map(),
       selectedMeshId: null,
   modifierStacks: {},
       
@@ -115,6 +125,7 @@ export const useGeometryStore = create<GeometryStore>()(
         set((state) => {
           state.meshes = new Map();
           state.materials = new Map();
+          state.shaderGraphs = new Map();
           state.selectedMeshId = null;
         });
       },
@@ -123,12 +134,33 @@ export const useGeometryStore = create<GeometryStore>()(
       addMaterial: (material: Material) => {
         set((state) => {
           state.materials.set(material.id, material);
+          // lazily create a default graph when material is created
+          if (!state.shaderGraphs.has(material.id)) {
+            const idIn = nanoid();
+            const idOut = nanoid();
+            state.shaderGraphs.set(material.id, {
+              materialId: material.id,
+              nodes: [
+                { id: idIn, type: 'input', position: { x: 40, y: 160 } } as any,
+                { id: idOut, type: 'output', position: { x: 520, y: 120 } } as any,
+                { id: 'baseColor', type: 'const-color', position: { x: 260, y: 80 }, data: { r: material.color.x, g: material.color.y, b: material.color.z } } as any,
+                { id: 'rough', type: 'const-float', position: { x: 260, y: 180 }, data: { value: material.roughness } } as any,
+                { id: 'metal', type: 'const-float', position: { x: 260, y: 240 }, data: { value: material.metalness } } as any,
+              ],
+              edges: [
+                { id: nanoid(), source: 'baseColor', sourceHandle: 'out', target: idOut, targetHandle: 'color' },
+                { id: nanoid(), source: 'rough', sourceHandle: 'out', target: idOut, targetHandle: 'roughness' },
+                { id: nanoid(), source: 'metal', sourceHandle: 'out', target: idOut, targetHandle: 'metalness' },
+              ],
+            });
+          }
         });
       },
       
       removeMaterial: (materialId: string) => {
         set((state) => {
           state.materials.delete(materialId);
+          state.shaderGraphs.delete(materialId);
         });
       },
       
@@ -139,6 +171,47 @@ export const useGeometryStore = create<GeometryStore>()(
             updater(material);
           }
         });
+      },
+
+      // Shader graph operations
+      ensureDefaultGraph: (materialId: string) => {
+        set((state) => {
+          if (state.shaderGraphs.has(materialId)) return;
+          const idIn = nanoid();
+          const idOut = nanoid();
+          const mat = state.materials.get(materialId);
+          state.shaderGraphs.set(materialId, {
+            materialId,
+            nodes: [
+              { id: idIn, type: 'input', position: { x: 40, y: 160 } } as any,
+              { id: idOut, type: 'output', position: { x: 520, y: 120 } } as any,
+              { id: 'color', type: 'const-color', position: { x: 260, y: 80 }, data: { r: mat?.color.x ?? 0.8, g: mat?.color.y ?? 0.8, b: mat?.color.z ?? 0.85 } } as any,
+              { id: 'rough', type: 'const-float', position: { x: 260, y: 180 }, data: { value: mat?.roughness ?? 0.8 } } as any,
+              { id: 'metal', type: 'const-float', position: { x: 260, y: 240 }, data: { value: mat?.metalness ?? 0.05 } } as any,
+            ],
+            edges: [
+              { id: nanoid(), source: 'color', sourceHandle: 'out', target: idOut, targetHandle: 'color' },
+              { id: nanoid(), source: 'rough', sourceHandle: 'out', target: idOut, targetHandle: 'roughness' },
+              { id: nanoid(), source: 'metal', sourceHandle: 'out', target: idOut, targetHandle: 'metalness' },
+            ],
+          });
+        });
+      },
+      setShaderGraph: (materialId: string, graph: ShaderGraph) => {
+        set((state) => { state.shaderGraphs.set(materialId, graph); });
+      },
+      updateShaderGraph: (materialId: string, updater: (graph: ShaderGraph) => void) => {
+        set((state) => {
+          const g = state.shaderGraphs.get(materialId);
+          if (g) {
+            const next = { ...g, nodes: g.nodes.slice(), edges: g.edges.slice() };
+            updater(next);
+            state.shaderGraphs.set(materialId, next);
+          }
+        });
+      },
+      removeShaderGraph: (materialId: string) => {
+        set((state) => { state.shaderGraphs.delete(materialId); });
       },
       
       // Utility operations
@@ -324,6 +397,7 @@ export const useGeometryStore = create<GeometryStore>()(
       partialize: (state) => ({
         meshes: state.meshes,
         materials: state.materials,
+  shaderGraphs: state.shaderGraphs,
         selectedMeshId: state.selectedMeshId,
         modifierStacks: state.modifierStacks,
       }),
