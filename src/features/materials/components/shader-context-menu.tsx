@@ -11,6 +11,9 @@ type Props = {
 // Hierarchical context menu content for adding shader nodes
 export const ShaderContextMenuContent: React.FC<Props> = ({ onAdd }) => {
   const [openSub, setOpenSub] = useState<string | null>(null);
+  const [subRect, setSubRect] = useState<{ top: number; left: number; right: number; height: number } | null>(null);
+  const [subFlipX, setSubFlipX] = useState(false);
+  const [subFlipY, setSubFlipY] = useState(false);
 
   const Item: React.FC<React.PropsWithChildren<{ onSelect?: () => void }>> = ({ children, onSelect }) => (
     <ContextMenu.Item onClick={onSelect}>
@@ -21,7 +24,17 @@ export const ShaderContextMenuContent: React.FC<Props> = ({ onAdd }) => {
   const SubTrigger: React.FC<React.PropsWithChildren<{ id: string }>> = ({ id, children }) => (
     <div
       className="px-2 py-1.5 cursor-default select-none hover:bg-white/10 rounded flex items-center justify-between"
-      onMouseEnter={() => setOpenSub(id)}
+      onMouseEnter={(e) => {
+        setOpenSub(id);
+        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setSubRect({ top: r.top, left: r.left, right: r.right, height: r.height });
+        const vw = typeof window !== 'undefined' ? window.innerWidth : 1200;
+        const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+        const approxW = 220;
+        const approxH = Math.round(vh * 0.6);
+        setSubFlipX(vw - r.right < approxW + 8);
+        setSubFlipY(vh - r.top < approxH + 8);
+      }}
     >
       <span>{children}</span>
       <span className="text-gray-500">▸</span>
@@ -29,14 +42,22 @@ export const ShaderContextMenuContent: React.FC<Props> = ({ onAdd }) => {
   );
 
   const SubMenu: React.FC<React.PropsWithChildren<{ id: string }>> = ({ id, children }) => (
-    <div
-      className={`absolute left-full top-0 ml-1 min-w-44 rounded-md border border-white/10 bg-zinc-900/90 p-1 shadow-lg shadow-black/40 max-h-64 overflow-y-auto ${
-        openSub === id ? 'block' : 'hidden'
-      }`}
-      onMouseLeave={() => setOpenSub(null)}
-    >
-      {children}
-    </div>
+    <ContextMenu.Portal>
+      <div
+        className={`fixed min-w-44 max-h-64 text-sm overflow-y-auto overscroll-contain rounded-md border border-white/10 bg-zinc-900/90 p-1 shadow-lg shadow-black/40 ${
+          openSub === id ? 'block' : 'hidden'
+        }`}
+        style={{
+          left: (subFlipX ? (subRect?.left ?? 0) - 8 : (subRect?.right ?? 0) + 8),
+          top: (subRect?.top ?? 0) + (subFlipY ? (subRect?.height ?? 0) : 0),
+          transform: `translate(${subFlipX ? '-100%' : '0'}, ${subFlipY ? '-100%' : '0'})`,
+          zIndex: 10050,
+        }}
+        onMouseLeave={() => setOpenSub(null)}
+      >
+        {children}
+      </div>
+    </ContextMenu.Portal>
   );
 
   return (
@@ -66,6 +87,58 @@ export const ShaderContextMenuContent: React.FC<Props> = ({ onAdd }) => {
           <Item onSelect={() => onAdd('add')}>Add</Item>
           <Item onSelect={() => onAdd('mul')}>Multiply</Item>
           <Item onSelect={() => onAdd('mix')}>Mix</Item>
+        </SubMenu>
+      </div>
+
+      {/* Common */}
+      <div className="relative">
+        <SubTrigger id="common">Common</SubTrigger>
+        <SubMenu id="common">
+          <Item onSelect={() => onAdd('abs')}>Abs</Item>
+          <Item onSelect={() => onAdd('clamp')}>Clamp</Item>
+          <Item onSelect={() => onAdd('saturate')}>Saturate</Item>
+          <Item onSelect={() => onAdd('min')}>Min</Item>
+          <Item onSelect={() => onAdd('max')}>Max</Item>
+          <Item onSelect={() => onAdd('step')}>Step</Item>
+          <Item onSelect={() => onAdd('smoothstep')}>Smoothstep</Item>
+          <Item onSelect={() => onAdd('pow')}>Pow</Item>
+          <Item onSelect={() => onAdd('sqrt')}>Sqrt</Item>
+          <Item onSelect={() => onAdd('fract')}>Fract</Item>
+          <Item onSelect={() => onAdd('sign')}>Sign</Item>
+          <Item onSelect={() => onAdd('floor')}>Floor</Item>
+          <Item onSelect={() => onAdd('ceil')}>Ceil</Item>
+          <Item onSelect={() => onAdd('exp')}>Exp</Item>
+          <Item onSelect={() => onAdd('log')}>Log</Item>
+          <Item onSelect={() => onAdd('length')}>Length</Item>
+          <Item onSelect={() => onAdd('normalize')}>Normalize</Item>
+          <Item onSelect={() => onAdd('dot')}>Dot</Item>
+          <Item onSelect={() => onAdd('cross')}>Cross</Item>
+          <Item onSelect={() => onAdd('distance')}>Distance</Item>
+        </SubMenu>
+      </div>
+
+      {/* Trig */}
+      <div className="relative">
+        <SubTrigger id="trig">Trig</SubTrigger>
+        <SubMenu id="trig">
+          <Item onSelect={() => onAdd('sin')}>Sin</Item>
+          <Item onSelect={() => onAdd('cos')}>Cos</Item>
+          <Item onSelect={() => onAdd('tan')}>Tan</Item>
+          <Item onSelect={() => onAdd('asin')}>Asin</Item>
+          <Item onSelect={() => onAdd('acos')}>Acos</Item>
+          <Item onSelect={() => onAdd('atan')}>Atan</Item>
+        </SubMenu>
+      </div>
+
+      {/* Vectors */}
+      <div className="relative">
+        <SubTrigger id="vectors">Vectors</SubTrigger>
+        <SubMenu id="vectors">
+          <Item onSelect={() => onAdd('vec2')}>Vec2</Item>
+          <Item onSelect={() => onAdd('vec3')}>Vec3</Item>
+          <Item onSelect={() => onAdd('vec4')}>Vec4</Item>
+          <Item onSelect={() => onAdd('swizzle')}>Swizzle</Item>
+          <Item onSelect={() => onAdd('combine')}>Combine</Item>
         </SubMenu>
       </div>
 
@@ -126,6 +199,123 @@ export const ShaderContextMenuContent: React.FC<Props> = ({ onAdd }) => {
           <Item onSelect={() => onAdd('modelWorldMatrixInverse')}>World Matrix Inverse</Item>
           <Item onSelect={() => onAdd('highpModelViewMatrix')}>Highp View Matrix</Item>
           <Item onSelect={() => onAdd('highpModelNormalViewMatrix')}>Highp Normal View Matrix</Item>
+        </SubMenu>
+      </div>
+
+      {/* Attributes */}
+      <div className="relative">
+        <SubTrigger id="attrs">Attributes</SubTrigger>
+        <SubMenu id="attrs">
+          <Item onSelect={() => onAdd('positionAttr')}>Position</Item>
+          <Item onSelect={() => onAdd('normalAttr')}>Normal</Item>
+          <Item onSelect={() => onAdd('uvAttr')}>UV</Item>
+          <Item onSelect={() => onAdd('viewPosition')}>View Position</Item>
+          <Item onSelect={() => onAdd('worldPosition')}>World Position</Item>
+          <Item onSelect={() => onAdd('cameraPosition')}>Camera Position</Item>
+        </SubMenu>
+      </div>
+
+      {/* Time */}
+      <div className="relative">
+        <SubTrigger id="time">Time</SubTrigger>
+        <SubMenu id="time">
+          <Item onSelect={() => onAdd('time')}>Time</Item>
+          <Item onSelect={() => onAdd('timeSine')}>Time Sine</Item>
+          <Item onSelect={() => onAdd('timeCos')}>Time Cos</Item>
+        </SubMenu>
+      </div>
+
+      {/* Conditionals */}
+      <div className="relative">
+        <SubTrigger id="conditionals">Conditionals</SubTrigger>
+        <SubMenu id="conditionals">
+          <Item onSelect={() => onAdd('select')}>Select (Ternary)</Item>
+        </SubMenu>
+      </div>
+
+      {/* Camera */}
+      <div className="relative">
+        <SubTrigger id="camera">Camera</SubTrigger>
+        <SubMenu id="camera">
+          <Item onSelect={() => onAdd('cameraNear')}>Near</Item>
+          <Item onSelect={() => onAdd('cameraFar')}>Far</Item>
+          <Item onSelect={() => onAdd('cameraProjectionMatrix')}>Projection Matrix</Item>
+          <Item onSelect={() => onAdd('cameraProjectionMatrixInverse')}>Projection Matrix Inverse</Item>
+          <Item onSelect={() => onAdd('cameraViewMatrix')}>View Matrix</Item>
+          <Item onSelect={() => onAdd('cameraWorldMatrix')}>World Matrix</Item>
+          <Item onSelect={() => onAdd('cameraNormalMatrix')}>Normal Matrix</Item>
+        </SubMenu>
+      </div>
+
+      {/* Screen & Viewport */}
+      <div className="relative">
+        <SubTrigger id="screen">Screen/Viewport</SubTrigger>
+        <SubMenu id="screen">
+          <Item onSelect={() => onAdd('screenUV')}>Screen UV</Item>
+          <Item onSelect={() => onAdd('screenCoordinate')}>Screen Coordinate</Item>
+          <Item onSelect={() => onAdd('screenSize')}>Screen Size</Item>
+          <Item onSelect={() => onAdd('viewportUV')}>Viewport UV</Item>
+          <Item onSelect={() => onAdd('viewport')}>Viewport</Item>
+          <Item onSelect={() => onAdd('viewportCoordinate')}>Viewport Coordinate</Item>
+          <Item onSelect={() => onAdd('viewportSize')}>Viewport Size</Item>
+        </SubMenu>
+      </div>
+
+      {/* UV Utils */}
+      <div className="relative">
+        <SubTrigger id="uvutils">UV Utils</SubTrigger>
+        <SubMenu id="uvutils">
+          <Item onSelect={() => onAdd('matcapUV')}>Matcap UV</Item>
+          <Item onSelect={() => onAdd('rotateUV')}>Rotate UV</Item>
+          <Item onSelect={() => onAdd('spherizeUV')}>Spherize UV</Item>
+          <Item onSelect={() => onAdd('spritesheetUV')}>Spritesheet UV</Item>
+          <Item onSelect={() => onAdd('equirectUV')}>Equirect UV</Item>
+        </SubMenu>
+      </div>
+
+      {/* Interpolation */}
+      <div className="relative">
+        <SubTrigger id="interp">Interpolation</SubTrigger>
+        <SubMenu id="interp">
+          <Item onSelect={() => onAdd('remap')}>Remap</Item>
+          <Item onSelect={() => onAdd('remapClamp')}>Remap Clamp</Item>
+        </SubMenu>
+      </div>
+
+      {/* Random */}
+      <div className="relative">
+        <SubTrigger id="random">Random</SubTrigger>
+        <SubMenu id="random">
+          <Item onSelect={() => onAdd('hash')}>Hash</Item>
+        </SubMenu>
+      </div>
+
+      {/* Rotate */}
+      <div className="relative">
+        <SubTrigger id="rotate">Rotate</SubTrigger>
+        <SubMenu id="rotate">
+          <Item onSelect={() => onAdd('rotate')}>Rotate</Item>
+        </SubMenu>
+      </div>
+
+      {/* Blend Modes */}
+      <div className="relative">
+        <SubTrigger id="blend">Blend</SubTrigger>
+        <SubMenu id="blend">
+          <Item onSelect={() => onAdd('blendBurn')}>Burn</Item>
+          <Item onSelect={() => onAdd('blendDodge')}>Dodge</Item>
+          <Item onSelect={() => onAdd('blendOverlay')}>Overlay</Item>
+          <Item onSelect={() => onAdd('blendScreen')}>Screen</Item>
+          <Item onSelect={() => onAdd('blendColor')}>Color</Item>
+        </SubMenu>
+      </div>
+
+      {/* Packing */}
+      <div className="relative">
+        <SubTrigger id="pack">Packing</SubTrigger>
+        <SubMenu id="pack">
+          <Item onSelect={() => onAdd('directionToColor')}>Direction To Color</Item>
+          <Item onSelect={() => onAdd('colorToDirection')}>Color To Direction</Item>
         </SubMenu>
       </div>
     </div>

@@ -4,7 +4,11 @@ export type SocketType = 'float' | 'vec2' | 'vec3' | 'vec4' | 'bool' | 'mat3' | 
 
 export type ShaderNodeType =
   | 'input' // scene/builtins provider (uv, normal)
-  | 'output' // material outputs (color, roughness, metalness, emissive, emissiveIntensity)
+  | 'output' // legacy standard output (back-compat)
+  | 'output-standard' // standard PBR output
+  | 'output-physical' // physical PBR output
+  | 'output-phong' // phong output
+  | 'output-toon' // toon output
   | 'const-float'
   | 'const-color' // vec3
   | 'uv' // vec2
@@ -32,11 +36,21 @@ export type ShaderNodeType =
   | 'shiftLeft'
   | 'shiftRight'
   | 'mix'
+  // Common math
+  | 'abs' | 'floor' | 'ceil' | 'clamp' | 'saturate' | 'min' | 'max' | 'step' | 'smoothstep' | 'pow' | 'exp' | 'log' | 'sqrt' | 'sign' | 'fract' | 'length' | 'normalize' | 'dot' | 'cross' | 'distance'
+  // Trig
+  | 'sin' | 'cos' | 'tan' | 'asin' | 'acos' | 'atan'
+  // Vectors and swizzles
+  | 'vec2' | 'vec3' | 'vec4' | 'swizzle' | 'combine'
   // Oscillators
   | 'oscSine'
   | 'oscSquare'
   | 'oscTriangle'
   | 'oscSawtooth'
+  // Attributes / camera / world
+  | 'positionAttr' | 'normalAttr' | 'uvAttr' | 'viewPosition' | 'worldPosition' | 'cameraPosition'
+  // Time
+  | 'time' | 'timeSine' | 'timeCos'
   // Model builtins
   | 'modelDirection'
   | 'modelViewMatrix'
@@ -47,7 +61,28 @@ export type ShaderNodeType =
   | 'modelViewPosition'
   | 'modelWorldMatrixInverse'
   | 'highpModelViewMatrix'
-  | 'highpModelNormalViewMatrix';
+  | 'highpModelNormalViewMatrix'
+  // Conditionals (ternary)
+  | 'select'
+  // Camera
+  | 'cameraNear' | 'cameraFar' | 'cameraProjectionMatrix' | 'cameraProjectionMatrixInverse' | 'cameraViewMatrix' | 'cameraWorldMatrix' | 'cameraNormalMatrix'
+  // Screen and Viewport
+  | 'screenUV' | 'screenCoordinate' | 'screenSize'
+  | 'viewportUV' | 'viewport' | 'viewportCoordinate' | 'viewportSize'
+  // UV utils (no textures)
+  | 'matcapUV' | 'rotateUV' | 'spherizeUV' | 'spritesheetUV' | 'equirectUV'
+  // Interpolation
+  | 'remap' | 'remapClamp'
+  // Random
+  | 'hash'
+  // Rotate
+  | 'rotate'
+  // Blend Modes
+  | 'blendBurn' | 'blendDodge' | 'blendOverlay' | 'blendScreen' | 'blendColor'
+  // Packing
+  | 'directionToColor' | 'colorToDirection'
+  // Extra math/optics
+  | 'reflect' | 'refract' | 'round' | 'trunc' | 'inverseSqrt' | 'degrees' | 'radians' | 'exp2' | 'log2' | 'lengthSq' | 'oneMinus' | 'pow2' | 'pow3' | 'pow4';
 
 export interface ShaderNodeBase {
   id: string;
@@ -116,6 +151,82 @@ export const NodeInputs: Record<ShaderNodeType, Record<string, SocketType>> = {
     emissive: 'vec3',
     emissiveIntensity: 'float',
   },
+  'output-standard': {
+    color: 'vec3',
+    roughness: 'float',
+    metalness: 'float',
+    emissive: 'vec3',
+    emissiveIntensity: 'float',
+  // NodeMaterial base inputs
+  opacity: 'float',
+  alphaTest: 'float',
+  normal: 'vec3',
+  position: 'vec3',
+  depth: 'float',
+  env: 'vec3',
+  ao: 'float',
+  },
+  'output-physical': {
+    color: 'vec3',
+    roughness: 'float',
+    metalness: 'float',
+    emissive: 'vec3',
+    emissiveIntensity: 'float',
+  // NodeMaterial base inputs
+  opacity: 'float',
+  alphaTest: 'float',
+  normal: 'vec3',
+  position: 'vec3',
+  depth: 'float',
+  env: 'vec3',
+  ao: 'float',
+  // Physical-specific
+  clearcoat: 'float',
+  clearcoatRoughness: 'float',
+  clearcoatNormal: 'vec3',
+  sheen: 'vec3',
+  iridescence: 'float',
+  iridescenceIOR: 'float',
+  iridescenceThickness: 'float',
+  specularIntensity: 'float',
+  specularColor: 'vec3',
+  ior: 'float',
+  transmission: 'float',
+  thickness: 'float',
+  attenuationDistance: 'float',
+  attenuationColor: 'vec3',
+  dispersion: 'float',
+  anisotropy: 'vec2',
+  },
+  'output-phong': {
+    color: 'vec3',
+    emissive: 'vec3',
+    emissiveIntensity: 'float',
+    // NodeMaterial base inputs
+    opacity: 'float',
+    alphaTest: 'float',
+    normal: 'vec3',
+    position: 'vec3',
+    depth: 'float',
+    env: 'vec3',
+    ao: 'float',
+    // Phong specific
+    shininess: 'float',
+    specular: 'vec3',
+  },
+  'output-toon': {
+    color: 'vec3',
+    emissive: 'vec3',
+    emissiveIntensity: 'float',
+    // NodeMaterial base inputs
+    opacity: 'float',
+    alphaTest: 'float',
+    normal: 'vec3',
+    position: 'vec3',
+    depth: 'float',
+    env: 'vec3',
+    ao: 'float',
+  },
   'const-float': {},
   'const-color': {},
   'uv': {},
@@ -143,11 +254,56 @@ export const NodeInputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'shiftLeft': { a: 'float', b: 'float' },
   'shiftRight': { a: 'float', b: 'float' },
   'mix': { a: 'float', b: 'float', t: 'float' },
+  // common math
+  'abs': { x: 'float' },
+  'floor': { x: 'float' },
+  'ceil': { x: 'float' },
+  'clamp': { x: 'float', min: 'float', max: 'float' },
+  'saturate': { x: 'float' },
+  'min': { a: 'float', b: 'float' },
+  'max': { a: 'float', b: 'float' },
+  'step': { edge: 'float', x: 'float' },
+  'smoothstep': { a: 'float', b: 'float', x: 'float' },
+  'pow': { a: 'float', b: 'float' },
+  'exp': { x: 'float' },
+  'log': { x: 'float' },
+  'sqrt': { x: 'float' },
+  'sign': { x: 'float' },
+  'fract': { x: 'float' },
+  'length': { x: 'vec3' },
+  'normalize': { x: 'vec3' },
+  'dot': { a: 'vec3', b: 'vec3' },
+  'cross': { a: 'vec3', b: 'vec3' },
+  'distance': { a: 'vec3', b: 'vec3' },
+  // trig
+  'sin': { x: 'float' },
+  'cos': { x: 'float' },
+  'tan': { x: 'float' },
+  'asin': { x: 'float' },
+  'acos': { x: 'float' },
+  'atan': { x: 'float' },
+  // vectors
+  'vec2': { x: 'float', y: 'float' },
+  'vec3': { x: 'float', y: 'float', z: 'float' },
+  'vec4': { x: 'float', y: 'float', z: 'float', w: 'float' },
+  'swizzle': { in: 'vec4' },
+  'combine': { x: 'float', y: 'float', z: 'float', w: 'float' },
   // oscillators have no inputs (use global timer)
   'oscSine': {},
   'oscSquare': {},
   'oscTriangle': {},
   'oscSawtooth': {},
+  // attributes
+  'positionAttr': {},
+  'normalAttr': {},
+  'uvAttr': {},
+  'viewPosition': {},
+  'worldPosition': {},
+  'cameraPosition': {},
+  // time
+  'time': {},
+  'timeSine': {},
+  'timeCos': {},
   // model providers have no inputs
   'modelDirection': {},
   'modelViewMatrix': {},
@@ -159,11 +315,71 @@ export const NodeInputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'modelWorldMatrixInverse': {},
   'highpModelViewMatrix': {},
   'highpModelNormalViewMatrix': {},
+  // conditional
+  'select': { cond: 'bool', a: 'float', b: 'float' },
+  // camera
+  'cameraNear': {},
+  'cameraFar': {},
+  'cameraProjectionMatrix': {},
+  'cameraProjectionMatrixInverse': {},
+  'cameraViewMatrix': {},
+  'cameraWorldMatrix': {},
+  'cameraNormalMatrix': {},
+  // screen
+  'screenUV': {},
+  'screenCoordinate': {},
+  'screenSize': {},
+  // viewport
+  'viewportUV': {},
+  'viewport': {},
+  'viewportCoordinate': {},
+  'viewportSize': {},
+  // uv utils
+  'matcapUV': {},
+  'rotateUV': { uv: 'vec2', rotation: 'float' },
+  'spherizeUV': { uv: 'vec2', strength: 'float' },
+  'spritesheetUV': { count: 'float', uv: 'vec2', frame: 'float' },
+  'equirectUV': { direction: 'vec3' },
+  // interpolation
+  'remap': { x: 'float', inLow: 'float', inHigh: 'float', outLow: 'float', outHigh: 'float' },
+  'remapClamp': { x: 'float', inLow: 'float', inHigh: 'float', outLow: 'float', outHigh: 'float' },
+  // random
+  'hash': { seed: 'float' },
+  // rotate
+  'rotate': { position: 'vec3', rotation: 'vec3' },
+  // blend
+  'blendBurn': { a: 'vec3', b: 'vec3' },
+  'blendDodge': { a: 'vec3', b: 'vec3' },
+  'blendOverlay': { a: 'vec3', b: 'vec3' },
+  'blendScreen': { a: 'vec3', b: 'vec3' },
+  'blendColor': { a: 'vec3', b: 'vec3' },
+  // packing
+  'directionToColor': { value: 'vec3' },
+  'colorToDirection': { value: 'vec3' },
+  // extra math/optics
+  'reflect': { I: 'vec3', N: 'vec3' },
+  'refract': { I: 'vec3', N: 'vec3', eta: 'float' },
+  'round': { x: 'float' },
+  'trunc': { x: 'float' },
+  'inverseSqrt': { x: 'float' },
+  'degrees': { x: 'float' },
+  'radians': { x: 'float' },
+  'exp2': { x: 'float' },
+  'log2': { x: 'float' },
+  'lengthSq': { x: 'vec3' },
+  'oneMinus': { x: 'float' },
+  'pow2': { x: 'float' },
+  'pow3': { x: 'float' },
+  'pow4': { x: 'float' },
 };
 
 export const NodeOutputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'input': { uv: 'vec2', normal: 'vec3' },
   'output': {},
+  'output-standard': {},
+  'output-physical': {},
+  'output-phong': {},
+  'output-toon': {},
   'const-float': { out: 'float' },
   'const-color': { out: 'vec3' },
   'uv': { out: 'vec2' },
@@ -191,11 +407,56 @@ export const NodeOutputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'shiftLeft': { out: 'float' },
   'shiftRight': { out: 'float' },
   'mix': { out: 'float' },
+  // common math
+  'abs': { out: 'float' },
+  'floor': { out: 'float' },
+  'ceil': { out: 'float' },
+  'clamp': { out: 'float' },
+  'saturate': { out: 'float' },
+  'min': { out: 'float' },
+  'max': { out: 'float' },
+  'step': { out: 'float' },
+  'smoothstep': { out: 'float' },
+  'pow': { out: 'float' },
+  'exp': { out: 'float' },
+  'log': { out: 'float' },
+  'sqrt': { out: 'float' },
+  'sign': { out: 'float' },
+  'fract': { out: 'float' },
+  'length': { out: 'float' },
+  'normalize': { out: 'vec3' },
+  'dot': { out: 'float' },
+  'cross': { out: 'vec3' },
+  'distance': { out: 'float' },
+  // trig
+  'sin': { out: 'float' },
+  'cos': { out: 'float' },
+  'tan': { out: 'float' },
+  'asin': { out: 'float' },
+  'acos': { out: 'float' },
+  'atan': { out: 'float' },
+  // vectors
+  'vec2': { out: 'vec2' },
+  'vec3': { out: 'vec3' },
+  'vec4': { out: 'vec4' },
+  'swizzle': { out: 'float' },
+  'combine': { out: 'vec4' },
   // oscillators
   'oscSine': { out: 'float' },
   'oscSquare': { out: 'float' },
   'oscTriangle': { out: 'float' },
   'oscSawtooth': { out: 'float' },
+  // attributes
+  'positionAttr': { out: 'vec3' },
+  'normalAttr': { out: 'vec3' },
+  'uvAttr': { out: 'vec2' },
+  'viewPosition': { out: 'vec3' },
+  'worldPosition': { out: 'vec3' },
+  'cameraPosition': { out: 'vec3' },
+  // time
+  'time': { out: 'float' },
+  'timeSine': { out: 'float' },
+  'timeCos': { out: 'float' },
   // model
   'modelDirection': { out: 'vec3' },
   'modelViewMatrix': { out: 'mat4' },
@@ -207,6 +468,62 @@ export const NodeOutputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'modelWorldMatrixInverse': { out: 'mat4' },
   'highpModelViewMatrix': { out: 'mat4' },
   'highpModelNormalViewMatrix': { out: 'mat3' },
+  // conditional
+  'select': { out: 'float' },
+  // camera
+  'cameraNear': { out: 'float' },
+  'cameraFar': { out: 'float' },
+  'cameraProjectionMatrix': { out: 'mat4' },
+  'cameraProjectionMatrixInverse': { out: 'mat4' },
+  'cameraViewMatrix': { out: 'mat4' },
+  'cameraWorldMatrix': { out: 'mat4' },
+  'cameraNormalMatrix': { out: 'mat3' },
+  // screen
+  'screenUV': { out: 'vec2' },
+  'screenCoordinate': { out: 'vec2' },
+  'screenSize': { out: 'vec2' },
+  // viewport
+  'viewportUV': { out: 'vec2' },
+  'viewport': { out: 'vec4' },
+  'viewportCoordinate': { out: 'vec2' },
+  'viewportSize': { out: 'vec2' },
+  // uv utils
+  'matcapUV': { out: 'vec2' },
+  'rotateUV': { out: 'vec2' },
+  'spherizeUV': { out: 'vec2' },
+  'spritesheetUV': { out: 'vec2' },
+  'equirectUV': { out: 'vec2' },
+  // interpolation
+  'remap': { out: 'float' },
+  'remapClamp': { out: 'float' },
+  // random
+  'hash': { out: 'float' },
+  // rotate
+  'rotate': { out: 'vec3' },
+  // blend
+  'blendBurn': { out: 'vec3' },
+  'blendDodge': { out: 'vec3' },
+  'blendOverlay': { out: 'vec3' },
+  'blendScreen': { out: 'vec3' },
+  'blendColor': { out: 'vec3' },
+  // packing
+  'directionToColor': { out: 'vec3' },
+  'colorToDirection': { out: 'vec3' },
+  // extra math/optics
+  'reflect': { out: 'vec3' },
+  'refract': { out: 'vec3' },
+  'round': { out: 'float' },
+  'trunc': { out: 'float' },
+  'inverseSqrt': { out: 'float' },
+  'degrees': { out: 'float' },
+  'radians': { out: 'float' },
+  'exp2': { out: 'float' },
+  'log2': { out: 'float' },
+  'lengthSq': { out: 'float' },
+  'oneMinus': { out: 'float' },
+  'pow2': { out: 'float' },
+  'pow3': { out: 'float' },
+  'pow4': { out: 'float' },
 };
 
 export function isCompatible(outT: SocketType, inT: SocketType) {

@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useGeometryStore } from '@/stores/geometry-store';
-import { buildTSLMaterialFactory } from '@/utils/shader-tsl';
+import { buildTSLMaterialFactory } from '@/utils/shader-tsl/index';
 import * as THREE from 'three';
 
 /**
@@ -15,8 +15,8 @@ export function useMaterialNodes(materialId?: string) {
   // Rebuild factory when graph structure changes
   return useMemo(() => {
     if (!materialId || !graph) return null;
-  const { createStandardNodeMaterial } = buildTSLMaterialFactory(graph);
+  const { createAuto } = buildTSLMaterialFactory(graph);
   // Construct material immediately for R3F consumption
-  return createStandardNodeMaterial();
+  return createAuto();
   }, [materialId, graph?.nodes, graph?.edges]);
 }

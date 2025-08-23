@@ -4,6 +4,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react'
 interface DragInputProps {
   value?: number
   onChange: (value: number) => void
+  onValueCommit?: (value: number) => void
   step?: number
   precision?: number
   min?: number
@@ -19,6 +20,7 @@ interface DragInputProps {
 export function DragInput({
   value,
   onChange,
+  onValueCommit,
   step = 0.01,
   precision = 1,
   min,
@@ -38,6 +40,7 @@ export function DragInput({
   const [dragStartValue, setDragStartValue] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const displayRef = useRef<HTMLDivElement>(null)
+  const lastValueRef = useRef<number | undefined>(value)
 
   useEffect(() => {
     // Don't update input value while actively dragging
@@ -74,6 +77,7 @@ export function DragInput({
     setHasDragged(false)
     setDragStartX(e.clientX)
     setDragStartValue(value ?? 0)
+  lastValueRef.current = value ?? 0
     
     e.preventDefault()
   }, [isEditing, disabled, value])
@@ -94,7 +98,8 @@ export function DragInput({
     if (min !== undefined) newValue = Math.max(min, newValue)
     if (max !== undefined) newValue = Math.min(max, newValue)
 
-    onChange(newValue)
+  lastValueRef.current = newValue
+  onChange(newValue)
   }, [isDragging, step, min, max, onChange, dragStartX, dragStartValue])
 
   const handleMouseUp = useCallback(() => {
@@ -103,6 +108,10 @@ export function DragInput({
     setTimeout(() => {
       setHasDragged(false)
     }, 0)
+    if (onValueCommit) {
+      const v = lastValueRef.current ?? value ?? dragStartValue
+      onValueCommit(v)
+    }
   }, [])
 
   useEffect(() => {
@@ -170,6 +179,7 @@ export function DragInput({
       if (min !== undefined) finalValue = Math.max(min, finalValue)
       if (max !== undefined) finalValue = Math.min(max, finalValue)
       onChange(finalValue)
+  if (onValueCommit) onValueCommit(finalValue)
     }
     setIsEditing(false)
   }

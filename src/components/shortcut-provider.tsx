@@ -181,6 +181,18 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
       description: 'Delete selected objects',
       preventDefault: true,
     },
+    {
+      key: 'Backspace',
+      action: () => {
+        const sel = useSelectionStore.getState().selection;
+        if (sel.viewMode !== 'object' || sel.objectIds.length === 0) return;
+        const scene = useSceneStore.getState();
+        sel.objectIds.forEach((id) => scene.removeObject(id));
+        useSelectionStore.getState().clearSelection();
+      },
+      description: 'Delete selected objects (Backspace)',
+      preventDefault: true,
+    },
     // Copy/Cut/Paste for Object Mode
     {
       key: 'c',
@@ -262,12 +274,22 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
       return;
     }
 
+    // Avoid interfering with Shader Editor shortcuts for these keys when it's focused
+  const inShaderEditor = !!(target.closest && target.closest('.shader-flow-root'));
+  const keyLower = event.key.toLowerCase();
+    const isCopyCutPaste = (keyLower === 'c' || keyLower === 'x' || keyLower === 'v') && (event.metaKey || event.ctrlKey);
+    const isDeleteKey = keyLower === 'delete' || keyLower === 'backspace';
+    if (inShaderEditor && (isCopyCutPaste || isDeleteKey)) {
+      // Let the shader editor handle copy/cut/paste/delete
+      return;
+    }
+
     const keyString = createKeyString({
       key: event.key.length === 1 ? event.key.toLowerCase() : event.key,
       ctrl: event.ctrlKey, // don't treat meta as ctrl, to avoid conflicts on macOS
       shift: event.shiftKey,
       alt: event.altKey,
-      meta: event.metaKey,
+  meta: event.metaKey,
       action: () => {},
       description: '',
     });

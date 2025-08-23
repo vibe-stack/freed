@@ -142,7 +142,7 @@ export const useGeometryStore = create<GeometryStore>()(
               materialId: material.id,
               nodes: [
                 { id: idIn, type: 'input', position: { x: 40, y: 160 } } as any,
-                { id: idOut, type: 'output', position: { x: 520, y: 120 } } as any,
+                { id: idOut, type: 'output-standard', position: { x: 520, y: 120 } } as any,
                 { id: 'baseColor', type: 'const-color', position: { x: 260, y: 80 }, data: { r: material.color.x, g: material.color.y, b: material.color.z } } as any,
                 { id: 'rough', type: 'const-float', position: { x: 260, y: 180 }, data: { value: material.roughness } } as any,
                 { id: 'metal', type: 'const-float', position: { x: 260, y: 240 }, data: { value: material.metalness } } as any,
@@ -184,7 +184,7 @@ export const useGeometryStore = create<GeometryStore>()(
             materialId,
             nodes: [
               { id: idIn, type: 'input', position: { x: 40, y: 160 } } as any,
-              { id: idOut, type: 'output', position: { x: 520, y: 120 } } as any,
+              { id: idOut, type: 'output-standard', position: { x: 520, y: 120 } } as any,
               { id: 'color', type: 'const-color', position: { x: 260, y: 80 }, data: { r: mat?.color.x ?? 0.8, g: mat?.color.y ?? 0.8, b: mat?.color.z ?? 0.85 } } as any,
               { id: 'rough', type: 'const-float', position: { x: 260, y: 180 }, data: { value: mat?.roughness ?? 0.8 } } as any,
               { id: 'metal', type: 'const-float', position: { x: 260, y: 240 }, data: { value: mat?.metalness ?? 0.05 } } as any,

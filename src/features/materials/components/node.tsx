@@ -11,7 +11,7 @@ import ColorInput from '@/components/color-input';
 import type { Vector3 } from '@/types/geometry';
 
 type NodeData = { materialId?: string };
-export const ShaderFlowNode: React.FC<any> = ({ id, data, isConnectable }) => {
+export const ShaderFlowNode: React.FC<any> = ({ id, data, isConnectable, selected }) => {
     const materialId = (data as NodeData).materialId;
     const graph = useGeometryStore((s) => (materialId ? s.shaderGraphs.get(materialId) : undefined));
     const n = (graph?.nodes.find((nn) => nn.id === id) ?? { id, type: 'input', position: { x: 0, y: 0 }, hidden: false }) as SNode;
@@ -58,8 +58,8 @@ export const ShaderFlowNode: React.FC<any> = ({ id, data, isConnectable }) => {
     }, [id, updateNodeInternals, (n as any)?.type, floatVal, colorVec?.x, colorVec?.y, colorVec?.z]);
 
     return (
-        <div className="rounded-md border border-white/10 bg-[#0f141b]/90 text-gray-200 text-xs min-w-[160px]">
-            <div className="px-2 py-1 border-b border-white/10 text-[11px] uppercase tracking-wide text-gray-400 flex items-center justify-between rf-drag">
+        <div className={`rounded-md border ${selected ? 'border-white/20 bg-[#141a22]/95' : 'border-white/10 bg-[#0f141b]/90'} text-gray-200 text-xs min-w-[160px] transition-colors`}> 
+            <div className={`px-2 py-1 border-b ${selected ? 'border-white/20' : 'border-white/10'} text-[11px] uppercase tracking-wide text-gray-400 flex items-center justify-between rf-drag`}>
                 <span className="cursor-move select-none">{String(n.type)}</span>
             </div>
             <div className="px-2 py-1 grid grid-cols-2 gap-x-4">
@@ -101,9 +101,9 @@ export const ShaderFlowNode: React.FC<any> = ({ id, data, isConnectable }) => {
                 </div>
             </div>
             {/* Inline controls for const nodes */}
-            {(n as any).type === 'const-float' && (
+        {(n as any).type === 'const-float' && (
                 <div className="px-2 pb-2">
-                    <DragInput value={floatVal ?? 0} onChange={updateFloat} precision={2} step={0.01} label="Value" />
+            <DragInput value={floatVal ?? 0} onChange={updateFloat} onValueCommit={updateFloat} precision={2} step={0.01} label="Value" />
                 </div>
             )}
             {(n as any).type === 'const-color' && colorVec && (
