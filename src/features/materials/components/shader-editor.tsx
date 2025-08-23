@@ -168,6 +168,7 @@ export const ShaderEditor: React.FC<Props> = ({ open, onOpenChange }) => {
     vec4: ShaderFlowNode,
     swizzle: ShaderFlowNode,
     combine: ShaderFlowNode,
+    unpack: ShaderFlowNode,
     // attributes
     positionAttr: ShaderFlowNode,
     normalAttr: ShaderFlowNode,
@@ -251,11 +252,28 @@ export const ShaderEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         // Remove debug console.log to reduce render noise
         // console.log("connecting", materialId)
         if (!materialId) return;
-        const from = graphNodes.find((n) => n.id === c.source);
-        const to = graphNodes.find((n) => n.id === c.target);
+        const rfNodes = rf?.getNodes?.() ?? [];
+        const fromRf = rfNodes.find((n) => n.id === c.source);
+        const toRf = rfNodes.find((n) => n.id === c.target);
+        const from = fromRf ? ({ id: fromRf.id, type: fromRf.type } as any) : graphNodes.find((n) => n.id === c.source);
+        const to = toRf ? ({ id: toRf.id, type: toRf.type } as any) : graphNodes.find((n) => n.id === c.target);
         // console.log("connecting 2", from, to, c.sourceHandle, c.targetHandle);
         if (!from || !to || !c.sourceHandle || !c.targetHandle) return;
-        const outType = (ShaderTypes.NodeOutputs as any)[from.type]?.[c.sourceHandle as string] as ShaderTypes.SocketType | undefined;
+        // Dynamic output type inference for math nodes
+        let outType = (ShaderTypes.NodeOutputs as any)[from.type]?.[c.sourceHandle as string] as ShaderTypes.SocketType | undefined;
+        const dynamicMath = new Set(['add','sub','mul','div','mod','mix']);
+        if ((!outType || outType === 'float') && dynamicMath.has((from as any).type)) {
+            const dimOf = (t?: ShaderTypes.SocketType) => (t === 'vec4' ? 4 : t === 'vec3' ? 3 : t === 'vec2' ? 2 : t === 'float' ? 1 : 0);
+            const edges = graph?.edges ?? [];
+            const incoming = edges.filter((e) => e.target === (from as any).id && (e.targetHandle === 'a' || e.targetHandle === 'b'));
+            let maxDim = 1;
+            for (const e of incoming) {
+                const srcNode = graphNodes.find((n) => n.id === e.source) || ((rfNodes.find((n) => n.id === e.source)) ? { type: (rfNodes.find((n) => n.id === e.source) as any).type } as any : undefined);
+                const srcOutT = srcNode ? (ShaderTypes.NodeOutputs as any)[(srcNode as any).type]?.[e.sourceHandle as string] as ShaderTypes.SocketType | undefined : undefined;
+                maxDim = Math.max(maxDim, dimOf(srcOutT));
+            }
+            outType = maxDim >= 4 ? 'vec4' : maxDim === 3 ? 'vec3' : maxDim === 2 ? 'vec2' : 'float';
+        }
         const inType = (ShaderTypes.NodeInputs as any)[to.type]?.[c.targetHandle as string] as ShaderTypes.SocketType | undefined;
         // console.log("connecting 3", outType, inType);
         if (!outType || !inType) return;
@@ -278,25 +296,45 @@ export const ShaderEditor: React.FC<Props> = ({ open, onOpenChange }) => {
             g.edges = g.edges.filter((e) => !(e.target === edge.target && e.targetHandle === edge.targetHandle));
             g.edges = [...g.edges, edge];
         });
-    }, [materialId, graphNodes, updateShaderGraph]);
+    }, [materialId, graphNodes, updateShaderGraph, rf, graph?.edges]);
 
     // Optimize isValidConnection by memoizing on graph.nodes instead of entire graph
     
     const isValidConnection = useCallback((connection: Edge | Connection) => {
         // Remove debug console.log to reduce render noise
         // console.log("isvalid", graph)
-        if (!graphNodes.length) return true; // don't block drag start
-        const from = connection.source ? graphNodes.find((n) => n.id === connection.source) : undefined;
-        const to = connection.target ? graphNodes.find((n) => n.id === connection.target) : undefined;
+        const rfNodes = rf?.getNodes?.() ?? [];
+        const getNode = (id?: string | null) => {
+            if (!id) return undefined;
+            const rfn = rfNodes.find((n) => n.id === id);
+            return rfn ? ({ id: rfn.id, type: rfn.type } as any) : graphNodes.find((n) => n.id === id);
+        };
+        const from = getNode(connection.source as any);
+        const to = getNode(connection.target as any);
         // be permissive until both ends and handles are known
         // console.log("isvalid 2", from, to, connection.sourceHandle, connection.targetHandle)
         if (!from || !to || !connection.sourceHandle || !connection.targetHandle) return true;
-        const outType = (ShaderTypes.NodeOutputs as any)[from.type]?.[connection.sourceHandle as string] as ShaderTypes.SocketType | undefined;
+        // Dynamic output type inference for math nodes
+        let outType = (ShaderTypes.NodeOutputs as any)[from.type]?.[connection.sourceHandle as string] as ShaderTypes.SocketType | undefined;
+    const dynamicMath = new Set(['add','sub','mul','div','mod','mix']);
+        if ((!outType || outType === 'float') && dynamicMath.has(from.type as any)) {
+            // Inspect connected inputs of the math node to find highest vector dimension
+            const edges = graph?.edges ?? [];
+            const incoming = edges.filter((e) => e.target === (from as any).id && (e.targetHandle === 'a' || e.targetHandle === 'b'));
+            const dimOf = (t?: ShaderTypes.SocketType) => (t === 'vec4' ? 4 : t === 'vec3' ? 3 : t === 'vec2' ? 2 : t === 'float' ? 1 : 0);
+            let maxDim = 1;
+            for (const e of incoming) {
+                const srcNode = getNode(e.source);
+                const srcOutT = srcNode ? (ShaderTypes.NodeOutputs as any)[srcNode.type]?.[e.sourceHandle as string] as ShaderTypes.SocketType | undefined : undefined;
+                maxDim = Math.max(maxDim, dimOf(srcOutT));
+            }
+            outType = maxDim >= 4 ? 'vec4' : maxDim === 3 ? 'vec3' : maxDim === 2 ? 'vec2' : 'float';
+        }
         const inType = (ShaderTypes.NodeInputs as any)[to.type]?.[connection.targetHandle as string] as ShaderTypes.SocketType | undefined;
         // console.log("isvalid 3", outType, inType)
         if (!outType || !inType) return false;
         return ShaderTypes.isCompatible(outType, inType);
-    }, [graphNodes]);
+    }, [graphNodes, rf, graph?.edges]);
 
     // Debounce node position updates and only commit when interaction settles
     const rAF = useRef<number | null>(null);
@@ -485,6 +523,10 @@ export const ShaderEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         if (rf) {
             rf.addNodes(newNodes.map((n) => ({ id: n.id, type: n.type as any, position: n.position as any, data: { materialId }, dragHandle: '.rf-drag', draggable: true } as any)));
             if (newEdges.length) rf.addEdges(newEdges.map((e) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle } as any)));
+            // ensure RF recalculates internals for new nodes
+            setTimeout(() => {
+                try { (rf as any).updateNodeInternals?.(newNodes.map((n) => n.id)); } catch {}
+            }, 0);
         }
     }, [materialId, graph, updateShaderGraph, rf]);
 

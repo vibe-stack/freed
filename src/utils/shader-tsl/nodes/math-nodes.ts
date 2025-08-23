@@ -26,6 +26,7 @@ export const mathResolvers = {
   mul: (n: ShaderNode, _out: string, ctx: Ctx, build: any) => {
     const a = ctx.findInput(n.id, 'a');
     const b = ctx.findInput(n.id, 'b');
+    // TSL.mul handles vector*scalar and vector*vector
     return TSL.mul(a ? build(a.from, a.fromHandle) : null, b ? build(b.from, b.fromHandle) : null);
   },
   div: (n: ShaderNode, _out: string, ctx: Ctx, build: any) => {

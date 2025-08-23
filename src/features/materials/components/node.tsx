@@ -16,7 +16,7 @@ export const ShaderFlowNode: React.FC<any> = ({ id, data, isConnectable, selecte
     const graph = useGeometryStore((s) => (materialId ? s.shaderGraphs.get(materialId) : undefined));
     const n = (graph?.nodes.find((nn) => nn.id === id) ?? { id, type: 'input', position: { x: 0, y: 0 }, hidden: false }) as SNode;
     const inputs = (ShaderTypes.NodeInputs as any)[n.type] ?? {} as Record<string, ShaderTypes.SocketType>;
-    const outputs = (ShaderTypes.NodeOutputs as any)[n.type] ?? {} as Record<string, ShaderTypes.SocketType>;
+    const baseOutputs = (ShaderTypes.NodeOutputs as any)[n.type] ?? {} as Record<string, ShaderTypes.SocketType>;
     const updateShaderGraph = useGeometryStore((s) => s.updateShaderGraph);
     const updateNodeInternals = useUpdateNodeInternals();
 
@@ -57,6 +57,25 @@ export const ShaderFlowNode: React.FC<any> = ({ id, data, isConnectable, selecte
         return () => clearTimeout(t);
     }, [id, updateNodeInternals, (n as any)?.type, floatVal, colorVec?.x, colorVec?.y, colorVec?.z]);
 
+    // Dynamic output typing for math nodes (add/sub/mul/div/mod/mix)
+    const dynOutputs = useMemo(() => {
+        const o = { ...baseOutputs } as Record<string, ShaderTypes.SocketType>;
+        const dynMath = new Set(['add','sub','mul','div','mod','mix']);
+        if (dynMath.has((n as any).type) && 'out' in o) {
+            const dimOf = (t?: ShaderTypes.SocketType) => (t === 'vec4' ? 4 : t === 'vec3' ? 3 : t === 'vec2' ? 2 : t === 'float' ? 1 : 0);
+            const edges = graph?.edges ?? [];
+            const incoming = edges.filter((e) => e.target === n.id && (e.targetHandle === 'a' || e.targetHandle === 'b'));
+            let maxDim = 1;
+            for (const e of incoming) {
+                const srcNode = graph?.nodes.find((nn) => nn.id === e.source);
+                const srcOutT = srcNode ? ((ShaderTypes.NodeOutputs as any)[(srcNode as any).type]?.[e.sourceHandle as string] as ShaderTypes.SocketType | undefined) : undefined;
+                maxDim = Math.max(maxDim, dimOf(srcOutT));
+            }
+            o.out = maxDim >= 4 ? 'vec4' : maxDim === 3 ? 'vec3' : maxDim === 2 ? 'vec2' : 'float';
+        }
+        return o;
+    }, [baseOutputs, graph?.edges, graph?.nodes, n]);
+
     return (
         <div className={`rounded-md border ${selected ? 'border-white/20 bg-[#141a22]/95' : 'border-white/10 bg-[#0f141b]/90'} text-gray-200 text-xs min-w-[160px] transition-colors`}> 
             <div className={`px-2 py-1 border-b ${selected ? 'border-white/20' : 'border-white/10'} text-[11px] uppercase tracking-wide text-gray-400 flex items-center justify-between rf-drag`}>
@@ -82,7 +101,7 @@ export const ShaderFlowNode: React.FC<any> = ({ id, data, isConnectable, selecte
                     ))}
                 </div>
                 <div className="space-y-1">
-                    {Object.entries(outputs).map(([key, type]) => (
+                    {Object.entries(dynOutputs).map(([key, type]) => (
                         <div key={key} className="relative text-right">
                             <span className="pr-3 text-gray-300 pointer-events-none">
                                 {key}

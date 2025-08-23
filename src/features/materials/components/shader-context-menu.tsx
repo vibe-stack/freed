@@ -139,6 +139,7 @@ export const ShaderContextMenuContent: React.FC<Props> = ({ onAdd }) => {
           <Item onSelect={() => onAdd('vec4')}>Vec4</Item>
           <Item onSelect={() => onAdd('swizzle')}>Swizzle</Item>
           <Item onSelect={() => onAdd('combine')}>Combine</Item>
+          <Item onSelect={() => onAdd('unpack')}>Unpack</Item>
         </SubMenu>
       </div>
 

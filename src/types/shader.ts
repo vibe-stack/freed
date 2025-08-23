@@ -42,6 +42,7 @@ export type ShaderNodeType =
   | 'sin' | 'cos' | 'tan' | 'asin' | 'acos' | 'atan'
   // Vectors and swizzles
   | 'vec2' | 'vec3' | 'vec4' | 'swizzle' | 'combine'
+  | 'unpack'
   // Oscillators
   | 'oscSine'
   | 'oscSquare'
@@ -253,7 +254,7 @@ export const NodeInputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'bitXor': { a: 'float', b: 'float' },
   'shiftLeft': { a: 'float', b: 'float' },
   'shiftRight': { a: 'float', b: 'float' },
-  'mix': { a: 'float', b: 'float', t: 'float' },
+  'mix': { a: 'vec4', b: 'vec4', t: 'float' },
   // common math
   'abs': { x: 'float' },
   'floor': { x: 'float' },
@@ -286,8 +287,10 @@ export const NodeInputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'vec2': { x: 'float', y: 'float' },
   'vec3': { x: 'float', y: 'float', z: 'float' },
   'vec4': { x: 'float', y: 'float', z: 'float', w: 'float' },
+  // Swizzle can accept any vector; compatibility logic allows vec2/vec3/vec4
   'swizzle': { in: 'vec4' },
   'combine': { x: 'float', y: 'float', z: 'float', w: 'float' },
+  'unpack': { value: 'vec4' },
   // oscillators have no inputs (use global timer)
   'oscSine': {},
   'oscSquare': {},
@@ -441,6 +444,7 @@ export const NodeOutputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'vec4': { out: 'vec4' },
   'swizzle': { out: 'float' },
   'combine': { out: 'vec4' },
+  'unpack': { x: 'float', y: 'float', z: 'float', w: 'float' },
   // oscillators
   'oscSine': { out: 'float' },
   'oscSquare': { out: 'float' },
@@ -526,9 +530,20 @@ export const NodeOutputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'pow4': { out: 'float' },
 };
 
+function isNumericVector(t: SocketType) {
+  return t === 'float' || t === 'vec2' || t === 'vec3' || t === 'vec4';
+}
+
 export function isCompatible(outT: SocketType, inT: SocketType) {
   if (outT === inT) return true;
-  // allow float -> vec3 splat for quick color controls
-  if (outT === 'float' && inT === 'vec3') return true;
+  // Allow feeding smaller vectors into vec4-typed inputs (we'll fill missing comps)
+  if (inT === 'vec4' && (outT === 'vec2' || outT === 'vec3')) return true;
+  // Generic numeric compatibility: allow scalar-vector ops and vice versa
+  if (isNumericVector(outT) && isNumericVector(inT)) {
+    if (outT === 'float' || inT === 'float') return true; // scalar with any vector size
+    // Both vectors: must match dimensionality
+    const dims: Record<SocketType, number> = { float: 1, vec2: 2, vec3: 3, vec4: 4, bool: 0, mat3: 9, mat4: 16 };
+    return dims[outT] === dims[inT];
+  }
   return false;
 }

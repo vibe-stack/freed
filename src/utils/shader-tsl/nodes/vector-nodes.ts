@@ -1,5 +1,6 @@
 import * as TSL from 'three/tsl';
 import type { ShaderNode } from '@/types/shader';
+import * as ShaderTypes from '@/types/shader';
 
 type Ctx = { findInput: (nodeId: string, handle: string) => { from: ShaderNode; fromHandle: string } | null };
 
@@ -51,5 +52,20 @@ export const vectorResolvers = {
     if (mask.length === 3) return TSL.vec3(comps[0], comps[1], comps[2]);
     if (mask.length === 4) return TSL.vec4(comps[0], comps[1], comps[2], comps[3]);
     return comps[0];
+  },
+  unpack: (n: any, out: string, ctx: Ctx, build: any) => {
+    const inp = ctx.findInput(n.id, 'value');
+    const srcExpr = inp ? build(inp.from, inp.fromHandle) : null;
+    // Determine dimension of the source vector from declared output type
+    const outT = inp ? (ShaderTypes.NodeOutputs as any)[(inp.from as any).type]?.[inp.fromHandle as string] as ShaderTypes.SocketType | undefined : undefined;
+    const dim = outT === 'vec4' ? 4 : outT === 'vec3' ? 3 : outT === 'vec2' ? 2 : 1;
+    const idx = out === 'x' ? 0 : out === 'y' ? 1 : out === 'z' ? 2 : 3;
+    if (!srcExpr) return TSL.float(0);
+    if (idx < dim) {
+      const member = out; // 'x'|'y'|'z'|'w'
+      return (srcExpr as any)?.getMember?.(member) ?? srcExpr;
+    }
+    // Default missing components: z/y -> 0, w -> 1
+    return idx === 3 ? TSL.float(1) : TSL.float(0);
   },
 } as const;
