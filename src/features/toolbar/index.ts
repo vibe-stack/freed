@@ -4,3 +4,4 @@ export { SelectionModeToolbar } from './components/selection-mode-toolbar';
 export { ViewModeToolbar } from './components/viewmode-toolbar';
 export { default as EditToolsToolbar } from './components/edit-tools-toolbar';
 export { SculptToolsToolbar } from './components/sculpt-tools-toolbar';
+export { CameraSwitcher } from './components/camera-switcher';

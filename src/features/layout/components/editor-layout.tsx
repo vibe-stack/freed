@@ -14,6 +14,7 @@ import { PropertiesPanel } from '@/features/properties-panel/components/properti
 import React from 'react';
 import ShaderEditor from '@/features/materials/components/shader-editor';
 import { useShaderEditorStore } from '@/stores/shader-editor-store';
+import { CameraSwitcher } from '@/features/toolbar';
 
 const EditorLayout: React.FC = () => {
   const shaderOpen = useShaderEditorStore((s) => s.open);
@@ -34,6 +35,13 @@ const EditorLayout: React.FC = () => {
           <TopToolbar />
           {/* Edit/Sculpt toolbars (only one visible based on palette) */}
           {editPalette === 'sculpt' ? <SculptToolsToolbar /> : <EditToolsToolbar />}
+        </div>
+
+        {/* Right slim camera switcher aligned with top toolbar */}
+        <div className="absolute right-4 top-3 z-20">
+          <div className="pointer-events-auto">
+            <CameraSwitcher />
+          </div>
         </div>
 
         {/* Left Scene Hierarchy Panel */}

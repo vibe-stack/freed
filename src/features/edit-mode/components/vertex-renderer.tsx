@@ -10,7 +10,7 @@ const ORANGE = new Color(1.0, 0.5, 0.0);
 const BLACK = new Color(0, 0, 0);
 
 // Convert desired pixel size to world-space scale so cubes appear constant on screen
-function getScreenScale(camera: PerspectiveCamera, position: Vector3, viewportHeight: number, pixelSize = 10): number {
+function getScreenScale(camera: PerspectiveCamera, position: Vector3, viewportHeight: number, pixelSize = 14): number {
   const distance = camera.position.distanceTo(position);
   const vFOV = (camera.fov * Math.PI) / 180;
   const worldScreenHeightAtDistance = 2 * Math.tan(vFOV / 2) * distance;

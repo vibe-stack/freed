@@ -8,9 +8,12 @@ import { useViewportStore } from '@/stores/viewport-store';
 export function useCameraController() {
   const cameraState = useViewportStore((s) => s.camera);
   const setCamera = useViewportStore((s) => s.setCamera);
+  const activeSceneCameraId = useViewportStore((s) => s.activeCameraObjectId ?? null);
   const { camera } = useThree();
 
+  // Only drive the R3F default camera from editor state when no scene camera is active.
   useEffect(() => {
+    if (activeSceneCameraId) return;
     camera.position.set(
       cameraState.position.x,
       cameraState.position.y,
@@ -26,9 +29,11 @@ export function useCameraController() {
     camera.near = cameraState.near;
     camera.far = cameraState.far;
     camera.updateProjectionMatrix();
-  }, [camera, cameraState]);
+  }, [camera, cameraState, activeSceneCameraId]);
 
+  // Report back position changes only when we're controlling the default editor camera.
   useFrame(() => {
+    if (useViewportStore.getState().activeCameraObjectId) return;
     const current = useViewportStore.getState().camera.position;
     const x = camera.position.x,
       y = camera.position.y,

@@ -124,6 +124,10 @@ export interface CameraResource {
   type: CameraType;
   // Perspective
   fov?: number; // degrees
+  zoom?: number; // shared: Camera has zoom; applies to both, default 1
+  focus?: number; // perspective focus distance (for DOF pipelines)
+  filmGauge?: number; // perspective film size in mm (default 35)
+  filmOffset?: number; // perspective horizontal film offset in mm
   // Orthographic
   left?: number;
   right?: number;
@@ -172,4 +176,6 @@ export interface ViewportState {
   backgroundColor: Vector3;
   // Auto-orbit interval in seconds; 0 disables. Used for subtle recording orbits.
   autoOrbitIntervalSec?: 0 | 1 | 5 | 15;
+  // If set, the editor uses this scene object (camera) as the active view camera
+  activeCameraObjectId?: string | null;
 }

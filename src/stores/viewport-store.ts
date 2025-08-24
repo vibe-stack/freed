@@ -6,6 +6,7 @@ import { vec3 } from '../utils/geometry';
 
 interface ViewportActions {
   setCamera: (camera: Partial<CameraState>) => void;
+  setActiveCamera: (objectId: string | null) => void;
   setShadingMode: (mode: ShadingMode) => void;
   toggleGrid: () => void;
   toggleAxes: () => void;
@@ -34,6 +35,7 @@ export const useViewportStore = create<ViewportStore>()(
     immer((set, _get) => ({
       // Initial state
       camera: defaultCameraState,
+  activeCameraObjectId: null,
       shadingMode: 'solid' as ShadingMode,
       showGrid: true,
       showAxes: true,
@@ -45,6 +47,11 @@ export const useViewportStore = create<ViewportStore>()(
       setCamera: (camera: Partial<CameraState>) => {
         set((state) => {
           Object.assign(state.camera, camera);
+        });
+      },
+      setActiveCamera: (objectId: string | null) => {
+        set((state) => {
+          state.activeCameraObjectId = objectId;
         });
       },
 
@@ -122,6 +129,7 @@ export const useViewportStore = create<ViewportStore>()(
       reset: () => {
         set((state) => {
           state.camera = { ...defaultCameraState };
+          state.activeCameraObjectId = null;
           state.shadingMode = 'solid' as ShadingMode;
           state.showGrid = true;
           state.showAxes = true;
@@ -136,6 +144,7 @@ export const useViewportStore = create<ViewportStore>()(
 
 // Selector hooks for optimized re-renders
 export const useCamera = () => useViewportStore((state) => state.camera);
+export const useActiveCameraObjectId = () => useViewportStore((state) => state.activeCameraObjectId ?? null);
 export const useShadingMode = () => useViewportStore((state) => state.shadingMode);
 export const useViewportSettings = () => useViewportStore((state) => ({
   showGrid: state.showGrid,

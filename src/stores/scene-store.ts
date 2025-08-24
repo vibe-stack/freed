@@ -5,13 +5,14 @@ import { useMemo } from 'react';
 import { SceneObject, Transform, Light, LightType, CameraResource, CameraType } from '../types/geometry';
 import { vec3 } from '../utils/geometry';
 import { nanoid } from 'nanoid';
+import { useGeometryStore } from './geometry-store';
 
 interface SceneState {
   objects: Record<string, SceneObject>;
   rootObjects: string[]; // Objects with parentId === null
   selectedObjectId: string | null;
   lights: Record<string, Light>;
-  cameras: Record<string, CameraResource>;
+  // Camera resources live in geometry-store; only object<->cameraId is here
 }
 
 interface SceneActions {
@@ -61,7 +62,6 @@ export const useSceneStore = create<SceneStore>()(
       rootObjects: [],
       selectedObjectId: null,
   lights: {},
-  cameras: {},
       
       // Actions
       addObject: (object: SceneObject) => {
@@ -106,7 +106,12 @@ export const useSceneStore = create<SceneStore>()(
             if (obj) {
               // Clean up component references
               if (obj.lightId) delete state.lights[obj.lightId];
-              if (obj.cameraId) delete state.cameras[obj.cameraId];
+              if (obj.cameraId) {
+                // Remove camera resource from geometry store
+                try {
+                  useGeometryStore.getState().removeCamera(obj.cameraId);
+                } catch {}
+              }
               obj.children.forEach((childId: string) => removeRecursive(childId));
               delete state.objects[id];
             }
@@ -351,7 +356,7 @@ export const useSceneStore = create<SceneStore>()(
           ...(type === 'spot' ? { angle: Math.PI / 6, penumbra: 0.2, distance: 0, decay: 2 } : {}),
           ...(type === 'point' ? { distance: 0, decay: 2 } : {}),
         };
-        set((state) => { state.lights[id] = light; });
+  set((state) => { state.lights[id] = light; });
         const object: SceneObject = {
           id: nanoid(),
           name,
@@ -376,11 +381,12 @@ export const useSceneStore = create<SceneStore>()(
         const cam: CameraResource = {
           id,
           type,
-          ...(type === 'perspective' ? { fov: 50 } : { left: -1, right: 1, top: 1, bottom: -1 }),
+          ...(type === 'perspective' ? { fov: 50, zoom: 1, focus: 10, filmGauge: 35, filmOffset: 0 } : { left: -1, right: 1, top: 1, bottom: -1, zoom: 1 }),
           near: 0.1,
           far: 1000,
         };
-        set((state) => { state.cameras[id] = cam; });
+        // Persist camera in geometry store
+        useGeometryStore.getState().addCamera(cam);
         const object: SceneObject = {
           id: nanoid(),
           name,
@@ -486,7 +492,7 @@ export const useSceneStore = create<SceneStore>()(
           state.rootObjects = [];
           state.selectedObjectId = null;
           state.lights = {};
-          state.cameras = {};
+          // camera resources live in geometry-store
         });
       },
     }))
@@ -519,7 +525,7 @@ export const useSelectedObject = () => {
 export const useSelectedObjectId = () => useSceneStore((state) => state.selectedObjectId);
 
 export const useLight = (lightId: string) => useSceneStore((s) => s.lights[lightId]);
-export const useCameraResource = (cameraId: string) => useSceneStore((s) => s.cameras[cameraId]);
+// Camera resources are provided by geometry-store now
 
 export const useSceneHierarchy = () => {
   const rootObjects = useSceneStore((state) => state.rootObjects);

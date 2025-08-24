@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { useMemo } from 'react';
-import { Mesh, Material } from '../types/geometry';
+import { Mesh, Material, CameraResource, CameraType } from '../types/geometry';
 import type { ShaderGraph } from '@/types/shader';
 import { nanoid } from 'nanoid';
 import { useSceneStore } from './scene-store';
@@ -31,6 +31,8 @@ interface GeometryState {
   selectedMeshId: string | null;
   // Map objectId -> array stack top-to-bottom
   modifierStacks: Record<string, ModifierStackItem[]>;
+  // Camera resources (by cameraId referenced from Scene objects)
+  cameras: Record<string, CameraResource>;
 }
 
 interface GeometryActions {
@@ -71,6 +73,11 @@ interface GeometryActions {
   updateModifierSettings: (objectId: string, modifierId: string, updater: (settings: any) => void) => void;
   applyModifier: (objectId: string, modifierId: string) => void;
   clearAllModifiers: (objectId: string) => void;
+
+  // Camera resources
+  addCamera: (camera: CameraResource) => void;
+  updateCamera: (cameraId: string, updater: (cam: CameraResource) => void) => void;
+  removeCamera: (cameraId: string) => void;
 }
 
 type GeometryStore = GeometryState & GeometryActions;
@@ -85,6 +92,7 @@ export const useGeometryStore = create<GeometryStore>()(
   shaderGraphs: new Map(),
       selectedMeshId: null,
   modifierStacks: {},
+  cameras: {},
       
       // Mesh operations
       addMesh: (mesh: Mesh) => {
@@ -127,6 +135,7 @@ export const useGeometryStore = create<GeometryStore>()(
           state.materials = new Map();
           state.shaderGraphs = new Map();
           state.selectedMeshId = null;
+          state.cameras = {};
         });
       },
       
@@ -391,6 +400,29 @@ export const useGeometryStore = create<GeometryStore>()(
       clearAllModifiers: (objectId) => {
         set((state) => { delete state.modifierStacks[objectId]; });
       },
+
+      // Camera resources
+      addCamera: (camera: CameraResource) => {
+        set((state) => {
+          state.cameras[camera.id] = camera;
+        });
+      },
+      updateCamera: (cameraId: string, updater: (cam: CameraResource) => void) => {
+        set((state) => {
+          const cam = state.cameras[cameraId];
+          if (cam) {
+            // Work on a shallow copy so subscribers receive a new reference
+            const draft = { ...cam } as CameraResource;
+            updater(draft);
+            state.cameras[cameraId] = draft;
+          }
+        });
+      },
+      removeCamera: (cameraId: string) => {
+        set((state) => {
+          delete state.cameras[cameraId];
+        });
+      },
       }))
     ),
     {
@@ -400,6 +432,7 @@ export const useGeometryStore = create<GeometryStore>()(
   shaderGraphs: state.shaderGraphs,
         selectedMeshId: state.selectedMeshId,
         modifierStacks: state.modifierStacks,
+        cameras: state.cameras,
       }),
     }
   )
@@ -422,6 +455,8 @@ export const useSelectedMesh = () => {
 
 export const useMesh = (meshId: string) => useGeometryStore((state) => state.meshes.get(meshId));
 export const useSelectedMeshId = () => useGeometryStore((state) => state.selectedMeshId);
+export const useCameraResource = (cameraId: string) => useGeometryStore((s) => s.cameras[cameraId]);
+export const useCameras = () => useGeometryStore((s) => s.cameras);
 
 // Helpers for undo/redo of geometry edits
 export const geometryUndo = () => {

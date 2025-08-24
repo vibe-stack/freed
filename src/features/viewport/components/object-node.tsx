@@ -18,6 +18,8 @@ import {
 } from 'three';
 import { useHelper } from '@react-three/drei';
 import { useViewportStore } from '@/stores/viewport-store';
+import { useGeometryStore, useCameraResource } from '@/stores/geometry-store';
+import { registerCamera, unregisterCamera } from '../hooks/camera-registry';
 // Light helper wrappers
 const DirectionalLightNode: React.FC<{ color: Color; intensity: number }> = ({ color, intensity }) => {
   const ref = useRef<DirectionalLight>(null!);
@@ -135,32 +137,106 @@ const PointLightBare: React.FC<{ color: Color; intensity: number; distance: numb
 // RectAreaLight removed for WebGPU compatibility
 
 // Camera helper wrappers
-const PerspectiveCameraNode: React.FC<{ fov: number; near: number; far: number }>
-  = ({ fov, near, far }) => {
+const PerspectiveCameraNode: React.FC<{ objectId?: string; fov: number; near: number; far: number; zoom?: number; focus?: number; filmGauge?: number; filmOffset?: number }>
+  = ({ objectId, fov, near, far, zoom = 1, focus = 10, filmGauge = 35, filmOffset = 0 }) => {
     const ref = useRef<PerspectiveCamera>(null!);
+    useEffect(() => {
+      if (!objectId) return;
+      const c = ref.current;
+      registerCamera(objectId, c);
+      return () => unregisterCamera(objectId, c);
+    }, [objectId]);
+    // Ensure projection matrix updates when camera props change
+    useEffect(() => {
+      const c = ref.current;
+      if (!c) return;
+      c.fov = fov;
+      c.near = near;
+      c.far = far;
+      c.zoom = zoom;
+      // focus/film params also affect projection in three
+      (c as PerspectiveCamera).focus = focus;
+      (c as PerspectiveCamera).filmGauge = filmGauge;
+      (c as PerspectiveCamera).filmOffset = filmOffset;
+      c.updateProjectionMatrix();
+    }, [fov, near, far, zoom, focus, filmGauge, filmOffset]);
   // @ts-expect-error helper typing is overly strict in our env
   useHelper(ref as unknown as never, CameraHelper as unknown as never);
-    return <perspectiveCamera ref={ref} fov={fov} near={near} far={far} />;
+    return <perspectiveCamera ref={ref} fov={fov} near={near} far={far} zoom={zoom} focus={focus} filmGauge={filmGauge} filmOffset={filmOffset} />;
   };
 
-const PerspectiveCameraBare: React.FC<{ fov: number; near: number; far: number }>
-  = ({ fov, near, far }) => {
+const PerspectiveCameraBare: React.FC<{ objectId?: string; fov: number; near: number; far: number; zoom?: number; focus?: number; filmGauge?: number; filmOffset?: number }>
+  = ({ objectId, fov, near, far, zoom = 1, focus = 10, filmGauge = 35, filmOffset = 0 }) => {
     const ref = useRef<PerspectiveCamera>(null!);
-    return <perspectiveCamera ref={ref} fov={fov} near={near} far={far} />;
+    useEffect(() => {
+      if (!objectId) return;
+      const c = ref.current;
+      registerCamera(objectId, c);
+      return () => unregisterCamera(objectId, c);
+    }, [objectId]);
+    useEffect(() => {
+      const c = ref.current;
+      if (!c) return;
+      c.fov = fov;
+      c.near = near;
+      c.far = far;
+      c.zoom = zoom;
+      (c as PerspectiveCamera).focus = focus;
+      (c as PerspectiveCamera).filmGauge = filmGauge;
+      (c as PerspectiveCamera).filmOffset = filmOffset;
+      c.updateProjectionMatrix();
+    }, [fov, near, far, zoom, focus, filmGauge, filmOffset]);
+    return <perspectiveCamera ref={ref} fov={fov} near={near} far={far} zoom={zoom} focus={focus} filmGauge={filmGauge} filmOffset={filmOffset} />;
   };
 
-const OrthographicCameraNode: React.FC<{ left: number; right: number; top: number; bottom: number; near: number; far: number }>
-  = ({ left, right, top, bottom, near, far }) => {
+const OrthographicCameraNode: React.FC<{ objectId?: string; left: number; right: number; top: number; bottom: number; near: number; far: number; zoom?: number }>
+  = ({ objectId, left, right, top, bottom, near, far, zoom = 1 }) => {
     const ref = useRef<OrthographicCamera>(null!);
+    useEffect(() => {
+      if (!objectId) return;
+      const c = ref.current;
+      registerCamera(objectId, c);
+      return () => unregisterCamera(objectId, c);
+    }, [objectId]);
+    useEffect(() => {
+      const c = ref.current;
+      if (!c) return;
+      c.left = left;
+      c.right = right;
+      c.top = top;
+      c.bottom = bottom;
+      c.near = near;
+      c.far = far;
+      c.zoom = zoom;
+      c.updateProjectionMatrix();
+    }, [left, right, top, bottom, near, far, zoom]);
   // @ts-expect-error helper typing is overly strict in our env
   useHelper(ref as unknown as never, CameraHelper as unknown as never);
-    return <orthographicCamera ref={ref} left={left} right={right} top={top} bottom={bottom} near={near} far={far} />;
+    return <orthographicCamera ref={ref} left={left} right={right} top={top} bottom={bottom} near={near} far={far} zoom={zoom} />;
   };
 
-const OrthographicCameraBare: React.FC<{ left: number; right: number; top: number; bottom: number; near: number; far: number }>
-  = ({ left, right, top, bottom, near, far }) => {
+const OrthographicCameraBare: React.FC<{ objectId?: string; left: number; right: number; top: number; bottom: number; near: number; far: number; zoom?: number }>
+  = ({ objectId, left, right, top, bottom, near, far, zoom = 1 }) => {
     const ref = useRef<OrthographicCamera>(null!);
-    return <orthographicCamera ref={ref} left={left} right={right} top={top} bottom={bottom} near={near} far={far} />;
+    useEffect(() => {
+      if (!objectId) return;
+      const c = ref.current;
+      registerCamera(objectId, c);
+      return () => unregisterCamera(objectId, c);
+    }, [objectId]);
+    useEffect(() => {
+      const c = ref.current;
+      if (!c) return;
+      c.left = left;
+      c.right = right;
+      c.top = top;
+      c.bottom = bottom;
+      c.near = near;
+      c.far = far;
+      c.zoom = zoom;
+      c.updateProjectionMatrix();
+    }, [left, right, top, bottom, near, far, zoom]);
+    return <orthographicCamera ref={ref} left={left} right={right} top={top} bottom={bottom} near={near} far={far} zoom={zoom} />;
   };
 
 
@@ -236,32 +312,57 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
         }
       })()}
   {obj.type === 'camera' && obj.cameraId && (() => {
-        const camRes = scene.cameras[obj.cameraId!];
+        const camRes = useCameraResource(obj.cameraId!);
         if (!camRes) return null;
         const isMaterial = (shading as unknown as string) === 'material';
         if (camRes.type === 'perspective') {
           return isMaterial
-            ? <PerspectiveCameraBare fov={camRes.fov ?? 50} near={camRes.near} far={camRes.far} />
-            : <PerspectiveCameraNode fov={camRes.fov ?? 50} near={camRes.near} far={camRes.far} />;
+            ? (
+              <PerspectiveCameraBare
+                objectId={objectId}
+                fov={camRes.fov ?? 50}
+                near={camRes.near}
+                far={camRes.far}
+                zoom={camRes.zoom ?? 1}
+                focus={camRes.focus ?? 10}
+                filmGauge={camRes.filmGauge ?? 35}
+                filmOffset={camRes.filmOffset ?? 0}
+              />
+            ) : (
+              <PerspectiveCameraNode
+                objectId={objectId}
+                fov={camRes.fov ?? 50}
+                near={camRes.near}
+                far={camRes.far}
+                zoom={camRes.zoom ?? 1}
+                focus={camRes.focus ?? 10}
+                filmGauge={camRes.filmGauge ?? 35}
+                filmOffset={camRes.filmOffset ?? 0}
+              />
+            );
         }
         return isMaterial
           ? (
             <OrthographicCameraBare
+              objectId={objectId}
               left={camRes.left ?? -1}
               right={camRes.right ?? 1}
               top={camRes.top ?? 1}
               bottom={camRes.bottom ?? -1}
               near={camRes.near}
               far={camRes.far}
+              zoom={camRes.zoom ?? 1}
             />
           ) : (
             <OrthographicCameraNode
+              objectId={objectId}
               left={camRes.left ?? -1}
               right={camRes.right ?? 1}
               top={camRes.top ?? 1}
               bottom={camRes.bottom ?? -1}
               near={camRes.near}
               far={camRes.far}
+              zoom={camRes.zoom ?? 1}
             />
           );
       })()}

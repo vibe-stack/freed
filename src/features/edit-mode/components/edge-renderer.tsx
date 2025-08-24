@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Color, BufferGeometry, Float32BufferAttribute, LineSegments } from 'three';
+import { Color, BufferGeometry, Float32BufferAttribute, LineSegments, Matrix4, Vector3, PerspectiveCamera } from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import { useMesh } from '../../../stores/geometry-store';
 import { Vertex } from '../../../types/geometry';
+import { useThree } from '@react-three/fiber';
 
 const ORANGE = new Color(1.0, 0.5, 0.0);
 const BLACK = new Color(0, 0, 0);
@@ -24,6 +25,7 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
   selectionMode,
   localVertices
 }) => {
+  const { camera, size } = useThree();
   const mesh = useMesh(meshId);
   const lineRef = useRef<LineSegments | null>(null);
   
@@ -82,30 +84,67 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
   const handleClick = (event: ThreeEvent<PointerEvent>) => {
     if (selectionMode !== 'edge') return;
     event.stopPropagation();
-    // Approximate picking by finding nearest segment to intersection point
-    // Convert world-space intersection point to this object's local space
-    const ptLocal = lineRef.current ? lineRef.current.worldToLocal(event.point.clone()) : event.point;
-    // Use the same merged vertices used for rendering (respects local preview)
+    // Robust picking: choose the edge with minimum distance to the click ray in WORLD space
+    // and accept only if within a screen-space pixel threshold
+    if (!lineRef.current) return;
+    const matWorld = new Matrix4().copy(lineRef.current.matrixWorld);
+    const aW = new Vector3();
+    const bW = new Vector3();
+    const tmp = new Vector3();
+    const rayOrigin = event.ray.origin.clone();
+    const rayDir = event.ray.direction.clone();
     const vtxMap = new Map(vertices.map(v => [v.id, v] as const));
-    let best = -1;
-    let bestDist = Infinity;
+
+    // Helper: squared distance between world-space segment AB and ray O + t*D
+    function raySegmentDist2(o: Vector3, d: Vector3, a: Vector3, b: Vector3) {
+      // Based on closest points between two segments (ray treated as infinite in +t)
+      const u = d; // ray direction (unit)
+      const v = tmp.copy(b).sub(a); // segment direction
+      const w0 = a.clone().sub(o);
+      const aU = u.dot(u); // =1 if normalized
+      const bU = u.dot(v);
+      const cU = v.dot(v);
+      const dU = u.dot(w0);
+      const eU = v.dot(w0);
+      const denom = aU * cU - bU * bU + 1e-12;
+      let sc = (bU * eU - cU * dU) / denom; // ray param
+      let tc = (aU * eU - bU * dU) / denom; // seg param [0,1]
+      // Clamp segment param to [0,1]
+      if (tc < 0) tc = 0; else if (tc > 1) tc = 1;
+      // For the ray, only allow sc >= 0
+      if (sc < 0) sc = 0;
+      const pc = o.clone().addScaledVector(u, sc);
+      const qc = a.clone().addScaledVector(v, tc);
+      return { dist2: pc.distanceToSquared(qc), pc, qc };
+    }
+
+    let bestIdx = -1;
+    let bestDist2 = Infinity;
+    let bestPoint: Vector3 | null = null;
     for (let i = 0; i < edges.length; i++) {
       const e = edges[i];
       const v0 = vtxMap.get(e.vertexIds[0]);
       const v1 = vtxMap.get(e.vertexIds[1]);
       if (!v0 || !v1) continue;
-      const ax = v0.position.x, ay = v0.position.y, az = v0.position.z;
-      const bx = v1.position.x, by = v1.position.y, bz = v1.position.z;
-      // point-line distance in 3D
-      const abx = bx - ax, aby = by - ay, abz = bz - az;
-      const apx = ptLocal.x - ax, apy = ptLocal.y - ay, apz = ptLocal.z - az;
-      const t = Math.max(0, Math.min(1, (apx*abx + apy*aby + apz*abz) / (abx*abx + aby*aby + abz*abz + 1e-6)));
-      const cx = ax + abx * t, cy = ay + aby * t, cz = az + abz * t;
-      const dx = ptLocal.x - cx, dy = ptLocal.y - cy, dz = ptLocal.z - cz;
-      const d2 = dx*dx + dy*dy + dz*dz;
-      if (d2 < bestDist) { bestDist = d2; best = i; }
+      aW.set(v0.position.x, v0.position.y, v0.position.z).applyMatrix4(matWorld);
+      bW.set(v1.position.x, v1.position.y, v1.position.z).applyMatrix4(matWorld);
+      const { dist2, pc } = raySegmentDist2(rayOrigin, rayDir, aW, bW);
+      if (dist2 < bestDist2) { bestDist2 = dist2; bestIdx = i; bestPoint = pc; }
     }
-    if (best >= 0) onEdgeClick(edges[best].id, event);
+
+    if (bestIdx >= 0) {
+      // Screen-space threshold: accept only if within ~10px
+      const pixThreshold = 10; // px
+      // Convert pixel threshold to world units at the hit depth
+      const cam = camera as PerspectiveCamera;
+      const hitDist = bestPoint ? cam.position.distanceTo(bestPoint) : cam.position.distanceTo(lineRef.current.position);
+      const vFOV = (cam.fov * Math.PI) / 180;
+      const worldScreenHeight = 2 * Math.tan(vFOV / 2) * hitDist;
+      const worldTol = (pixThreshold / size.height) * worldScreenHeight;
+      if (Math.sqrt(bestDist2) <= worldTol) {
+        onEdgeClick(edges[bestIdx].id, event);
+      }
+    }
   };
 
   return (
@@ -113,7 +152,7 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
       ref={lineRef}
       onClick={handleClick}
       // Important: disable raycasting when not in edge mode so it doesn't steal clicks
-      raycast={selectionMode === 'edge' ? (LineSegments.prototype.raycast as unknown as any) : (() => {})}
+  raycast={selectionMode === 'edge' ? (LineSegments.prototype.raycast as unknown as any) : (() => {})}
     >
       <bufferGeometry attach="geometry">
         <bufferAttribute attach="attributes-position" args={[batched.geometry.getAttribute('position')!.array as Float32Array, 3]} />

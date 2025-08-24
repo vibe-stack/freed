@@ -1,18 +1,18 @@
 "use client";
 
 import React from 'react';
-import { useSceneStore } from '@/stores/scene-store';
+import { useGeometryStore } from '@/stores/geometry-store';
 import { DragInput } from '@/components/drag-input';
 
 type Props = { cameraId: string };
 
 export const CameraSection: React.FC<Props> = ({ cameraId }) => {
-  const scene = useSceneStore();
-  const cam = scene.cameras[cameraId];
+  const geo = useGeometryStore();
+  const cam = geo.cameras[cameraId];
   if (!cam) return null;
 
   const set = (update: Partial<typeof cam>) => {
-    useSceneStore.setState((s) => {
+    useGeometryStore.setState((s) => {
       Object.assign(s.cameras[cameraId], update);
     });
   };
@@ -26,6 +26,18 @@ export const CameraSection: React.FC<Props> = ({ cameraId }) => {
         <div>
           <div className="text-gray-400 mb-1 text-xs">FOV</div>
           <DragInput value={cam.fov ?? 50} step={0.5} precision={2} onChange={(v) => set({ fov: Math.max(1, Math.min(179, v)) })} />
+          <div className="text-gray-400 mb-1 text-xs mt-2">Focus</div>
+          <DragInput value={cam.focus ?? 10} step={0.1} precision={2} onChange={(v) => set({ focus: Math.max(0, v) })} />
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <div>
+              <div className="text-gray-400 mb-1 text-xs">Film Gauge</div>
+              <DragInput value={cam.filmGauge ?? 35} step={0.5} precision={1} onChange={(v) => set({ filmGauge: Math.max(1, v) })} />
+            </div>
+            <div>
+              <div className="text-gray-400 mb-1 text-xs">Film Offset</div>
+              <DragInput value={cam.filmOffset ?? 0} step={0.1} precision={2} onChange={(v) => set({ filmOffset: v })} />
+            </div>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-2">
@@ -57,6 +69,11 @@ export const CameraSection: React.FC<Props> = ({ cameraId }) => {
           <div className="text-gray-400 mb-1 text-xs">Far</div>
           <DragInput value={cam.far} step={1} precision={0} onChange={(v) => set({ far: Math.max(cam.near + 0.001, v) })} />
         </div>
+      </div>
+
+      <div>
+        <div className="text-gray-400 mb-1 text-xs">Zoom</div>
+        <DragInput value={cam.zoom ?? 1} step={0.05} precision={2} onChange={(v) => set({ zoom: Math.max(0.01, v) })} />
       </div>
     </div>
   );

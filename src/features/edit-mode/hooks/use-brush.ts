@@ -93,10 +93,10 @@ export function useBrushRay(mesh: AppMesh | null, obj: ObjectTransform | null, r
     let cancelled = false;
     (async () => {
       try {
-        const mod = await import('three-mesh-bvh');
-        // @ts-ignore - runtime patch
+  const mod = await import('three-mesh-bvh');
+  // three-mesh-bvh augments ThreeMesh.raycast at runtime
         (ThreeMesh as any).prototype.raycast = mod.acceleratedRaycast;
-        // @ts-ignore - add boundsTree
+  // boundsTree is injected by three-mesh-bvh at runtime
         (geom as any).boundsTree = new mod.MeshBVH(geom);
         if (!cancelled) setBvhReady(true);
       } catch (e) {
@@ -139,7 +139,7 @@ export function useBrushRay(mesh: AppMesh | null, obj: ObjectTransform | null, r
             positions[o + 6] = c.x; positions[o + 7] = c.y; positions[o + 8] = c.z;
           }
           posAttrRef.current.needsUpdate = true;
-          // @ts-ignore
+          // boundsTree.refit provided by three-mesh-bvh when present
           if ((geomRef.current as any).boundsTree?.refit) (geomRef.current as any).boundsTree.refit();
           lastRefit.current = now;
         }

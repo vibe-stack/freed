@@ -15,14 +15,23 @@ import { useRendererSettings } from '@/stores/world-store';
 import AutoOrbitController from './auto-orbit-controller';
 import { useSelectionStore } from '@/stores/selection-store';
 import { useToolStore } from '@/stores/tool-store';
+import { useActiveCameraBinding } from '../hooks/use-active-camera';
+
+// Runs inside Canvas to bind the R3F default camera to the active scene camera
+function ActiveCameraBinding() {
+  useActiveCameraBinding();
+  return null;
+}
 
 const EditorViewport: React.FC = () => {
   const camera = useViewportStore((s) => s.camera);
+  // activeCameraObjectId is consumed inside useActiveCameraBinding hook
   const shadingMode = useViewportStore((s) => s.shadingMode);
   const autoOrbitIntervalSec = useViewportStore((s) => s.autoOrbitIntervalSec ?? 0);
   const hasSelectedObject = useSelectionStore((s) => s.selection.viewMode === 'object' && s.selection.objectIds.length > 0);
   const renderer = useRendererSettings();
   const sculptStrokeActive = useToolStore((s) => s.sculptStrokeActive);
+  // Camera binding runs inside Canvas via ActiveCameraBinding
 
   // Camera controller runs inside Canvas via component
 
@@ -48,10 +57,11 @@ const EditorViewport: React.FC = () => {
           position: [camera.position.x, camera.position.y, camera.position.z],
         }}
         dpr={[0.2, 2]}
-        // Provide minimal raycaster params; cast to any to satisfy drei typing
-        raycaster={{ params: { Mesh: {}, LOD: {}, Points: {}, Sprite: {}, Line2: { threshold: 0.1 }, Line: { threshold: 0.1 } } as unknown as RaycasterParameters }}
+  // Slightly relaxed line thresholds so edge picking can register; actual selection uses a stricter pixel test
+  raycaster={{ params: { Mesh: {}, LOD: {}, Points: {}, Sprite: {}, Line2: { threshold: 1.5 }, Line: { threshold: 1.5 } } as unknown as RaycasterParameters }}
       >
         <CalmBg />
+  <ActiveCameraBinding />
         {shadingMode !== 'material' && (
           <>
             {/* Headlight-style defaults for non-material modes; no shadows */}
@@ -59,9 +69,9 @@ const EditorViewport: React.FC = () => {
             <directionalLight position={[5, 8, 3]} intensity={0.8} />
           </>
         )}
-        <CameraController />
+  <CameraController />
         <AutoOrbitController />
-        <OrbitControls
+  <OrbitControls
           makeDefault
           target={[camera.target.x, camera.target.y, camera.target.z]}
           dampingFactor={0.1}
@@ -75,7 +85,7 @@ const EditorViewport: React.FC = () => {
           // Three.js OrbitControls uses a 60fps-based factor: angle += 2π/60 * autoRotateSpeed per frame
           // For one full rotation every N seconds: speed = 60 / N
           autoRotateSpeed={autoOrbitIntervalSec ? 60 / autoOrbitIntervalSec : 0}
-        />
+  />
         <SceneContent />
         <WorldEffects />
       </Canvas>
