@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { ThreeEvent, useThree, useFrame } from '@react-three/fiber';
 import { Color, PerspectiveCamera, Vector3, Object3D, InstancedMesh, BoxGeometry, MeshBasicMaterial, Euler } from 'three';
-import { useGeometryStore } from '../../../stores/geometry-store';
+import { useMesh } from '../../../stores/geometry-store';
 import { Vertex } from '../../../types/geometry';
 
 const ORANGE = new Color(1.0, 0.5, 0.0);
@@ -39,10 +39,11 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
   objectPosition
 }) => {
   const { camera, size } = useThree();
-  const geometryStore = useGeometryStore();
-  const mesh = geometryStore.meshes.get(meshId);
+  const mesh = useMesh(meshId);
   const selectedRef = useRef<InstancedMesh | null>(null);
   const unselectedRef = useRef<InstancedMesh | null>(null);
+  const prevSelCountRef = useRef(0);
+  const prevUnselCountRef = useRef(0);
   // Keep stable mapping from instance index -> vertex id for picking
   const indexToUnselectedId = useRef<string[]>([]);
   const indexToSelectedId = useRef<string[]>([]);
@@ -90,20 +91,14 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
   }, [vertices, selectedVertexIds]);
 
   // Populate instance matrices when data changes
-  // Per-frame update to keep handle size constant in screen space as camera moves
+  // Per-frame update only adjusts scale with camera; positions update when vertices or camera change
   useFrame(() => {
-    const update = (ref: InstancedMesh | null, arr: { position: Vector3 }[]) => {
+    const update = (ref: InstancedMesh | null, arr: { position: Vector3 }[], prevRef: React.MutableRefObject<number>) => {
       if (!ref) return;
-      const capacity = ref.count; // capacity fixed at mesh.vertices.length
-      // First, hide all instances by setting zero scale
-      for (let i = 0; i < capacity; i++) {
-        tmp.position.set(0, 0, 0);
-        tmp.scale.set(0, 0, 0);
-        tmp.updateMatrix();
-        ref.setMatrixAt(i, tmp.matrix);
-      }
-      // Then update active subset
-      for (let i = 0; i < arr.length; i++) {
+      const count = Math.max(0, arr.length);
+      // Render exactly 'count' instances; allow 0 to avoid ghost instance
+      ref.count = count;
+      for (let i = 0; i < count; i++) {
         const v = arr[i];
         // local position inside the object's transform group
         tmp.position.copy(v.position);
@@ -127,11 +122,19 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
         tmp.updateMatrix();
         ref.setMatrixAt(i, tmp.matrix);
       }
+      // Zero out any leftover range from previous frame to avoid stale instances
+      for (let i = count; i < prevRef.current; i++) {
+        tmp.position.set(0, 0, 0);
+        tmp.scale.set(0, 0, 0);
+        tmp.updateMatrix();
+        ref.setMatrixAt(i, tmp.matrix);
+      }
       ref.instanceMatrix.needsUpdate = true;
+      prevRef.current = count;
     };
 
-    update(unselectedRef.current, unselectedVerts);
-    update(selectedRef.current, selectedVerts);
+    update(unselectedRef.current, unselectedVerts, prevUnselCountRef);
+    update(selectedRef.current, selectedVerts, prevSelCountRef);
   });
 
   const handleUnselectedClick = (e: ThreeEvent<PointerEvent>) => {

@@ -18,9 +18,12 @@ export interface BrushContext {
   strength: number; // 0..1 per sample
   falloff: Falloff;
   perVertexWorldScale: number; // avg |scale| used to scale world radius into local
+  spatial?: SpatialIndex | null; // optional acceleration structure for radius queries
 }
 
-export function collectVerticesInRadius(mesh: Mesh, centerLocal: Vector3, radiusLocal: number) {
+export function collectVerticesInRadius(mesh: Mesh, centerLocal: Vector3, radiusLocal: number, spatial?: SpatialIndex | null) {
+  // If spatial index available, use it for near-O(k) queries
+  if (spatial) return queryRadius(spatial, centerLocal, radiusLocal, mesh);
   const r2 = radiusLocal * radiusLocal;
   const within: Vertex[] = [];
   for (const v of mesh.vertices) {
@@ -85,7 +88,7 @@ export function applySymmetry(p: Vector3, axis: 'x' | 'y' | 'z'): Vector3 {
 
 export function brushDraw(ctx: BrushContext, out: Map<string, Vertex>) {
   // Displace along average normal of affected region
-  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius);
+  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius, ctx.spatial);
   if (verts.length === 0) return;
   let nx = 0, ny = 0, nz = 0;
   for (const v of verts) { nx += v.normal.x; ny += v.normal.y; nz += v.normal.z; }
@@ -100,7 +103,7 @@ export function brushDraw(ctx: BrushContext, out: Map<string, Vertex>) {
 }
 
 export function brushInflate(ctx: BrushContext, out: Map<string, Vertex>, invert = false) {
-  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius);
+  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius, ctx.spatial);
   for (const v of verts) {
     const d = new Vector3(v.position.x - ctx.hitLocal.x, v.position.y - ctx.hitLocal.y, v.position.z - ctx.hitLocal.z).length();
     const w = falloffFn(d / ctx.radius, ctx.falloff) * ctx.strength * (invert ? -1 : 1);
@@ -113,7 +116,7 @@ export function brushInflate(ctx: BrushContext, out: Map<string, Vertex>, invert
 
 export function brushSmooth(ctx: BrushContext, out: Map<string, Vertex>) {
   // Simple Laplacian-like: move vertex towards average of neighbors within radius
-  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius);
+  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius, ctx.spatial);
   const neighborMap = new Map<string, Vector3>();
   const adj = new Map<string, Set<string>>();
   for (const e of ctx.mesh.edges) {
@@ -147,7 +150,7 @@ export function brushSmooth(ctx: BrushContext, out: Map<string, Vertex>) {
 }
 
 export function brushPinch(ctx: BrushContext, out: Map<string, Vertex>, invert = false) {
-  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius);
+  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius, ctx.spatial);
   for (const v of verts) {
     const p = new Vector3(v.position.x, v.position.y, v.position.z);
     const d = p.distanceTo(ctx.hitLocal);
@@ -160,7 +163,7 @@ export function brushPinch(ctx: BrushContext, out: Map<string, Vertex>, invert =
 }
 
 export function brushGrab(ctx: BrushContext, out: Map<string, Vertex>, grabDeltaLocal: Vector3) {
-  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius);
+  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius, ctx.spatial);
   for (const v of verts) {
     const p = new Vector3(v.position.x, v.position.y, v.position.z);
     const d = p.distanceTo(ctx.hitLocal);
@@ -191,7 +194,7 @@ function fitPlane(points: Vector3[]) {
 }
 
 export function brushFlatten(ctx: BrushContext, out: Map<string, Vertex>, inverse = false, planeOffset = 0) {
-  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius);
+  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius, ctx.spatial);
   const pts = verts.map(v => new Vector3(v.position.x, v.position.y, v.position.z));
   const { center, normal } = fitPlane(pts);
   const planePoint = center.clone().addScaledVector(normal, planeOffset * ctx.radius * 0.15);
@@ -210,7 +213,7 @@ export function brushFlatten(ctx: BrushContext, out: Map<string, Vertex>, invers
 }
 
 export function brushFillDeepen(ctx: BrushContext, out: Map<string, Vertex>, deepen = false, planeOffset = 0) {
-  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius);
+  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius, ctx.spatial);
   const pts = verts.map(v => new Vector3(v.position.x, v.position.y, v.position.z));
   const { center, normal } = fitPlane(pts);
   const planePoint = center.clone().addScaledVector(normal, planeOffset * ctx.radius * 0.15);
@@ -235,7 +238,7 @@ export function brushFillDeepen(ctx: BrushContext, out: Map<string, Vertex>, dee
 }
 
 export function brushScrapePeaks(ctx: BrushContext, out: Map<string, Vertex>, peaks = false, planeOffset = 0) {
-  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius);
+  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius, ctx.spatial);
   const pts = verts.map(v => new Vector3(v.position.x, v.position.y, v.position.z));
   const { center, normal } = fitPlane(pts);
   const planePoint = center.clone().addScaledVector(normal, planeOffset * ctx.radius * 0.15);
@@ -260,7 +263,7 @@ export function brushScrapePeaks(ctx: BrushContext, out: Map<string, Vertex>, pe
 }
 
 export function brushBlob(ctx: BrushContext, out: Map<string, Vertex>, pinchAtEdge = 0.5) {
-  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius);
+  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius, ctx.spatial);
   for (const v of verts) {
     const p = new Vector3(v.position.x, v.position.y, v.position.z);
     const r = p.distanceTo(ctx.hitLocal) / ctx.radius;
@@ -274,7 +277,7 @@ export function brushBlob(ctx: BrushContext, out: Map<string, Vertex>, pinchAtEd
 }
 
 export function brushSnakeHook(ctx: BrushContext, out: Map<string, Vertex>, strokeDirLocal: Vector3, pinch = 0.5, rake = 0) {
-  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius);
+  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius, ctx.spatial);
   // Move along stroke and pinch to maintain volume, with optional rake (rotate normals following stroke)
   for (const v of verts) {
     const p = new Vector3(v.position.x, v.position.y, v.position.z);
@@ -290,7 +293,7 @@ export function brushSnakeHook(ctx: BrushContext, out: Map<string, Vertex>, stro
 }
 
 export function brushNudge(ctx: BrushContext, out: Map<string, Vertex>, strokeDirLocal: Vector3) {
-  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius);
+  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius, ctx.spatial);
   for (const v of verts) {
     const p = new Vector3(v.position.x, v.position.y, v.position.z);
     const d = p.distanceTo(ctx.hitLocal);
@@ -302,7 +305,7 @@ export function brushNudge(ctx: BrushContext, out: Map<string, Vertex>, strokeDi
 }
 
 export function brushRotate(ctx: BrushContext, out: Map<string, Vertex>, angle: number) {
-  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius);
+  const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius, ctx.spatial);
   // rotate around brush center along camera-facing axis approximated by avg normal
   let nx = 0, ny = 0, nz = 0;
   for (const v of verts) { nx += v.normal.x; ny += v.normal.y; nz += v.normal.z; }

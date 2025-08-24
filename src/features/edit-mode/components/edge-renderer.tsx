@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Color, BufferGeometry, Float32BufferAttribute, LineSegments } from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
-import { useGeometryStore } from '../../../stores/geometry-store';
+import { useMesh } from '../../../stores/geometry-store';
 import { Vertex } from '../../../types/geometry';
 
 const ORANGE = new Color(1.0, 0.5, 0.0);
@@ -24,8 +24,7 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
   selectionMode,
   localVertices
 }) => {
-  const geometryStore = useGeometryStore();
-  const mesh = geometryStore.meshes.get(meshId);
+  const mesh = useMesh(meshId);
   const lineRef = useRef<LineSegments | null>(null);
   
   // Merge local vertex overrides when provided

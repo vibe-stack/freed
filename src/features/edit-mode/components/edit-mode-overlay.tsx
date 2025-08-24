@@ -167,7 +167,7 @@ const EditModeOverlay: React.FC = () => {
 						<lineBasicMaterial color={new Color(1, 1, 0)} depthTest={false} depthWrite={false} transparent opacity={0.9} />
 					</lineSegments>
 				)}
-				{selection.selectionMode === 'vertex' && (
+				{selection.selectionMode === 'vertex' && !(toolStore.isActive && String(toolStore.tool).startsWith('sculpt-')) && (
 					<VertexRenderer
 						meshId={meshId!}
 						selectedVertexIds={selection.vertexIds}
@@ -180,15 +180,17 @@ const EditModeOverlay: React.FC = () => {
 					/>
 				)}
 
-				<EdgeRenderer
-					meshId={meshId!}
-					selectedEdgeIds={selection.edgeIds}
-					onEdgeClick={handleEdgeClick}
-					selectionMode={selection.selectionMode}
-					localVertices={localVertices || undefined}
-				/>
+				{!(toolStore.isActive && String(toolStore.tool).startsWith('sculpt-')) && (
+					<EdgeRenderer
+						meshId={meshId!}
+						selectedEdgeIds={selection.edgeIds}
+						onEdgeClick={handleEdgeClick}
+						selectionMode={selection.selectionMode}
+						localVertices={localVertices || undefined}
+					/>
+				)}
 
-				{selection.selectionMode === 'face' && (
+				{selection.selectionMode === 'face' && !(toolStore.isActive && String(toolStore.tool).startsWith('sculpt-')) && (
 					<FaceRenderer
 						meshId={meshId!}
 						selectedFaceIds={selection.faceIds}

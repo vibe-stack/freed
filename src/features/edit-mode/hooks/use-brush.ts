@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Matrix4, Euler, Quaternion, Raycaster, Vector2, Vector3 } from 'three';
+import { Matrix4, Matrix3, Euler, Quaternion, Raycaster, Vector2, Vector3, BufferGeometry, Float32BufferAttribute, Mesh as ThreeMesh } from 'three';
 import { useThree } from '@react-three/fiber';
 import type { Mesh as AppMesh } from '@/types/geometry';
 
@@ -14,11 +14,14 @@ export interface BrushHit {
   hitNormalWorld: Vector3;
   hitPointLocal: Vector3;
   radiusWorld: number;
+  tangentWorld?: Vector3;
+  bitangentWorld?: Vector3;
 }
 
 export function useBrushRay(mesh: AppMesh | null, obj: ObjectTransform | null, radiusWorld: number) {
   const { camera, gl } = useThree();
   const [hover, setHover] = useState<BrushHit | null>(null);
+  const [bvhReady, setBvhReady] = useState(false);
   const mObj = useMemo(() => {
     if (!obj) return null;
     const m = new Matrix4();
@@ -47,70 +50,201 @@ export function useBrushRay(mesh: AppMesh | null, obj: ObjectTransform | null, r
     return { tris };
   }, [mesh?.id, mesh?.vertices.length, mesh?.faces.length]);
 
+  // BVH geometry and mesh
+  const geomRef = useRef<BufferGeometry | null>(null);
+  const posAttrRef = useRef<Float32BufferAttribute | null>(null);
+  const threeMeshRef = useRef<ThreeMesh | null>(null);
+  const lastRefit = useRef<number>(0);
+
+  // Build BVH geometry when topology changes
+  useEffect(() => {
+    // Cleanup previous
+    if (!mesh || !triIndex) {
+      if (threeMeshRef.current) threeMeshRef.current = null;
+      if (geomRef.current) { geomRef.current.dispose(); geomRef.current = null; }
+      posAttrRef.current = null;
+      setBvhReady(false);
+      return;
+    }
+    const triCount = triIndex.tris.length;
+    const positions = new Float32Array(triCount * 9);
+    const geom = new BufferGeometry();
+    const posAttr = new Float32BufferAttribute(positions, 3);
+    geom.setAttribute('position', posAttr);
+    // Initialize with current positions
+    for (let i = 0; i < triCount; i++) {
+      const [ia, ib, ic] = triIndex.tris[i];
+      const a = mesh.vertices[ia].position;
+      const b = mesh.vertices[ib].position;
+      const c = mesh.vertices[ic].position;
+      const o = i * 9;
+      positions[o + 0] = a.x; positions[o + 1] = a.y; positions[o + 2] = a.z;
+      positions[o + 3] = b.x; positions[o + 4] = b.y; positions[o + 5] = b.z;
+      positions[o + 6] = c.x; positions[o + 7] = c.y; positions[o + 8] = c.z;
+    }
+    geom.computeBoundingBox();
+    geom.computeBoundingSphere();
+    geomRef.current = geom;
+    posAttrRef.current = posAttr;
+    const threeMesh = new ThreeMesh(geom);
+    threeMesh.matrixAutoUpdate = false;
+    threeMeshRef.current = threeMesh;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const mod = await import('three-mesh-bvh');
+        // @ts-ignore - runtime patch
+        (ThreeMesh as any).prototype.raycast = mod.acceleratedRaycast;
+        // @ts-ignore - add boundsTree
+        (geom as any).boundsTree = new mod.MeshBVH(geom);
+        if (!cancelled) setBvhReady(true);
+      } catch (e) {
+        console.warn('[useBrushRay] BVH not available, falling back to brute-force raycast:', e);
+        if (!cancelled) setBvhReady(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (geomRef.current) { (geomRef.current as any).boundsTree = null; geomRef.current.dispose(); geomRef.current = null; }
+      posAttrRef.current = null;
+      threeMeshRef.current = null;
+    };
+  }, [mesh?.id, triIndex?.tris.length]);
+
   useEffect(() => {
     if (!mesh || !obj || !mObj || !triIndex) { setHover(null); return; }
     const onMove = (e: MouseEvent) => {
       const rect = gl.domElement.getBoundingClientRect();
       const ndc = new Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -(((e.clientY - rect.top) / rect.height) * 2 - 1));
+      const raycaster = new Raycaster();
+      raycaster.setFromCamera(ndc, camera);
+
+      // Update BVH geometry positions periodically while sculpting/editing
+      const now = performance.now();
+      if (bvhReady && geomRef.current && posAttrRef.current && triIndex) {
+        // Throttle refit to ~30ms
+        if (now - lastRefit.current > 30) {
+          const positions = posAttrRef.current.array as Float32Array;
+          const triCount = triIndex.tris.length;
+          for (let i = 0; i < triCount; i++) {
+            const [ia, ib, ic] = triIndex.tris[i];
+            const a = mesh.vertices[ia].position;
+            const b = mesh.vertices[ib].position;
+            const c = mesh.vertices[ic].position;
+            const o = i * 9;
+            positions[o + 0] = a.x; positions[o + 1] = a.y; positions[o + 2] = a.z;
+            positions[o + 3] = b.x; positions[o + 4] = b.y; positions[o + 5] = b.z;
+            positions[o + 6] = c.x; positions[o + 7] = c.y; positions[o + 8] = c.z;
+          }
+          posAttrRef.current.needsUpdate = true;
+          // @ts-ignore
+          if ((geomRef.current as any).boundsTree?.refit) (geomRef.current as any).boundsTree.refit();
+          lastRefit.current = now;
+        }
+      }
+
+      // Intersect via BVH if ready
+      if (bvhReady && threeMeshRef.current && mObj) {
+        const meshObj = threeMeshRef.current;
+        meshObj.matrixWorld.copy(mObj.m);
+        const hits = raycaster.intersectObject(meshObj, false);
+        if (hits && hits.length) {
+          const h = hits[0];
+          const worldP = h.point.clone();
+          const localP = worldP.clone().applyMatrix4(mObj.inv);
+          // Prefer triangle-derived normal and tangent basis if available
+          let worldN: Vector3 | undefined;
+          let tangent: Vector3 | undefined;
+          let bitangent: Vector3 | undefined;
+          if (typeof h.faceIndex === 'number' && posAttrRef.current) {
+            const i = h.faceIndex;
+            const arr = posAttrRef.current.array as Float32Array;
+            const o = i * 9;
+            const aW = new Vector3(arr[o+0], arr[o+1], arr[o+2]).applyMatrix4(mObj.m);
+            const bW = new Vector3(arr[o+3], arr[o+4], arr[o+5]).applyMatrix4(mObj.m);
+            const cW = new Vector3(arr[o+6], arr[o+7], arr[o+8]).applyMatrix4(mObj.m);
+            const e1 = bW.clone().sub(aW);
+            const e2 = cW.clone().sub(aW);
+            worldN = new Vector3().crossVectors(e1, e2).normalize();
+            tangent = e1.clone().sub(worldN.clone().multiplyScalar(e1.dot(worldN)));
+            if (tangent.lengthSq() < 1e-10) tangent = e2.clone().sub(worldN.clone().multiplyScalar(e2.dot(worldN)));
+            tangent.normalize();
+            bitangent = new Vector3().crossVectors(worldN, tangent).normalize();
+          }
+          if (!worldN) {
+            // Fallback to face normal if present, or default up
+            const localN = (h.face && h.face.normal ? h.face.normal.clone() : new Vector3(0, 1, 0));
+            const normalMatrix = new Matrix3().getNormalMatrix(mObj.m as any);
+            worldN = localN.applyMatrix3(normalMatrix).normalize();
+          }
+          setHover({ hitPointWorld: worldP, hitNormalWorld: worldN, hitPointLocal: localP, radiusWorld, tangentWorld: tangent, bitangentWorld: bitangent });
+          return;
+        }
+      }
+
+      // Fallback brute force (if BVH not available)
       const ray = new Raycaster();
       ray.setFromCamera(ndc, camera);
-      // Transform ray to object-local space to avoid per-triangle world transforms
       const origWorld = ray.ray.origin.clone();
       const dirWorld = ray.ray.direction.clone();
-      const oLocal = origWorld.clone().applyMatrix4(mObj.inv);
-      const p1Local = origWorld.clone().add(dirWorld).applyMatrix4(mObj.inv);
+      const oLocal = origWorld.clone().applyMatrix4(mObj!.inv);
+      const p1Local = origWorld.clone().add(dirWorld).applyMatrix4(mObj!.inv);
       const dLocal = p1Local.sub(oLocal).normalize();
       let bestD = Infinity;
       let bestP: Vector3 | null = null;
       let bestN: Vector3 | null = null;
-      for (let t = 0; t < triIndex.tris.length; t++) {
-        const [ia, ib, ic] = triIndex.tris[t];
+      let bestTriIdx = -1;
+      let bestTri: { a: Vector3; b: Vector3; c: Vector3 } | null = null;
+      for (let t = 0; t < (triIndex?.tris.length || 0); t++) {
+        const [ia, ib, ic] = triIndex!.tris[t];
         const va = mesh.vertices[ia].position;
         const vb = mesh.vertices[ib].position;
         const vc = mesh.vertices[ic].position;
         const a = new Vector3(va.x, va.y, va.z);
         const b = new Vector3(vb.x, vb.y, vb.z);
         const c = new Vector3(vc.x, vc.y, vc.z);
-        const tmp = new Vector3();
-        // Recreate a local-space ray object rapidly
-        const hit = { point: tmp };
-        // three's Ray has intersectTriangle method; emulate by using a temp Ray-like call
-        const inter = (orig: Vector3, dir: Vector3, a: Vector3, b: Vector3, c: Vector3): Vector3 | null => {
-          // Using the same algorithm as Ray.intersectTriangle (not importing to keep light)
-          const edge1 = new Vector3().subVectors(b, a);
-          const edge2 = new Vector3().subVectors(c, a);
-          const normal = new Vector3().crossVectors(edge1, edge2);
-          // Backface culling off
-          const DdN = dir.dot(normal);
-          if (Math.abs(DdN) < 1e-8) return null;
-          const diff = new Vector3().subVectors(orig, a);
-          const DdQxE2 = dir.dot(new Vector3().crossVectors(diff, edge2));
-          const DdE1xQ = dir.dot(new Vector3().crossVectors(edge1, diff));
-          const inv = 1 / DdN;
-          const u = DdQxE2 * inv;
-          const v = DdE1xQ * inv;
-          if (u < 0 || v < 0 || u + v > 1) return null;
-          const tHit = -diff.dot(normal) * inv;
-          if (tHit < 0) return null;
-          return new Vector3().copy(dir).multiplyScalar(tHit).add(orig);
-        };
-        const hitP = inter(oLocal, dLocal, a, b, c);
-        if (hitP) {
-          const dist = hitP.distanceToSquared(oLocal);
-          if (dist < bestD) {
-            bestD = dist; bestP = hitP.clone(); bestN = new Vector3().crossVectors(new Vector3().subVectors(b, a), new Vector3().subVectors(c, a)).normalize();
-          }
-        }
+        const edge1 = new Vector3().subVectors(b, a);
+        const edge2 = new Vector3().subVectors(c, a);
+        const normal = new Vector3().crossVectors(edge1, edge2);
+        const DdN = dLocal.dot(normal);
+        if (Math.abs(DdN) < 1e-8) continue;
+        const diff = new Vector3().subVectors(oLocal, a);
+        const DdQxE2 = dLocal.dot(new Vector3().crossVectors(diff, edge2));
+        const DdE1xQ = dLocal.dot(new Vector3().crossVectors(edge1, diff));
+        const inv = 1 / DdN;
+        const u = DdQxE2 * inv;
+        const v = DdE1xQ * inv;
+        if (u < 0 || v < 0 || u + v > 1) continue;
+        const tHit = -diff.dot(normal) * inv;
+        if (tHit < 0) continue;
+        const hitP = new Vector3().copy(dLocal).multiplyScalar(tHit).add(oLocal);
+        const dist = hitP.distanceToSquared(oLocal);
+        if (dist < bestD) { bestD = dist; bestP = hitP.clone(); bestN = normal.clone().normalize(); bestTriIdx = t; bestTri = { a, b, c }; }
       }
       if (!bestP || !bestN) { setHover(null); return; }
-      // bestP is in local space now; convert to world for display
-      const worldP = bestP.clone().applyMatrix4(mObj.m);
-      const worldN = bestN.clone().applyMatrix4(new Matrix4().copy(mObj.inv).transpose()).normalize();
-      setHover({ hitPointWorld: worldP, hitNormalWorld: worldN, hitPointLocal: bestP, radiusWorld });
+      const worldP = bestP.clone().applyMatrix4(mObj!.m);
+      const worldN = bestN.clone().applyMatrix4(new Matrix4().copy(mObj!.inv).transpose()).normalize();
+      // Build tangent basis from the winning triangle in world
+      let tangent: Vector3 | undefined;
+      let bitangent: Vector3 | undefined;
+      if (bestTri) {
+        const aW = bestTri.a.clone().applyMatrix4(mObj!.m);
+        const bW = bestTri.b.clone().applyMatrix4(mObj!.m);
+        const cW = bestTri.c.clone().applyMatrix4(mObj!.m);
+        const e1 = bW.clone().sub(aW);
+        const e2 = cW.clone().sub(aW);
+        tangent = e1.clone().sub(worldN.clone().multiplyScalar(e1.dot(worldN)));
+        if (tangent.lengthSq() < 1e-10) tangent = e2.clone().sub(worldN.clone().multiplyScalar(e2.dot(worldN)));
+        tangent.normalize();
+        bitangent = new Vector3().crossVectors(worldN, tangent).normalize();
+      }
+      setHover({ hitPointWorld: worldP, hitNormalWorld: worldN, hitPointLocal: bestP, radiusWorld, tangentWorld: tangent, bitangentWorld: bitangent });
     };
     document.addEventListener('mousemove', onMove, { passive: true });
     return () => document.removeEventListener('mousemove', onMove as any);
-  }, [mesh, obj, mObj, triIndex, camera, gl.domElement, radiusWorld]);
+  }, [mesh, obj, mObj, triIndex, camera, gl.domElement, radiusWorld, bvhReady]);
 
   return hover;
 }

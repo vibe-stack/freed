@@ -29,6 +29,7 @@ export const SculptHandler: React.FC<SculptHandlerProps> = ({ meshId, objectPosi
   const grabAnchorLocal = useRef<Vector3 | null>(null);
   const spatialRef = useRef<ReturnType<typeof buildSpatialIndex> | null>(null);
   const normalsTimer = useRef<number | null>(null);
+  const normalsPending = useRef(false);
 
   // Apply brush on drag or single click
   useEffect(() => {
@@ -40,8 +41,8 @@ export const SculptHandler: React.FC<SculptHandlerProps> = ({ meshId, objectPosi
 
     const applyStrokeOnce = () => {
       if (!hover) return;
-      const out = new Map(mesh.vertices.map(v => [v.id, { ...v }]));
-  if (!spatialRef.current) spatialRef.current = buildSpatialIndex(mesh, Math.max(0.25, radiusLocalApprox * 0.75));
+      const out = new Map<string, typeof mesh.vertices[number]>();
+      if (!spatialRef.current) spatialRef.current = buildSpatialIndex(mesh, Math.max(0.25, radiusLocalApprox * 0.75));
       const ctx = {
         mesh,
         hitLocal: hover.hitPointLocal,
@@ -49,8 +50,9 @@ export const SculptHandler: React.FC<SculptHandlerProps> = ({ meshId, objectPosi
         strength: tools.brushStrength,
         falloff: tools.brushFalloff,
         perVertexWorldScale: avgLocalScale,
+        spatial: spatialRef.current,
       } as const;
-  if (!spatialRef.current) spatialRef.current = buildSpatialIndex(mesh, Math.max(0.25, radiusLocalApprox * 0.75));
+      // optional: rebuild spatial on significant movement
   if (kind === 'sculpt-draw') {
         brushDraw(ctx, out);
       } else if (kind === 'sculpt-clay') {
@@ -81,9 +83,10 @@ export const SculptHandler: React.FC<SculptHandlerProps> = ({ meshId, objectPosi
         brushPinch(ctx, out, kind === 'sculpt-magnify');
       }
       useGeometryStore.getState().updateMesh(meshId, (m) => {
+        const idxById = new Map(m.vertices.map((v, i) => [v.id, i] as const));
         for (const [id, vv] of out) {
-          const target = m.vertices.find(v => v.id === id);
-          if (target) target.position = vv.position;
+          const idx = idxById.get(id);
+          if (idx != null) m.vertices[idx].position = vv.position;
         }
       });
       // Apply symmetry mirroring by finding counterpart vertices
@@ -115,9 +118,10 @@ export const SculptHandler: React.FC<SculptHandlerProps> = ({ meshId, objectPosi
         }
       }
       // throttle normals to next animation frame
-      if (normalsTimer.current == null) {
+      if (!normalsPending.current) {
+        normalsPending.current = true;
         normalsTimer.current = requestAnimationFrame(() => {
-          normalsTimer.current = null;
+          normalsPending.current = false;
           useGeometryStore.getState().recalculateNormals(meshId);
         });
       }
@@ -143,11 +147,13 @@ export const SculptHandler: React.FC<SculptHandlerProps> = ({ meshId, objectPosi
   setDragging(false);
       grabAnchorLocal.current = null;
   useToolStore.getState().setSculptStrokeActive(false);
+  // final normals
+  useGeometryStore.getState().recalculateNormals(meshId);
       // Keep brush selected for subsequent strokes
     };
     const onMove = (e: MouseEvent) => {
       if (!isDragging || !hover) return;
-      const out = new Map(mesh.vertices.map(v => [v.id, { ...v }]));
+      const out = new Map<string, typeof mesh.vertices[number]>();
       const ctx = {
         mesh,
         hitLocal: hover.hitPointLocal,
@@ -155,6 +161,7 @@ export const SculptHandler: React.FC<SculptHandlerProps> = ({ meshId, objectPosi
         strength: tools.brushStrength,
         falloff: tools.brushFalloff,
         perVertexWorldScale: avgLocalScale,
+        spatial: spatialRef.current,
       } as const;
       if (kind === 'sculpt-draw') {
         brushDraw(ctx, out);
@@ -276,12 +283,19 @@ export const SculptHandler: React.FC<SculptHandlerProps> = ({ meshId, objectPosi
       }
       // commit continuous updates (stroke)
       useGeometryStore.getState().updateMesh(meshId, (m) => {
+        const idxById = new Map(m.vertices.map((v, i) => [v.id, i] as const));
         for (const [id, vv] of out) {
-          const target = m.vertices.find(v => v.id === id);
-          if (target) target.position = vv.position;
+          const idx = idxById.get(id);
+          if (idx != null) m.vertices[idx].position = vv.position;
         }
       });
-      useGeometryStore.getState().recalculateNormals(meshId);
+      if (!normalsPending.current) {
+        normalsPending.current = true;
+        normalsTimer.current = requestAnimationFrame(() => {
+          normalsPending.current = false;
+          useGeometryStore.getState().recalculateNormals(meshId);
+        });
+      }
     };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('mouseup', onUp);
@@ -293,23 +307,31 @@ export const SculptHandler: React.FC<SculptHandlerProps> = ({ meshId, objectPosi
     };
   }, [mesh, tools.isActive, tools.tool, tools.brushStrength, tools.brushFalloff, tools.brushRadius, hover, meshId, avgLocalScale, radiusLocalApprox, camera, objectPosition.x, objectPosition.y, objectPosition.z, objectRotation.x, objectRotation.y, objectRotation.z, objectScale.x, objectScale.y, objectScale.z]);
 
-  // Visual brush circle in 3D: draw as screen-space circle near hit point using line loop
+  // Visual brush circle in 3D: draw in the surface tangent plane at the hit point.
   const circle = useMemo(() => {
     if (!hover) return null;
-    // Build simple circle in world space using camera right/up basis
+    // Build circle basis using tangent/bitangent from ray hit when available
     const segments = 64;
     const verts: number[] = [];
-    const forward = new Vector3();
-    camera.getWorldDirection(forward);
-    const right = new Vector3().crossVectors(new Vector3(0, 1, 0), forward).normalize();
-    const up = new Vector3().crossVectors(forward, right).normalize();
+    const n = hover.hitNormalWorld.clone().normalize();
+    let right = hover.tangentWorld?.clone();
+    let up = hover.bitangentWorld?.clone();
+    if (!right || !up || right.lengthSq() < 1e-10 || up.lengthSq() < 1e-10) {
+      // Fallback: build an arbitrary basis from normal
+      const tmp = Math.abs(n.x) > 0.9 ? new Vector3(0, 1, 0) : new Vector3(1, 0, 0);
+      right = tmp.clone().cross(n).normalize();
+      up = new Vector3().crossVectors(n, right).normalize();
+    }
     for (let i = 0; i <= segments; i++) {
       const t = (i / segments) * Math.PI * 2;
-      const p = hover.hitPointWorld.clone().addScaledVector(right, Math.cos(t) * tools.brushRadius).addScaledVector(up, Math.sin(t) * tools.brushRadius);
+      const p = hover.hitPointWorld
+        .clone()
+        .addScaledVector(right, Math.cos(t) * tools.brushRadius)
+        .addScaledVector(up, Math.sin(t) * tools.brushRadius);
       verts.push(p.x, p.y, p.z);
     }
     return new Float32Array(verts);
-  }, [hover, camera, tools.brushRadius]);
+  }, [hover, tools.brushRadius]);
 
   if (!tools.isActive || !String(tools.tool).startsWith('sculpt-') || !hover) return null;
   return (
