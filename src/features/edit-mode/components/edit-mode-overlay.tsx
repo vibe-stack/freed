@@ -16,6 +16,7 @@ import { useSelectionVertices } from '@/features/edit-mode/hooks/use-selection-v
 import { useSceneStore } from '@/stores/scene-store';
 import { useLoopcut } from '@/features/edit-mode/hooks/use-loopcut';
 import { computeEdgeLoopFaceSpans } from '@/utils/loopcut';
+import { SculptHandler } from '@/features/edit-mode/components/sculpt-handler';
 
 const EditModeOverlay: React.FC = () => {
 	const selectionStore = useSelectionStore();
@@ -130,6 +131,16 @@ const EditModeOverlay: React.FC = () => {
 				objectRotation={objTransform.rotation}
 				objectScale={objTransform.scale}
 			/>
+
+			{/* Sculpt handler overlays brush and applies strokes when a sculpt tool is active */}
+			{toolStore.isActive && String(toolStore.tool).startsWith('sculpt-') && (
+				<SculptHandler
+					meshId={meshId!}
+					objectRotation={objTransform.rotation}
+					objectScale={objTransform.scale}
+					objectPosition={objTransform.position}
+				/>
+			)}
 
 			{/* Render all edit-mode visuals under the object's transform so object-space vertices appear in the right world position */}
 			<group

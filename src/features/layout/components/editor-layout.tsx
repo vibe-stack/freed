@@ -5,6 +5,8 @@ import SceneHierarchyPanel from '@/features/scene-hierarchy/components/scene-hie
 import { ShapeAdjustPanel } from '@/features/shape-creation';
 import { TopToolbar } from '@/features/toolbar';
 import { EditToolsToolbar } from '@/features/toolbar';
+import { SculptToolsToolbar } from '@/features/toolbar/components/sculpt-tools-toolbar';
+import { useToolStore } from '@/stores/tool-store';
 import { SelectionSummary } from '@/features/toolbar/components/selection-summary';
 import { ToolIndicator } from '@/features/tools';
 import { EditorViewport } from '@/features/viewport';
@@ -16,6 +18,7 @@ import { useShaderEditorStore } from '@/stores/shader-editor-store';
 const EditorLayout: React.FC = () => {
   const shaderOpen = useShaderEditorStore((s) => s.open);
   const setShaderOpen = useShaderEditorStore((s) => s.setOpen);
+  const editPalette = useToolStore((s) => s.editPalette);
   return (
     <div className="w-screen h-screen overflow-hidden bg-[#0e1116] text-gray-200">
       {/* Top OS-like Menu Bar */}
@@ -29,8 +32,8 @@ const EditorLayout: React.FC = () => {
         {/* Floating Top Toolbar */}
         <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-3 z-20 space-y-2 flex flex-col items-center">
           <TopToolbar />
-          {/* Edit Tools toolbar appears only in Edit Mode */}
-          <EditToolsToolbar />
+          {/* Edit/Sculpt toolbars (only one visible based on palette) */}
+          {editPalette === 'sculpt' ? <SculptToolsToolbar /> : <EditToolsToolbar />}
         </div>
 
         {/* Left Scene Hierarchy Panel */}

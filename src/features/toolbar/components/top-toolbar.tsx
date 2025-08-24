@@ -8,6 +8,7 @@ import { useSceneStore } from '@/stores/scene-store';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { useShapeCreationStore } from '@/stores/shape-creation-store';
 import { useClipboardStore } from '@/stores/clipboard-store';
+import { useToolStore } from '@/stores/tool-store';
 
 const Pill = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className = '', children, ...rest }, ref) => (
   <div
@@ -36,6 +37,7 @@ const SegButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { acti
 const TopToolbar: React.FC = () => {
   const selection = useSelection();
   const selectionActions = useSelectionStore();
+  const tools = useToolStore();
   const viewport = useViewportStore();
   const scene = useSceneStore();
   const geometry = useGeometryStore();
@@ -114,6 +116,13 @@ const TopToolbar: React.FC = () => {
             Object
           </SegButton>
           <SegButton active={selection.viewMode === 'edit'} onClick={enterEdit}>Edit</SegButton>
+          {selection.viewMode === 'edit' && (
+            <div className="ml-1 flex items-center">
+              <div className="mx-1 w-px h-4 bg-white/10" />
+              <SegButton active={tools.editPalette === 'mesh'} onClick={() => tools.setEditPalette('mesh')}>Mesh</SegButton>
+              <SegButton active={tools.editPalette === 'sculpt'} onClick={() => tools.setEditPalette('sculpt')}>Sculpt</SegButton>
+            </div>
+          )}
           <div className="mx-1 w-px h-4 bg-white/10" />
           <SegButton active={selection.selectionMode === 'vertex'} onClick={() => selectionActions.setSelectionMode('vertex')}>V</SegButton>
           <SegButton active={selection.selectionMode === 'edge'} onClick={() => selectionActions.setSelectionMode('edge')}>E</SegButton>
