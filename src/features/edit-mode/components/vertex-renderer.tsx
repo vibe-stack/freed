@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef } from 'react';
 import { ThreeEvent, useThree, useFrame } from '@react-three/fiber';
-import { Color, PerspectiveCamera, Vector3, Object3D, InstancedMesh, BoxGeometry, MeshBasicMaterial, Euler } from 'three';
+import { Color, PerspectiveCamera, Vector3, Object3D, InstancedMesh, BoxGeometry, MeshBasicMaterial, Euler } from 'three/webgpu';
 import { useMesh } from '../../../stores/geometry-store';
 import { Vertex } from '../../../types/geometry';
 

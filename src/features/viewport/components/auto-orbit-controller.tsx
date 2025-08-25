@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
+import { Euler, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
 import { useViewportStore } from '@/stores/viewport-store';
 import { useSelectionStore } from '@/stores/selection-store';
 import { useSceneStore } from '@/stores/scene-store';

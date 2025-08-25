@@ -18,7 +18,7 @@ import { saveAs, saveWithHandle } from '@/utils/file-access';
 import { useClipboardStore } from '@/stores/clipboard-store';
 import { geometryRedo, geometryUndo } from '@/stores/geometry-store';
 import { useRegisterShortcuts } from '@/components/shortcut-provider';
-import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
+import { Euler, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
 
 type Props = { onOpenShaderEditor?: () => void };
 const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {

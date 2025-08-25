@@ -1,5 +1,5 @@
 import type { Mesh, Vertex } from '@/types/geometry';
-import { Vector3 } from 'three';
+import { Vector3 } from 'three/webgpu';
 
 export type Falloff = 'smooth' | 'linear' | 'sharp';
 

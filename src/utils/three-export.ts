@@ -2,7 +2,7 @@
 
 // Utilities to convert internal scene to THREE.Scene and export via three.js exporters
 
-import { Scene, Group, Mesh as ThreeMesh, BufferGeometry, Float32BufferAttribute, Color as ThreeColor, MeshStandardMaterial, Vector3 as ThreeVector3 } from 'three';
+import { Scene, Group, Mesh as ThreeMesh, BufferGeometry, Float32BufferAttribute, Color as ThreeColor, MeshStandardMaterial, Vector3 as ThreeVector3 } from 'three/webgpu';
 import type { Mesh as GMesh, SceneObject, Material as GMaterial } from '@/types/geometry';
 import { convertQuadToTriangles } from '@/utils/geometry';
 

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useThree } from '@react-three/fiber';
-import { Vector3, Euler } from 'three';
+import { Vector3, Euler } from 'three/webgpu';
 import { useToolStore } from '@/stores/tool-store';
 import { useSelectionStore } from '@/stores/selection-store';
 import { useGeometryStore } from '@/stores/geometry-store';

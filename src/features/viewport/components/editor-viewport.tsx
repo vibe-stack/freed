@@ -4,7 +4,7 @@ import React from 'react';
 import { Canvas } from '@react-three/fiber';
 import { WebGPURenderer } from 'three/webgpu';
 import { WebGLRenderer } from 'three';
-import type { RaycasterParameters } from 'three';
+import type { RaycasterParameters } from 'three/webgpu';
 import { OrbitControls } from '@react-three/drei';
 import { useViewportStore } from '@/stores/viewport-store';
 import CalmBg from './calm-bg';

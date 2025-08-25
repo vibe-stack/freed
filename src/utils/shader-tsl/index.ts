@@ -1,5 +1,6 @@
 import type { ShaderGraph, ShaderNode, ShaderEdge } from '@/types/shader';
 import { MeshStandardNodeMaterial, MeshPhysicalNodeMaterial, MeshPhongNodeMaterial, MeshToonNodeMaterial } from 'three/webgpu';
+import { DoubleSide, BackSide } from 'three/webgpu';
 import * as TSL from 'three/tsl';
 // Shader TSL builder and resolvers registry
 
@@ -132,6 +133,9 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
   if (depthNode) (mat as any).depthNode = depthNode;
   if (envNode) (mat as any).envNode = envNode;
   if (aoNode) (mat as any).aoNode = aoNode;
+  // Always render both sides for editor consistency
+  (mat as any).side = DoubleSide;
+  (mat as any).shadowSide = BackSide;
     return mat as import('three').Material;
   }
 
@@ -207,6 +211,9 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
   if (attenuationColor) (mat as any).attenuationColorNode = attenuationColor;
   if (dispersion) (mat as any).dispersionNode = dispersion;
   if (anisotropy) (mat as any).anisotropyNode = anisotropy;
+  // Always render both sides for editor consistency
+  (mat as any).side = DoubleSide;
+  (mat as any).shadowSide = BackSide;
     return mat as import('three').Material;
   }
 
@@ -234,7 +241,7 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
     const envNode = resolveIn('env');
     const aoNode = resolveIn('ao');
 
-    const mat = new MeshPhongNodeMaterial();
+  const mat = new MeshPhongNodeMaterial();
     (mat as any).colorNode = color;
     (mat as any).emissiveNode = emissive;
     (mat as any).emissiveIntensity = emissiveIntensity;
@@ -247,6 +254,9 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
     if (depthNode) (mat as any).depthNode = depthNode;
     if (envNode) (mat as any).envNode = envNode;
     if (aoNode) (mat as any).aoNode = aoNode;
+  // Always render both sides for editor consistency
+  (mat as any).side = DoubleSide;
+  (mat as any).shadowSide = BackSide;
     return mat as import('three').Material;
   }
 
@@ -272,7 +282,7 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
     const envNode = resolveIn('env');
     const aoNode = resolveIn('ao');
 
-    const mat = new MeshToonNodeMaterial();
+  const mat = new MeshToonNodeMaterial();
     (mat as any).colorNode = color;
     (mat as any).emissiveNode = emissive;
     (mat as any).emissiveIntensity = emissiveIntensity;
@@ -283,6 +293,9 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
     if (depthNode) (mat as any).depthNode = depthNode;
     if (envNode) (mat as any).envNode = envNode;
     if (aoNode) (mat as any).aoNode = aoNode;
+  // Always render both sides for editor consistency
+  (mat as any).side = DoubleSide;
+  (mat as any).shadowSide = BackSide;
     return mat as import('three').Material;
   }
 

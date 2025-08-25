@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Color, GridHelper, Object3D, type ColorRepresentation } from 'three';
+import { Color, GridHelper, Object3D, type ColorRepresentation } from 'three/webgpu';
 
 type GridProps = {
   // Compatibility props (subset used)

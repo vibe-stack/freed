@@ -4,7 +4,7 @@ import React, { Fragment, useEffect, useMemo } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Environment } from '@react-three/drei';
 // Postprocessing is not WebGPU compatible in this setup; disable for now
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { useBloom, useDoF, useEnvironment, useFog, useRendererSettings } from '@/stores/world-store';
 
 const toThreeColor = (rgb: { x: number; y: number; z: number }) => new THREE.Color(rgb.x, rgb.y, rgb.z);

@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { buildTSLMaterialFactory } from '@/utils/shader-tsl/index';
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 
 /**
  * useMaterialNodes(materialId)
@@ -17,6 +17,11 @@ export function useMaterialNodes(materialId?: string) {
     if (!materialId || !graph) return null;
   const { createAuto } = buildTSLMaterialFactory(graph);
   // Construct material immediately for R3F consumption
-  return createAuto();
+  const mat = createAuto() as THREE.Material;
+  // Safety: enforce double-side consistently
+  (mat as any).side = THREE.DoubleSide;
+  // Prefer back-face shadowing to mitigate acne on thin meshes
+  (mat as any).shadowSide = THREE.BackSide;
+  return mat;
   }, [materialId, graph?.nodes, graph?.edges]);
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Vector3 } from 'three';
+import { Vector3 } from 'three/webgpu';
 import { Vertex } from '@/types/geometry';
 import { useSelectionStore } from '@/stores/selection-store';
 import { useGeometryStore } from '@/stores/geometry-store';

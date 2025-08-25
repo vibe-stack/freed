@@ -1,4 +1,4 @@
-import type { Camera } from 'three';
+import type { Camera } from 'three/webgpu';
 
 // Module-level registry for scene cameras
 const registry = new Map<string, Camera>();

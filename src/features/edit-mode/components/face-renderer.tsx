@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useRef } from 'react';
-import { Color, Vector3, BufferGeometry, Float32BufferAttribute, Mesh, DoubleSide } from 'three';
+import { Color, Vector3, BufferGeometry, Float32BufferAttribute, Mesh, DoubleSide } from 'three/webgpu';
 import type { ThreeEvent } from '@react-three/fiber';
 import { useGeometryStore } from '../../../stores/geometry-store';
 import { Vertex } from '../../../types/geometry';

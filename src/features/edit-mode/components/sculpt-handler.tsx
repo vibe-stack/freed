@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useThree } from '@react-three/fiber';
-import { Euler, Matrix4, Quaternion, Vector2, Vector3 } from 'three';
+import { Euler, Matrix4, Quaternion, Vector2, Vector3 } from 'three/webgpu';
 import { useToolStore } from '@/stores/tool-store';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { useBrushRay } from '../hooks/use-brush';

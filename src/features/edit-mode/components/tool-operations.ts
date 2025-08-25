@@ -1,4 +1,4 @@
-import { Vector3, Matrix4, Euler, Camera } from 'three';
+import { Vector3, Matrix4, Euler, Camera } from 'three/webgpu';
 import { Vertex } from '../../../types/geometry';
 import { AxisLock } from '../../../stores/tool-store';
 

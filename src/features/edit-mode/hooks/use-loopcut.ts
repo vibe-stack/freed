@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BufferGeometry, Float32BufferAttribute, Mesh as ThreeMesh, Raycaster, Vector2 as ThreeVector2, Vector3, Matrix4, Euler, Quaternion } from 'three';
+import { BufferGeometry, Float32BufferAttribute, Mesh as ThreeMesh, Raycaster, Vector2 as ThreeVector2, Vector3, Matrix4, Euler, Quaternion } from 'three/webgpu';
 import { useThree } from '@react-three/fiber';
 import { useToolStore } from '@/stores/tool-store';
 import { useGeometryStore } from '@/stores/geometry-store';

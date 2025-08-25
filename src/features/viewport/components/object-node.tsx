@@ -16,7 +16,7 @@ import {
   PerspectiveCamera,
   OrthographicCamera,
   Group,
-} from 'three';
+} from 'three/webgpu';
 import { useHelper } from '@react-three/drei';
 import { useViewportStore } from '@/stores/viewport-store';
 import { useGeometryStore, useCameraResource } from '@/stores/geometry-store';

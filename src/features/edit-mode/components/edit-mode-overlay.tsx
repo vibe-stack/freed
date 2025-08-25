@@ -11,7 +11,7 @@ import { VertexRenderer } from '@/features/edit-mode/components/vertex-renderer'
 import { EdgeRenderer } from '@/features/edit-mode/components/edge-renderer';
 import { FaceRenderer } from '@/features/edit-mode/components/face-renderer';
 import { ToolHandler } from '@/features/edit-mode/components/tool-handler';
-import { Color, Vector3 } from 'three';
+import { Color, Vector3 } from 'three/webgpu';
 import { useSelectionVertices } from '@/features/edit-mode/hooks/use-selection-vertices';
 import { useSceneStore } from '@/stores/scene-store';
 import { useLoopcut } from '@/features/edit-mode/hooks/use-loopcut';

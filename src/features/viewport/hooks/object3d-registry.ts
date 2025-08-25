@@ -1,4 +1,4 @@
-import type { Object3D } from 'three';
+import type { Object3D } from 'three/webgpu';
 
 // Module-level registry mapping scene objectId -> Three.js Object3D (group root)
 const registry = new Map<string, Object3D>();

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useThree } from '@react-three/fiber';
-import type { PerspectiveCamera, OrthographicCamera } from 'three';
+import type { PerspectiveCamera, OrthographicCamera } from 'three/webgpu';
 
 // Keeps whichever camera is currently the R3F default camera in sync with the canvas aspect
 const CameraAspectSync: React.FC = () => {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Color } from 'three';
+import { Color } from 'three/webgpu';
 import { useViewportStore } from '@/stores/viewport-store';
 
 export const CalmBg: React.FC = () => {

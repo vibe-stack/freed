@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { BufferGeometry, DoubleSide, Float32BufferAttribute, MeshStandardMaterial, Color, Vector3, Raycaster, Intersection, Material, Mesh } from 'three';
+import React, { useMemo, useRef } from 'react';
+import { BufferGeometry, DoubleSide, Float32BufferAttribute, MeshStandardMaterial, Color, Vector3, Raycaster, Intersection, Material, Mesh } from 'three/webgpu';
 import { useViewportStore } from '@/stores/viewport-store';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { useSceneStore } from '@/stores/scene-store';
@@ -139,15 +139,34 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
 
   if (!obj || !displayMesh || !geomAndMat) return null;
 
+  // Track the pointer-down position to distinguish orbit/drag from a click
+  const downRef = useRef<{ x: number; y: number; id: string } | null>(null);
+
   const onPointerDown = (e: React.PointerEvent) => {
-    if (viewMode === 'object') {
-      if (isLocked) return; // ignore interactions when locked
-      e.stopPropagation();
-      const isShift = e.shiftKey;
-      if (isShift) selectionActions.toggleObjectSelection(objectId);
-      else selectionActions.selectObjects([objectId], false);
-      scene.selectObject(objectId);
-    }
+    if (viewMode !== 'object') return;
+    if (isLocked) return;
+    // Do NOT stop propagation here, we want OrbitControls to receive this for orbiting
+    downRef.current = { x: e.clientX, y: e.clientY, id: objectId };
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (viewMode !== 'object') return;
+    if (isLocked) return;
+    const start = downRef.current;
+    downRef.current = null;
+    if (!start) return;
+    // Require same mesh and small movement threshold (<= 10 px)
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    const dist = Math.hypot(dx, dy);
+    const sameMesh = start.id === objectId;
+    if (!sameMesh || dist > 10) return; // treat as orbit/drag, not a click selection
+    // True click: select
+    e.stopPropagation();
+    const isShift = e.shiftKey;
+    if (isShift) selectionActions.toggleObjectSelection(objectId);
+    else selectionActions.selectObjects([objectId], false);
+    scene.selectObject(objectId);
   };
 
   const onDoubleClick = (e: React.MouseEvent) => {
@@ -182,6 +201,9 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
   if (nodeMaterial) {
     (nodeMaterial as any).wireframe = shading === 'wireframe';
     (nodeMaterial as any).flatShading = (displayMesh.shading ?? 'flat') === 'flat';
+    // Enforce double-sided rendering always for materials
+    (nodeMaterial as any).side = DoubleSide;
+    (nodeMaterial as any).shadowSide = 1; // BackSide
   }
 
   const meshEl = (
@@ -192,8 +214,9 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
       receiveShadow={!!displayMesh.receiveShadow}
       // Disable raycast when locked so clicks pass through
       // In edit mode, disable raycast only for the specific object being edited
-      raycast={raycastFn}
-      onPointerDown={onPointerDown}
+  raycast={raycastFn}
+  onPointerDown={onPointerDown}
+  onPointerUp={onPointerUp}
       onDoubleClick={onDoubleClick}
     />
   );
