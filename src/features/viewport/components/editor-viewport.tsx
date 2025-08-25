@@ -17,6 +17,7 @@ import { useSelectionStore } from '@/stores/selection-store';
 import { useToolStore } from '@/stores/tool-store';
 import { useActiveCameraBinding } from '../hooks/use-active-camera';
 import AnimationSampler from '@/features/animation/components/animation-sampler';
+import CameraAspectSync from './camera-aspect-sync';
 
 // Runs inside Canvas to bind the R3F default camera to the active scene camera
 function ActiveCameraBinding() {
@@ -63,6 +64,8 @@ const EditorViewport: React.FC = () => {
       >
         <CalmBg />
   <ActiveCameraBinding />
+  {/* Keep camera aspect matched to canvas size to avoid stretching */}
+  <CameraAspectSync />
         {shadingMode !== 'material' && (
           <>
             {/* Headlight-style defaults for non-material modes; no shadows */}
