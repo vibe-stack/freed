@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 import React, { useEffect, useRef, createContext, useContext } from 'react';
 import { useSelectionStore } from '../stores/selection-store';

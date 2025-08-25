@@ -4,6 +4,7 @@ import React from 'react';
 import { useAnimationStore, secondsToTimecode } from '@/stores/animation-store';
 import { ChevronsLeft, SkipBack, Play, Pause, Square, SkipForward, ChevronsRight, PanelBottom, CornerDownLeft, CornerDownRight } from 'lucide-react';
 import { DragInput } from '@/components/drag-input';
+import Switch from '@/components/switch';
 
 const IconButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { title: string }>
   = ({ title, children, ...props }) => (
@@ -69,19 +70,13 @@ export const BottomBar: React.FC = () => {
           </div>
 
           {/* Loop */}
-          <div className="flex items-center gap-1 ml-1">
-            <label className="flex items-center gap-1">
-              <input type="checkbox" className="accent-blue-500" checked={loop} onChange={toggleLoop} disabled={!hasClip} />
-              <span className="opacity-80">Loop</span>
-            </label>
+          <div className="flex items-center gap-2 ml-2">
+            <Switch checked={!!loop} onCheckedChange={() => toggleLoop()} disabled={!hasClip} label="Loop" />
           </div>
 
           {/* Auto-key */}
-          <div className="flex items-center gap-1 ml-1">
-            <label className="flex items-center gap-1">
-              <input type="checkbox" className="accent-blue-500" checked={autoKey} onChange={(e) => setAutoKey(e.target.checked)} />
-              <span className="opacity-80">Auto-key</span>
-            </label>
+          <div className="flex items-center gap-2 ml-2">
+            <Switch checked={autoKey} onCheckedChange={(v) => setAutoKey(v)} label="Auto-key" />
           </div>
 
           {/* FPS */}

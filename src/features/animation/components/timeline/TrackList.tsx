@@ -12,6 +12,7 @@ export type TrackListProps = {
   rows: Row[];
   objects: Record<string, { name?: string }>;
   tracks: Record<string, any>;
+  rowHeight?: number;
   expandedObjects: Record<string, boolean>;
   setExpandedObjects: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   expandedTransforms: Record<string, boolean>;
@@ -31,6 +32,7 @@ export const TrackList: React.FC<TrackListProps> = (props) => {
     rows,
     objects,
     tracks,
+  rowHeight = 40,
     expandedObjects,
     setExpandedObjects,
     expandedTransforms,
@@ -51,7 +53,8 @@ export const TrackList: React.FC<TrackListProps> = (props) => {
         if (row.kind === 'object') {
           const expanded = !!expandedObjects[row.id];
           return (
-            <div key={`obj:${row.id}`} className="flex items-center gap-2 px-2 py-1 text-xs cursor-pointer bg-black/30 border-b border-white/5"
+            <div key={`obj:${row.id}`} className="flex items-center gap-2 px-2 text-xs cursor-pointer bg-black/30 border-b border-white/5"
+              style={{ height: rowHeight }}
               onClick={() => setExpandedObjects((m) => ({ ...m, [row.id]: !expanded }))}
               title={row.label}
             >
@@ -62,7 +65,8 @@ export const TrackList: React.FC<TrackListProps> = (props) => {
         } else if (row.kind === 'category') {
           const expanded = !!expandedTransforms[row.id];
           return (
-            <div key={`cat:${row.id}`} className="flex items-center gap-2 px-2 py-1 text-[11px] cursor-pointer pl-6 bg-black/20 border-b border-white/5"
+            <div key={`cat:${row.id}`} className="flex items-center gap-2 px-2 text-[11px] cursor-pointer pl-6 bg-black/20 border-b border-white/5"
+              style={{ height: rowHeight }}
               onClick={() => setExpandedTransforms((m) => ({ ...m, [row.id]: !expanded }))}
               title={`${objects[row.objectId]?.name || row.objectId} ${row.label}`}
             >
@@ -75,19 +79,20 @@ export const TrackList: React.FC<TrackListProps> = (props) => {
           const selected = selection.trackIds.includes(tid);
           const solo = soloTrackIds.has(tid);
           return (
-            <div key={`trk:${tid}`} className={`flex items-center gap-2 px-2 py-1 text-xs cursor-pointer pl-10 ${selected ? 'bg-white/10' : ''}`}
+            <div key={`trk:${tid}`} className={`flex items-center gap-2 px-2 text-xs cursor-pointer pl-10 border-b border-white/5 ${selected ? 'bg-white/10' : ''}`}
+              style={{ height: rowHeight }}
               onClick={(e) => selectTrack(tid, e.shiftKey || e.metaKey || e.ctrlKey)}
               title={`${objects[row.objectId]?.name || row.objectId}.${tr.property}`}
             >
               <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
               <div className="flex-1 truncate">{row.label}</div>
-              <button className={`p-1 rounded ${solo ? 'bg-yellow-500/30' : 'bg-white/10'}`} title="Solo" onClick={(e) => { e.stopPropagation(); toggleTrackSolo(tid); }}>
+              <button className={`p-1 rounded ${solo ? 'bg-yellow-500/30' : 'bg-white/10'}`} title="Solo: Play only this track (and other soloed)" onClick={(e) => { e.stopPropagation(); toggleTrackSolo(tid); }}>
                 <Star className="h-3.5 w-3.5" />
               </button>
-              <button className={`p-1 rounded ${tr.muted ? 'bg-red-500/30' : 'bg-white/10'}`} title="Mute" onClick={(e) => { e.stopPropagation(); setTrackMuted(tid, !tr.muted); }}>
+              <button className={`p-1 rounded ${tr.muted ? 'bg-red-500/30' : 'bg-white/10'}`} title="Mute: Disable this track during playback" onClick={(e) => { e.stopPropagation(); setTrackMuted(tid, !tr.muted); }}>
                 <VolumeX className="h-3.5 w-3.5" />
               </button>
-              <button className={`p-1 rounded ${tr.locked ? 'bg-gray-500/30' : 'bg-white/10'}`} title="Lock" onClick={(e) => { e.stopPropagation(); setTrackLocked(tid, !tr.locked); }}>
+              <button className={`p-1 rounded ${tr.locked ? 'bg-gray-500/30' : 'bg-white/10'}`} title="Lock: Prevent editing keys on this track" onClick={(e) => { e.stopPropagation(); setTrackLocked(tid, !tr.locked); }}>
                 <Lock className="h-3.5 w-3.5" />
               </button>
             </div>

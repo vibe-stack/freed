@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
+/* eslint-disable @typescript-eslint/no-require-imports */
 import { useMemo } from 'react';
 import { SceneObject, Transform, Light, LightType, CameraResource, CameraType } from '../types/geometry';
 import { vec3 } from '../utils/geometry';

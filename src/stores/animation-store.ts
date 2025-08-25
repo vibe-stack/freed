@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
@@ -125,6 +126,7 @@ interface AnimationActions {
   selectKey: (trackId: string, keyId: string, additive?: boolean) => void;
   deleteSelectedKeys: () => void;
   nudgeSelectedKeys: (dt: number, dv?: number, snapToFps?: boolean) => void;
+  nudgeKeysForTracks: (trackIds: string[], dt: number, snapToFps?: boolean) => void;
   copySelectedKeys: () => void;
   cutSelectedKeys: () => void;
   pasteKeysAtPlayhead: () => void;
@@ -430,6 +432,16 @@ export const useAnimationStore = create<AnimationStore>()(
             k.t = snap(Math.max(0, k.t + dt));
             if (typeof dv === 'number') k.v = k.v + dv;
           });
+          sortKeys(tr.channel.keys);
+        });
+      }),
+      nudgeKeysForTracks: (trackIds: string[], dt: number, snapToFps: boolean = false) => set((s) => {
+        if (!trackIds?.length || !isFinite(dt)) return;
+        const fps = s.fps || 24;
+        const snap = (x: number) => snapToFps ? Math.round(x * fps) / fps : x;
+        trackIds.forEach((tid) => {
+          const tr = s.tracks[tid]; if (!tr || tr.locked) return;
+          tr.channel.keys.forEach((k) => { k.t = snap(Math.max(0, k.t + dt)); });
           sortKeys(tr.channel.keys);
         });
       }),

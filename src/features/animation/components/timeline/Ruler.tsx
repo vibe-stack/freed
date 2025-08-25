@@ -15,8 +15,9 @@ export type RulerProps = {
   pan: number;
   playhead: number;
   onSeek: (t: number) => void;
-  onWheelZoom: (factor: number) => void;
+  onWheelZoom: (factor: number, anchorX?: number) => void;
   onWheelPan: (deltaSeconds: number) => void;
+  keyTimes?: number[];
   markers: Marker[];
   onBeginDragMarker: (id: string) => void;
   onDragMarker: (id: string, t: number) => void;
@@ -37,7 +38,8 @@ export const Ruler: React.FC<RulerProps> = (props) => {
     onSeek,
     onWheelZoom,
     onWheelPan,
-    markers,
+  markers,
+  keyTimes = [],
     onBeginDragMarker,
     onDragMarker,
     onDoubleClickMarker,
@@ -60,13 +62,17 @@ export const Ruler: React.FC<RulerProps> = (props) => {
     const t = xToTime(x, clipStart, pan, zoom);
     return Math.max(clipStart, Math.min(t, clipEnd));
   };
+  const clientToLocalX = (clientX: number): number => {
+    const rect = ref.current?.getBoundingClientRect();
+    return rect ? (clientX - rect.left) : 0;
+  };
 
   const onWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
     if (!hasClip) return;
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       const factor = e.deltaY > 0 ? 0.9 : 1.1;
-      onWheelZoom(factor);
+      onWheelZoom(factor, clientToLocalX(e.clientX));
     } else {
       onWheelPan(e.deltaY * 0.001 * Math.max(clipEnd - clipStart, 1));
     }
@@ -75,7 +81,6 @@ export const Ruler: React.FC<RulerProps> = (props) => {
   const onMouseDown: React.MouseEventHandler<HTMLDivElement> = (e) => {
     if (!hasClip) return;
     onSeek(posToTime(e.clientX));
-    // We intentionally don't add dragging logic here; parent can control if needed
   };
 
   return (
@@ -83,8 +88,45 @@ export const Ruler: React.FC<RulerProps> = (props) => {
       className="relative select-none"
       style={{ height }}
       onWheel={onWheel}
-      onMouseDown={onMouseDown}
-  onMouseMove={(e) => { if (hasClip && (e.buttons & 1) === 1) onSeek(posToTime(e.clientX)); }}
+      onMouseDown={(e) => {
+        if (!hasClip) return;
+    if (e.metaKey) {
+          // Cmd-drag: zoom around cursor
+          const startX = e.clientX;
+          const move = (ev: MouseEvent) => {
+            const dx = ev.clientX - startX;
+            const factor = Math.pow(1.0015, dx);
+      onWheelZoom(Math.max(0.1, Math.min(10, factor)), clientToLocalX(ev.clientX));
+          };
+          const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+          window.addEventListener('mousemove', move);
+          window.addEventListener('mouseup', up);
+        } else {
+          onMouseDown(e);
+        }
+      }}
+      onMouseMove={(e) => {
+        if (!hasClip) return;
+        if ((e.buttons & 1) === 1) {
+          const t = posToTime(e.clientX);
+          // Hold Shift to snap to frames for easier precise scrubbing over keys
+          if (e.shiftKey) {
+            const frame = Math.round(t * fps);
+            onSeek(frame / fps);
+          } else if (e.altKey && keyTimes?.length) {
+            // Snap to nearest existing keyframe for easy precise seeking
+            let best = keyTimes[0];
+            let bestD = Math.abs(best - t);
+            for (let i = 1; i < keyTimes.length; i++) {
+              const d = Math.abs(keyTimes[i] - t);
+              if (d < bestD) { bestD = d; best = keyTimes[i]; }
+            }
+            onSeek(best);
+          } else {
+            onSeek(t);
+          }
+        }
+      }}
       ref={ref}
     >
       {/* Tick marks */}
@@ -101,7 +143,7 @@ export const Ruler: React.FC<RulerProps> = (props) => {
         ))}
       </div>
 
-      {/* Playhead */}
+      {/* Playhead (thin at top, TrackLanes will draw full-height line) */}
       {hasClip && (
         <div className="absolute top-0 bottom-0" style={{ left: timeToX(playhead, clipStart, pan, zoom) }}>
           <div className="w-px bg-red-500/80 h-full" />

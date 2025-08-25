@@ -24,6 +24,8 @@ export const Timeline: React.FC = () => {
   const selectTrack = useAnimationStore((s) => s.selectTrack);
   const selectKey = useAnimationStore((s) => s.selectKey);
   const moveKey = useAnimationStore((s) => s.moveKey);
+  const nudgeSelectedKeys = useAnimationStore((s) => s.nudgeSelectedKeys);
+  const clearSelection = useAnimationStore((s) => s.clearSelection);
   const setTrackMuted = useAnimationStore((s) => s.setTrackMuted);
   const setTrackLocked = useAnimationStore((s) => s.setTrackLocked);
   const toggleTrackSolo = useAnimationStore((s) => s.toggleTrackSolo);
@@ -34,6 +36,7 @@ export const Timeline: React.FC = () => {
 
   const [draggingKey, setDraggingKey] = useState<{ trackId: string; keyId: string }|null>(null);
   const [draggingMarker, setDraggingMarker] = useState<string|null>(null);
+  const [draggingGroup, setDraggingGroup] = useState<{ trackIds: string[]; startX: number; startT: number; lastDt: number }|null>(null);
 
   const objects = useSceneStore((s) => s.objects);
   const listRef = useRef<HTMLDivElement>(null);
@@ -53,6 +56,13 @@ export const Timeline: React.FC = () => {
   const hasClip = !!activeClipId && !!clip;
   const clipStart = clip?.start ?? 0;
   const clipEnd = clip?.end ?? Math.max(clipStart + 5, clipStart + 1);
+  const clampPan = (p: number) => {
+    // Limit left scroll to ~100px before clip start (frame zero origin)
+    const maxLeftSeconds = 100 / Math.max(zoom, 1);
+    const minPan = -maxLeftSeconds;
+    // Right pan can be generous; no hard limit here
+    return Math.max(minPan, p);
+  };
 
   // Build hierarchical rows
   type Row = ListRow;
@@ -99,6 +109,7 @@ export const Timeline: React.FC = () => {
     });
     return out;
   }, [clip, tracks, objects, expandedObjects, expandedTransforms]);
+  const rowHeight = 40;
 
   const unionKeyTimes = (trackIds: string[]) => {
     const set = new Set<number>();
@@ -108,6 +119,10 @@ export const Timeline: React.FC = () => {
     });
     return Array.from(set.values()).sort((a,b)=>a-b);
   };
+  const allKeyTimes = useMemo(() => {
+    if (!clip) return [] as number[];
+    return unionKeyTimes(clip.trackIds);
+  }, [clip, tracks]);
 
   const posToTimeFromCurves = (clientX: number): number => {
     const rect = (curvesRef.current as HTMLDivElement | null)?.getBoundingClientRect();
@@ -115,6 +130,31 @@ export const Timeline: React.FC = () => {
     const x = clientX - rect.left;
     const t = (x / Math.max(zoom, 1)) + clipStart + pan;
     return Math.max(clipStart, Math.min(t, clipEnd));
+  };
+
+  // Group drag handlers: dragging object or category rows moves all their child keys in time
+  const onMouseDownGroup = (trackIds: string[], e: React.MouseEvent<HTMLDivElement>) => {
+    if (!trackIds?.length) return;
+    // Only start drag on main button, and ignore if clicking on a key (bubbling prevented there)
+    if (e.button !== 0) return;
+  setDraggingGroup({ trackIds, startX: e.clientX, startT: playhead, lastDt: 0 });
+    // Select involved tracks for visual feedback
+    if (!(e.shiftKey || e.metaKey || e.ctrlKey)) clearSelection();
+    trackIds.forEach((tid) => selectTrack(tid, true));
+  };
+  const onMouseMoveGroup = (trackIds: string[], clientX: number) => {
+    if (!draggingGroup) return;
+    // compute delta time based on mouse motion
+  const total = (clientX - draggingGroup.startX) / Math.max(zoom, 1);
+  if (!isFinite(total)) return;
+  const delta = total - draggingGroup.lastDt;
+  if (Math.abs(delta) < 1e-6) return;
+  useAnimationStore.getState().nudgeKeysForTracks(trackIds, delta, false);
+  setDraggingGroup({ ...draggingGroup, lastDt: draggingGroup.lastDt + delta });
+  };
+  const onMouseUpGroup: React.MouseEventHandler<HTMLDivElement> = () => {
+    if (!draggingGroup) return;
+    setDraggingGroup(null);
   };
 
   return (
@@ -134,8 +174,20 @@ export const Timeline: React.FC = () => {
             pan={pan}
             playhead={playhead}
             onSeek={seekSeconds}
-            onWheelZoom={(factor) => setZoom(Math.round(zoom * factor))}
-            onWheelPan={(delta) => setPan(pan + delta)}
+            onWheelZoom={(factor, anchorX) => {
+              const oldZoom = Math.max(zoom, 1);
+              const newZoom = Math.round(Math.max(10, Math.min(1000, oldZoom * factor)));
+              if (anchorX !== undefined) {
+                // keep time under anchorX stable: t = x/zoom + clipStart + pan
+                // pan' = t - (x/newZoom) - clipStart
+                const t = (anchorX / oldZoom) + clipStart + pan;
+                const newPan = t - (anchorX / newZoom) - clipStart;
+                setPan(newPan);
+              }
+              setZoom(newZoom);
+            }}
+            onWheelPan={(delta) => setPan(clampPan(pan + delta))}
+            keyTimes={allKeyTimes}
             markers={markers}
             onBeginDragMarker={(id) => setDraggingMarker(id)}
             onDragMarker={(id, t) => moveMarker(id, t)}
@@ -144,11 +196,12 @@ export const Timeline: React.FC = () => {
           />
         </div>
 
-        <div className="h-64 border-t border-white/10 grid" style={{ gridTemplateColumns: '260px 1fr' }}>
+        <div className="h-64 border-t border-white/10 grid" style={{ gridTemplateColumns: '260px 1fr' }} onMouseUp={onMouseUpGroup}>
           <TrackList
             rows={rows}
             objects={objects}
             tracks={tracks}
+            rowHeight={rowHeight}
             expandedObjects={expandedObjects}
             setExpandedObjects={setExpandedObjects}
             expandedTransforms={expandedTransforms}
@@ -165,17 +218,22 @@ export const Timeline: React.FC = () => {
 
           <TrackLanes
             rows={rows}
+            rowHeight={rowHeight}
             clipStart={clipStart}
             clipEnd={clipEnd}
             pan={pan}
             zoom={zoom}
             tracks={tracks}
             selection={selection as any}
+            playhead={playhead}
             curvesRef={curvesRef}
             onScrollSync={onSyncScroll}
             unionKeyTimes={unionKeyTimes}
             onMouseDownKey={(tid, keyId, e) => { e.stopPropagation(); setDraggingKey({ trackId: tid, keyId }); selectKey(tid, keyId, e.shiftKey || e.metaKey || e.ctrlKey); }}
             onMouseMoveKey={(tid, keyId, clientX) => { if (draggingKey && draggingKey.keyId === keyId && draggingKey.trackId === tid) moveKey(tid, keyId, posToTimeFromCurves(clientX)); }}
+            onMouseDownGroup={onMouseDownGroup}
+            onMouseMoveGroup={onMouseMoveGroup}
+            onSetPan={(p) => setPan(clampPan(p))}
           />
         </div>
       </div>

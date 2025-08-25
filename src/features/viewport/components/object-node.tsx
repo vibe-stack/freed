@@ -15,11 +15,14 @@ import {
   PointLight,
   PerspectiveCamera,
   OrthographicCamera,
+  Group,
 } from 'three';
 import { useHelper } from '@react-three/drei';
 import { useViewportStore } from '@/stores/viewport-store';
 import { useGeometryStore, useCameraResource } from '@/stores/geometry-store';
 import { registerCamera, unregisterCamera } from '../hooks/camera-registry';
+import { registerObject3D, unregisterObject3D } from '../hooks/object3d-registry';
+import { useAnimationStore } from '@/stores/animation-store';
 // Light helper wrappers
 const DirectionalLightNode: React.FC<{ color: Color; intensity: number }> = ({ color, intensity }) => {
   const ref = useRef<DirectionalLight>(null!);
@@ -242,11 +245,74 @@ const OrthographicCameraBare: React.FC<{ objectId?: string; left: number; right:
 
 type Props = { objectId: string };
 
+const CameraObjectNode: React.FC<{ objectId: string; cameraId: string; isMaterial: boolean }>
+  = ({ objectId, cameraId, isMaterial }) => {
+    const camRes = useCameraResource(cameraId);
+    if (!camRes) return null;
+    if (camRes.type === 'perspective') {
+      return isMaterial ? (
+        <PerspectiveCameraBare
+          objectId={objectId}
+          fov={camRes.fov ?? 50}
+          near={camRes.near}
+          far={camRes.far}
+          zoom={camRes.zoom ?? 1}
+          focus={camRes.focus ?? 10}
+          filmGauge={camRes.filmGauge ?? 35}
+          filmOffset={camRes.filmOffset ?? 0}
+        />
+      ) : (
+        <PerspectiveCameraNode
+          objectId={objectId}
+          fov={camRes.fov ?? 50}
+          near={camRes.near}
+          far={camRes.far}
+          zoom={camRes.zoom ?? 1}
+          focus={camRes.focus ?? 10}
+          filmGauge={camRes.filmGauge ?? 35}
+          filmOffset={camRes.filmOffset ?? 0}
+        />
+      );
+    }
+    return isMaterial ? (
+      <OrthographicCameraBare
+        objectId={objectId}
+        left={camRes.left ?? -1}
+        right={camRes.right ?? 1}
+        top={camRes.top ?? 1}
+        bottom={camRes.bottom ?? -1}
+        near={camRes.near}
+        far={camRes.far}
+        zoom={camRes.zoom ?? 1}
+      />
+    ) : (
+      <OrthographicCameraNode
+        objectId={objectId}
+        left={camRes.left ?? -1}
+        right={camRes.right ?? 1}
+        top={camRes.top ?? 1}
+        bottom={camRes.bottom ?? -1}
+        near={camRes.near}
+        far={camRes.far}
+        zoom={camRes.zoom ?? 1}
+      />
+    );
+  };
+
 const ObjectNode: React.FC<Props> = ({ objectId }) => {
   const scene = useSceneStore();
   const obj = scene.objects[objectId];
   const shading = useViewportStore((s) => s.shadingMode);
   const tool = useToolStore();
+  const playing = useAnimationStore((s) => s.playing);
+
+  const groupRef = useRef<Group>(null!);
+  useEffect(() => {
+    const g = groupRef.current;
+    if (!g) return;
+    registerObject3D(objectId, g);
+    return () => unregisterObject3D(objectId, g);
+  }, [objectId]);
 
   // Use live local transforms during active object tools for preview
   const t = useMemo(() => {
@@ -260,13 +326,16 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
 
   if (!obj || !t) return null;
 
+  const transformProps = playing
+    ? { }
+    : {
+        position: [t.position.x, t.position.y, t.position.z] as [number, number, number],
+        rotation: [t.rotation.x, t.rotation.y, t.rotation.z] as [number, number, number],
+        scale: [t.scale.x, t.scale.y, t.scale.z] as [number, number, number],
+      };
+
   return (
-    <group
-      position={[t.position.x, t.position.y, t.position.z]}
-      rotation={[t.rotation.x, t.rotation.y, t.rotation.z]}
-      scale={[t.scale.x, t.scale.y, t.scale.z]}
-      visible={obj.visible}
-    >
+    <group ref={groupRef} visible={obj.visible} {...transformProps}>
     {obj.type === 'mesh' && <MeshView objectId={objectId} noTransform />}
   {obj.type === 'light' && obj.lightId && (() => {
         const light = scene.lights[obj.lightId!];
@@ -311,61 +380,9 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
             );
         }
       })()}
-  {obj.type === 'camera' && obj.cameraId && (() => {
-        const camRes = useCameraResource(obj.cameraId!);
-        if (!camRes) return null;
-        const isMaterial = (shading as unknown as string) === 'material';
-        if (camRes.type === 'perspective') {
-          return isMaterial
-            ? (
-              <PerspectiveCameraBare
-                objectId={objectId}
-                fov={camRes.fov ?? 50}
-                near={camRes.near}
-                far={camRes.far}
-                zoom={camRes.zoom ?? 1}
-                focus={camRes.focus ?? 10}
-                filmGauge={camRes.filmGauge ?? 35}
-                filmOffset={camRes.filmOffset ?? 0}
-              />
-            ) : (
-              <PerspectiveCameraNode
-                objectId={objectId}
-                fov={camRes.fov ?? 50}
-                near={camRes.near}
-                far={camRes.far}
-                zoom={camRes.zoom ?? 1}
-                focus={camRes.focus ?? 10}
-                filmGauge={camRes.filmGauge ?? 35}
-                filmOffset={camRes.filmOffset ?? 0}
-              />
-            );
-        }
-        return isMaterial
-          ? (
-            <OrthographicCameraBare
-              objectId={objectId}
-              left={camRes.left ?? -1}
-              right={camRes.right ?? 1}
-              top={camRes.top ?? 1}
-              bottom={camRes.bottom ?? -1}
-              near={camRes.near}
-              far={camRes.far}
-              zoom={camRes.zoom ?? 1}
-            />
-          ) : (
-            <OrthographicCameraNode
-              objectId={objectId}
-              left={camRes.left ?? -1}
-              right={camRes.right ?? 1}
-              top={camRes.top ?? 1}
-              bottom={camRes.bottom ?? -1}
-              near={camRes.near}
-              far={camRes.far}
-              zoom={camRes.zoom ?? 1}
-            />
-          );
-      })()}
+  {obj.type === 'camera' && obj.cameraId && (
+        <CameraObjectNode objectId={objectId} cameraId={obj.cameraId!} isMaterial={(shading as unknown as string) === 'material'} />
+      )}
       {obj.children.map((cid) => (
         <ObjectNode key={cid} objectId={cid} />
       ))}
