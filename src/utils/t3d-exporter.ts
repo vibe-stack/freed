@@ -15,6 +15,7 @@ import {
   T3DViewport
 } from '../types/t3d';
 import { Mesh, Material, SceneObject, ViewportState } from '../types/geometry';
+import { useAnimationStore } from '@/stores/animation-store';
 
 /**
  * Converts internal Vector3 to T3D format
@@ -202,6 +203,30 @@ export async function exportToT3D(
     },
     selectedObjectId: workspaceData.selectedObjectId,
   };
+
+  // Optionally include animations and UI prefs (MVP)
+  try {
+    const a = useAnimationStore.getState();
+    const activeClip = a.activeClipId ? a.clips[a.activeClipId] : null;
+    t3dScene.animations = {
+      fps: a.fps,
+      activeClipId: a.activeClipId,
+      clips: a.clipOrder.map((cid) => {
+        const c = a.clips[cid];
+        return {
+          id: c.id, name: c.name, start: c.start, end: c.end, loop: c.loop, speed: c.speed,
+          tracks: c.trackIds.map((tid) => {
+            const tr = a.tracks[tid];
+            return {
+              id: tr.id, targetId: tr.targetId, property: tr.property,
+              keys: tr.channel.keys.map((k) => ({ id: k.id, t: k.t, v: k.v, interp: k.interp }))
+            };
+          })
+        };
+      }),
+    };
+    t3dScene.ui = { timelinePanelOpen: a.timelinePanelOpen, lastUsedFps: a.lastUsedFps };
+  } catch {}
 
   // Create ZIP file
   const zip = new JSZip();

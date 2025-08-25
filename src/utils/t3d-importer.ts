@@ -22,6 +22,7 @@ import {
   Face,
   Transform
 } from '../types/geometry';
+import { useAnimationStore } from '@/stores/animation-store';
 
 /**
  * Converts T3D Vector3 to internal format
@@ -211,7 +212,7 @@ export async function importFromT3D(file: File): Promise<ImportedWorkspaceData> 
     const objects = t3dScene.objects.map(t3dToSceneObject);
     const viewport = t3dToViewport(t3dScene.viewport);
 
-    return {
+  const result: ImportedWorkspaceData = {
       meshes,
       materials,
       objects,
@@ -228,6 +229,44 @@ export async function importFromT3D(file: File): Promise<ImportedWorkspaceData> 
         applicationVersion: t3dScene.metadata.applicationVersion,
       },
     };
+
+    // Populate animation store if payload exists
+    try {
+      const anim = (t3dScene as any).animations as T3DScene['animations'] | undefined;
+      const ui = (t3dScene as any).ui as T3DScene['ui'] | undefined;
+      if (anim) {
+        const a = useAnimationStore.getState();
+        // Reset minimal fields
+        useAnimationStore.setState((s) => ({
+          fps: anim.fps ?? s.fps,
+          playing: false,
+          playhead: 0,
+          clips: {},
+          clipOrder: [],
+          activeClipId: null,
+          tracks: {},
+        }), true);
+        // Recreate clips and tracks
+        anim.clips?.forEach((c) => {
+          useAnimationStore.setState((s) => {
+            s.clips[c.id] = { id: c.id, name: c.name, start: c.start, end: c.end, loop: c.loop, speed: c.speed, trackIds: c.tracks.map(t => t.id) } as any;
+            s.clipOrder.push(c.id);
+            c.tracks.forEach((t) => {
+              s.tracks[t.id] = { id: t.id, targetType: 'sceneObject', targetId: t.targetId, property: t.property as any, channel: { id: `${t.id}:ch`, keys: t.keys.map(k => ({ id: k.id, t: k.t, v: k.v, interp: k.interp })) } } as any;
+            });
+          });
+        });
+        useAnimationStore.getState().setActiveClip(anim.activeClipId ?? (anim.clips?.[0]?.id ?? null));
+      }
+      if (ui) {
+        useAnimationStore.setState((s) => ({
+          timelinePanelOpen: !!ui.timelinePanelOpen,
+          lastUsedFps: ui.lastUsedFps ?? s.lastUsedFps,
+        }), false);
+      }
+    } catch {}
+
+    return result;
 
   } catch (error) {
     if (error instanceof Error) {

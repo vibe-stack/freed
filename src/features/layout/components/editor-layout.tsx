@@ -15,62 +15,82 @@ import React from 'react';
 import ShaderEditor from '@/features/materials/components/shader-editor';
 import { useShaderEditorStore } from '@/stores/shader-editor-store';
 import { CameraSwitcher } from '@/features/toolbar';
+import BottomBar from '@/features/animation/components/BottomBar';
+import Timeline from '@/features/animation/components/Timeline';
+import { useAnimationStore } from '@/stores/animation-store';
 
 const EditorLayout: React.FC = () => {
   const shaderOpen = useShaderEditorStore((s) => s.open);
   const setShaderOpen = useShaderEditorStore((s) => s.setOpen);
   const editPalette = useToolStore((s) => s.editPalette);
+  const timelineOpen = useAnimationStore((s) => s.timelinePanelOpen);
+  const activeClipId = useAnimationStore((s) => s.activeClipId);
+  const createClip = useAnimationStore((s) => s.createClip);
+  React.useEffect(() => {
+    if (!activeClipId) {
+      try { createClip('Clip'); } catch {}
+    }
+  }, [activeClipId, createClip]);
   return (
     <div className="w-screen h-screen overflow-hidden bg-[#0e1116] text-gray-200">
       {/* Top OS-like Menu Bar */}
   <MenuBar onOpenShaderEditor={() => setShaderOpen(true)} />
 
-      {/* Main content area */}
-      <div className="relative w-full h-[calc(100vh-32px)]">{/* 32px menu height */}
-        {/* 3D Viewport fills area */}
-        <EditorViewport />
+      {/* Main content area uses flex so bottom bar reduces viewport height */}
+      <div className="flex flex-col w-full h-[calc(100vh-32px)]">{/* 32px menu height */}
+        {/* Viewport region (flex-1) with overlays positioned relative to it */}
+        <div className="relative flex-1">
+          {/* 3D Viewport fills region */}
+          <EditorViewport />
 
-        {/* Floating Top Toolbar */}
-        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-3 z-20 space-y-2 flex flex-col items-center">
-          <TopToolbar />
-          {/* Edit/Sculpt toolbars (only one visible based on palette) */}
-          {editPalette === 'sculpt' ? <SculptToolsToolbar /> : <EditToolsToolbar />}
-        </div>
-
-        {/* Right slim camera switcher aligned with top toolbar */}
-        <div className="absolute right-4 top-3 z-20">
-          <div className="pointer-events-auto">
-            <CameraSwitcher />
+          {/* Floating Top Toolbar */}
+          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-3 z-20 space-y-2 flex flex-col items-center">
+            <TopToolbar />
+            {/* Edit/Sculpt toolbars (only one visible based on palette) */}
+            {editPalette === 'sculpt' ? <SculptToolsToolbar /> : <EditToolsToolbar />}
           </div>
-        </div>
 
-        {/* Left Scene Hierarchy Panel */}
-        <div className="absolute left-4 top-32 z-20">
-          <SceneHierarchyPanel />
-        </div>
-
-        {/* Right Properties Panel */}
-        <div className="absolute right-4 top-32 z-20">
-          <PropertiesPanel />
-        </div>
-
-        {/* Bottom-left selection summary */}
-        <div className="absolute left-4 bottom-4 z-20 max-w-md">
-          <div className="bg-black/30 backdrop-blur-sm rounded-md border border-white/10 p-3">
-            <SelectionSummary />
+          {/* Right slim camera switcher aligned with top toolbar */}
+          <div className="absolute right-4 top-3 z-20">
+            <div className="pointer-events-auto">
+              <CameraSwitcher />
+            </div>
           </div>
-        </div>
-        
-        {/* Tool Indicator - shows when tools are active */}
-        <ToolIndicator />
 
-        {/* Bottom-center shape segmentation panel */}
-        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 z-20">
-          <ShapeAdjustPanel />
+          {/* Left Scene Hierarchy Panel */}
+          <div className="absolute left-4 top-32 z-20">
+            <SceneHierarchyPanel />
+          </div>
+
+          {/* Right Properties Panel */}
+          <div className="absolute right-4 top-32 z-20">
+            <PropertiesPanel />
+          </div>
+
+          {/* Bottom-left selection summary */}
+          <div className="absolute left-4 bottom-4 z-20 max-w-md">
+            <div className="bg-black/30 backdrop-blur-sm rounded-md border border-white/10 p-3">
+              <SelectionSummary />
+            </div>
+          </div>
+          
+          {/* Tool Indicator - shows when tools are active */}
+          <ToolIndicator />
+
+          {/* Bottom-center shape segmentation panel */}
+          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 z-20">
+            <ShapeAdjustPanel />
+          </div>
+
+          {/* Shader Editor Panel */}
+          <ShaderEditor open={shaderOpen} onOpenChange={setShaderOpen} />
+
+          {/* Timeline overlays inside the viewport region */}
+          {timelineOpen && <Timeline />}
         </div>
 
-  {/* Shader Editor Panel */}
-  <ShaderEditor open={shaderOpen} onOpenChange={setShaderOpen} />
+        {/* Bottom bar now consumes layout height instead of overlapping */}
+        <BottomBar />
       </div>
     </div>
   );

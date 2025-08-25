@@ -16,6 +16,7 @@ import AutoOrbitController from './auto-orbit-controller';
 import { useSelectionStore } from '@/stores/selection-store';
 import { useToolStore } from '@/stores/tool-store';
 import { useActiveCameraBinding } from '../hooks/use-active-camera';
+import AnimationSampler from '@/features/animation/components/animation-sampler';
 
 // Runs inside Canvas to bind the R3F default camera to the active scene camera
 function ActiveCameraBinding() {
@@ -88,6 +89,7 @@ const EditorViewport: React.FC = () => {
   />
         <SceneContent />
         <WorldEffects />
+  <AnimationSampler />
       </Canvas>
     </div>
   );

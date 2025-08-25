@@ -102,6 +102,19 @@ export interface T3DScene {
   rootObjects: string[];
   viewport: T3DViewport;
   selectedObjectId: string | null;
+  // Optional MVP animation payload
+  animations?: {
+    fps: number;
+    clips: Array<{
+      id: string; name: string; start: number; end: number; loop: boolean; speed: number;
+      tracks: Array<{ id: string; targetId: string; property: string; keys: Array<{ id: string; t: number; v: number; interp: 'step'|'linear'|'bezier' }> }>;
+    }>;
+    activeClipId?: string | null;
+  };
+  ui?: {
+    timelinePanelOpen?: boolean;
+    lastUsedFps?: number;
+  };
 }
 
 export interface T3DExportFilter {

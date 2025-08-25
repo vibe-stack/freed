@@ -210,6 +210,28 @@ export const useSceneStore = create<SceneStore>()(
             Object.assign(object.transform, transform);
           }
         });
+        // Auto-key integration
+        try {
+          const { useAnimationStore } = require('./animation-store');
+          const a = useAnimationStore.getState();
+          if (!a.autoKey || a._samplingGuard) return;
+          const clip = a.activeClipId ? a.clips[a.activeClipId] : null;
+          if (!clip) return;
+          const t = a.playhead;
+          const fps = a.fps || 24;
+          const frameT = Math.round(t * fps) / fps;
+          const toKey: Array<{ prop: 'position'|'rotation'|'scale'; value: any }> = [];
+          if (transform.position) toKey.push({ prop: 'position', value: transform.position });
+          if (transform.rotation) toKey.push({ prop: 'rotation', value: transform.rotation });
+          if (transform.scale) toKey.push({ prop: 'scale', value: transform.scale });
+          toKey.forEach(({ prop, value }) => {
+            (['x','y','z'] as const).forEach((axis) => {
+              if (value[axis] === undefined) return;
+              const trackId = a.ensureTrack(objectId, `${prop}.${axis}`);
+              a.insertKey(trackId, frameT, value[axis], 'linear');
+            });
+          });
+        } catch {}
       },
       
       translateObject: (objectId: string, delta: [number, number, number]) => {
@@ -221,6 +243,21 @@ export const useSceneStore = create<SceneStore>()(
             object.transform.position.z += delta[2];
           }
         });
+        // Auto-key position deltas
+        try {
+          const { useAnimationStore } = require('./animation-store');
+          const a = useAnimationStore.getState();
+          if (!a.autoKey || a._samplingGuard) return;
+          const clip = a.activeClipId ? a.clips[a.activeClipId] : null;
+          if (!clip) return;
+          const t = a.playhead; const fps = a.fps || 24; const frameT = Math.round(t * fps) / fps;
+          const obj = useSceneStore.getState().objects[objectId];
+          if (!obj) return;
+          (['x','y','z'] as const).forEach((axis, i) => {
+            const trackId = a.ensureTrack(objectId, `position.${axis}`);
+            a.insertKey(trackId, frameT, (obj.transform.position as any)[axis], 'linear');
+          });
+        } catch {}
       },
       
       rotateObject: (objectId: string, delta: [number, number, number]) => {
@@ -232,6 +269,20 @@ export const useSceneStore = create<SceneStore>()(
             object.transform.rotation.z += delta[2];
           }
         });
+        try {
+          const { useAnimationStore } = require('./animation-store');
+          const a = useAnimationStore.getState();
+          if (!a.autoKey || a._samplingGuard) return;
+          const clip = a.activeClipId ? a.clips[a.activeClipId] : null;
+          if (!clip) return;
+          const t = a.playhead; const fps = a.fps || 24; const frameT = Math.round(t * fps) / fps;
+          const obj = useSceneStore.getState().objects[objectId];
+          if (!obj) return;
+          (['x','y','z'] as const).forEach((axis) => {
+            const trackId = a.ensureTrack(objectId, `rotation.${axis}`);
+            a.insertKey(trackId, frameT, (obj.transform.rotation as any)[axis], 'linear');
+          });
+        } catch {}
       },
       
       scaleObject: (objectId: string, delta: [number, number, number]) => {
@@ -243,6 +294,20 @@ export const useSceneStore = create<SceneStore>()(
             object.transform.scale.z *= delta[2];
           }
         });
+        try {
+          const { useAnimationStore } = require('./animation-store');
+          const a = useAnimationStore.getState();
+          if (!a.autoKey || a._samplingGuard) return;
+          const clip = a.activeClipId ? a.clips[a.activeClipId] : null;
+          if (!clip) return;
+          const t = a.playhead; const fps = a.fps || 24; const frameT = Math.round(t * fps) / fps;
+          const obj = useSceneStore.getState().objects[objectId];
+          if (!obj) return;
+          (['x','y','z'] as const).forEach((axis) => {
+            const trackId = a.ensureTrack(objectId, `scale.${axis}`);
+            a.insertKey(trackId, frameT, (obj.transform.scale as any)[axis], 'linear');
+          });
+        } catch {}
       },
       
       // Visibility and locking
