@@ -120,9 +120,10 @@ export const ObjectToolHandler: React.FC = () => {
         const delta = (e.movementX + e.movementY) * useToolStore.getState().rotateSensitivity;
         rotAccum.current += delta;
         original.forEach((o) => {
+          // Default: rotate around Z when no axis is locked (view-like behavior)
           const rx = toolStore.axisLock === 'x' ? rotAccum.current : 0;
           const ry = toolStore.axisLock === 'y' ? rotAccum.current : 0;
-          const rz = toolStore.axisLock === 'z' ? rotAccum.current : 0;
+          const rz = toolStore.axisLock === 'z' || toolStore.axisLock === 'none' ? rotAccum.current : 0;
           const t = local[o.id];
           if (t) {
             t.rotation.x = o.rot.x + rx;

@@ -131,6 +131,12 @@ interface AnimationActions {
   cutSelectedKeys: () => void;
   pasteKeysAtPlayhead: () => void;
 
+  // queries/helpers
+  getTrackId: (targetId: string, property: PropertyPath) => string | undefined;
+  findKeyAt: (trackId: string, t: number) => string | undefined;
+  hasKeyAt: (targetId: string, property: PropertyPath, t: number) => boolean;
+  toggleKeyAt: (targetId: string, property: PropertyPath, t: number, v: number, interp?: Interpolation) => void;
+
   // track toggles
   setTrackMuted: (trackId: string, muted: boolean) => void;
   setTrackLocked: (trackId: string, locked: boolean) => void;
@@ -292,6 +298,11 @@ export const useAnimationStore = create<AnimationStore>()(
         });
         return id;
       },
+      getTrackId: (targetId: string, property: PropertyPath) => {
+        const s = get();
+        const existing = Object.values(s.tracks).find((t) => t.targetType === 'sceneObject' && t.targetId === targetId && t.property === property);
+        return existing?.id;
+      },
       insertKey: (trackId: string, t: number, v: number, interp: Interpolation = 'linear') => {
         const keyId = nanoid();
         set((s) => {
@@ -311,6 +322,35 @@ export const useAnimationStore = create<AnimationStore>()(
           }
         });
         return keyId;
+      },
+      findKeyAt: (trackId: string, t: number) => {
+        const s = get();
+        const tr = s.tracks[trackId];
+        if (!tr) return undefined;
+        const fps = s.fps || 24;
+        const frame = Math.round(t * fps);
+        const T = frame / fps;
+        const k = tr.channel.keys.find((kk) => Math.abs(kk.t - T) < 1e-6);
+        return k?.id;
+      },
+      hasKeyAt: (targetId: string, property: PropertyPath, t: number) => {
+        const s = get();
+        const tid = Object.values(s.tracks).find((tr) => tr.targetId === targetId && tr.property === property)?.id;
+        if (!tid) return false;
+        const id = (get().findKeyAt(tid, t));
+        return !!id;
+      },
+      toggleKeyAt: (targetId: string, property: PropertyPath, t: number, v: number, interp: Interpolation = 'linear') => {
+        const s = get();
+        // Find or create track
+        let tid = s.getTrackId(targetId, property);
+        if (!tid) tid = s.ensureTrack(targetId, property);
+        const existing = s.findKeyAt(tid, t);
+        if (existing) {
+          s.removeKey(tid, existing);
+        } else {
+          s.insertKey(tid, t, v, interp);
+        }
       },
       removeKey: (trackId: string, keyId: string) => set((s) => {
         const tr = s.tracks[trackId];

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { makeTicks, timeToX, xToTime } from './math';
 
 type Marker = { id: string; t: number; label?: string };
@@ -47,13 +47,31 @@ export const Ruler: React.FC<RulerProps> = (props) => {
   } = props;
 
   const ref = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+
+  // Observe size so initial ticks render even before any user interaction
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const RO = (window as any).ResizeObserver;
+    const obs = RO ? new RO((entries: any[]) => {
+      const w = entries && entries[0] && entries[0].contentRect ? entries[0].contentRect.width : el.clientWidth;
+      setContainerWidth(w);
+    }) : null;
+    if (obs) { obs.observe(el); setContainerWidth(el.clientWidth); }
+    else {
+      // Fallback: set once on mount
+      setContainerWidth(el.clientWidth);
+    }
+    return () => { try { obs && obs.unobserve(el); } catch {} };
+  }, []);
 
   const ticks = useMemo(() => {
-    const pxWidth = ref.current?.clientWidth ?? 0;
+    const pxWidth = containerWidth;
     const start = Math.max(clipStart, clipStart + pan);
     const end = Math.min(clipEnd, start + Math.max(pxWidth, 0) / Math.max(zoom, 1));
     return makeTicks({ start, end }, fps, clipStart, pan, zoom);
-  }, [clipStart, clipEnd, fps, zoom, pan]);
+  }, [clipStart, clipEnd, fps, zoom, pan, containerWidth]);
 
   const posToTime = (clientX: number): number => {
     const rect = ref.current?.getBoundingClientRect();

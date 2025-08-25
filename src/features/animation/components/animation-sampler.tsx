@@ -51,6 +51,7 @@ export default function AnimationSampler() {
   const getState = useAnimationStore;
   const clipRef = useRef<ReturnType<typeof getState.getState>['clips'][string] | null>(null);
   const tracksRef = useRef<Record<string, Track>>({});
+  const lastPausedApplied = useRef<number | null>(null);
 
   const autoOrbit = useViewportStore((s) => s.autoOrbitIntervalSec ?? 0);
   const setAutoOrbit = useViewportStore((s) => s.setAutoOrbitInterval);
@@ -109,9 +110,12 @@ export default function AnimationSampler() {
   useFrame((_, delta) => {
   const clip = clipRef.current;
   if (!clip) return;
-    // When not playing, we let the editor drive via store updates for scrubbing
+    // When not playing, only apply sampling when the playhead changes (scrubbing)
     if (!playing) {
-      applySampleAt(playhead);
+      if (lastPausedApplied.current !== playhead) {
+        applySampleAt(playhead);
+        lastPausedApplied.current = playhead;
+      }
       return;
     }
     // Compute next time using local accumulator
