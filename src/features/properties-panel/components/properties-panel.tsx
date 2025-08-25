@@ -25,7 +25,7 @@ export const PropertiesPanel: React.FC = () => {
   const { setActiveTab } = usePropertiesPanelStore();
 
   return (
-    <div className="bg-black/40 h-[60dvh] backdrop-blur-md border border-white/10 rounded-lg shadow-lg shadow-black/30 w-64 flex flex-col">
+    <div className="bg-black/40 h-[60dvh] backdrop-blur-md border border-white/10 rounded-lg shadow-lg shadow-black/30 w-96 flex flex-col">
       <div className="border-b border-white/10">
         <div className="flex gap-1 px-2 py-1">
           {tabs.map(({ key, label, icon: Icon }) => (
