@@ -6,6 +6,7 @@ import { useSceneStore } from '@/stores/scene-store';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { ChevronDown, ChevronRight, Download } from 'lucide-react';
 import { buildThreeScene, downloadBlob, exportThreeScene, ExportFormat } from '@/utils/three-export';
+import { buildExportSceneFromLive } from '@/utils/live-scene-export';
 
 export type ExportDialogProps = {
   open: boolean;
@@ -48,14 +49,23 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ open, onOpenChange }) => {
     const includeObjectIds = Array.from(selectedIds);
     if (includeObjectIds.length === 0) return;
 
-    const scene = buildThreeScene({
-      objects: sceneStore.objects,
-      rootObjects: sceneStore.rootObjects,
-      meshes: geometryStore.meshes,
-      materials: geometryStore.materials,
-      includeObjectIds,
-      includeChildren,
-    });
+    // Prefer exporting directly from the live scene (includes lights, cameras, node materials normalized)
+    let scene;
+    try {
+      scene = buildExportSceneFromLive({ includeObjectIds, includeChildren, format });
+    } catch (e) {
+      // Fallback to offline builder if something goes wrong
+      // scene = buildThreeScene({
+      //   objects: sceneStore.objects,
+      //   rootObjects: sceneStore.rootObjects,
+      //   meshes: geometryStore.meshes,
+      //   materials: geometryStore.materials,
+      //   includeObjectIds,
+      //   includeChildren,
+      // });
+      console.error("COULDNT EXPORT", e)
+      return;
+    }
 
     const baseName = `export_${new Date().toISOString().replace(/[:.]/g, '-')}`;
     const { blob, suggestedName } = await exportThreeScene(scene, format, baseName);

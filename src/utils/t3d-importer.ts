@@ -8,7 +8,9 @@ import {
   T3DMesh,
   T3DMaterial,
   T3DSceneObject,
-  T3DViewport
+  T3DViewport,
+  T3DLight,
+  T3DCameraResource
 } from '../types/t3d';
 import { 
   Mesh, 
@@ -118,7 +120,9 @@ function t3dToSceneObject(t3dObject: T3DSceneObject): SceneObject {
     visible: t3dObject.visible,
     locked: t3dObject.locked,
   render: t3dObject.render ?? true,
-    meshId: t3dObject.meshId,
+  meshId: t3dObject.meshId,
+  lightId: (t3dObject as any).lightId,
+  cameraId: (t3dObject as any).cameraId,
   };
 }
 
@@ -139,7 +143,8 @@ function t3dToViewport(t3dViewport: T3DViewport): ViewportState {
     showGrid: t3dViewport.showGrid,
     showAxes: t3dViewport.showAxes,
     gridSize: t3dViewport.gridSize,
-    backgroundColor: t3dToVector3(t3dViewport.backgroundColor),
+  backgroundColor: t3dToVector3(t3dViewport.backgroundColor),
+  activeCameraObjectId: (t3dViewport as any).activeCameraObjectId ?? null,
   };
 }
 
@@ -158,6 +163,8 @@ export interface ImportedWorkspaceData {
   rootObjects: string[];
   viewport: ViewportState;
   selectedObjectId: string | null;
+  lights?: Record<string, any>;
+  cameras?: Record<string, any>;
   metadata: {
     version: string;
     created: string;
@@ -207,10 +214,16 @@ export async function importFromT3D(file: File): Promise<ImportedWorkspaceData> 
     }
 
     // Convert T3D data to internal format
-    const meshes = t3dScene.meshes.map(t3dToMesh);
-    const materials = t3dScene.materials.map(t3dToMaterial);
-    const objects = t3dScene.objects.map(t3dToSceneObject);
-    const viewport = t3dToViewport(t3dScene.viewport);
+  const meshes = t3dScene.meshes.map(t3dToMesh);
+  const materials = t3dScene.materials.map(t3dToMaterial);
+  const objects = t3dScene.objects.map(t3dToSceneObject);
+  const viewport = t3dToViewport(t3dScene.viewport);
+
+  // Optional lights and cameras payloads (ignore if absent)
+  const lightsArr = (t3dScene as any).lights as T3DLight[] | undefined;
+  const camerasArr = (t3dScene as any).cameras as T3DCameraResource[] | undefined;
+  const lightsRec = lightsArr ? Object.fromEntries(lightsArr.map((l) => [l.id, l])) : undefined;
+  const camsRec = camerasArr ? Object.fromEntries(camerasArr.map((c) => [c.id, c])) : undefined;
 
   const result: ImportedWorkspaceData = {
       meshes,
@@ -219,6 +232,8 @@ export async function importFromT3D(file: File): Promise<ImportedWorkspaceData> 
       rootObjects: [...t3dScene.rootObjects],
       viewport,
       selectedObjectId: t3dScene.selectedObjectId,
+      lights: lightsRec,
+      cameras: camsRec,
       metadata: {
         version: `${t3dScene.metadata.version.major}.${t3dScene.metadata.version.minor}.${t3dScene.metadata.version.patch}`,
         created: t3dScene.metadata.created,
@@ -234,18 +249,25 @@ export async function importFromT3D(file: File): Promise<ImportedWorkspaceData> 
     try {
       const anim = (t3dScene as any).animations as T3DScene['animations'] | undefined;
       const ui = (t3dScene as any).ui as T3DScene['ui'] | undefined;
+      // Always reset animation store to a clean baseline WITHOUT replacing the store (preserve actions)
+      useAnimationStore.setState((s) => {
+        // keep s.fps as-is; reset runtime and data containers
+        s.playing = false;
+        s.playhead = 0;
+        s.selection = { trackIds: [], keys: {} } as any;
+        s.clips = {} as any;
+        s.clipOrder = [];
+        s.activeClipId = null;
+        s.tracks = {} as any;
+        s._sortedCache = {} as any;
+        s.markers = [] as any;
+        s.soloTrackIds = new Set();
+        // leave autoKey/snapping as-is
+      }, false);
       if (anim) {
         const a = useAnimationStore.getState();
-        // Reset minimal fields
-        useAnimationStore.setState((s) => ({
-          fps: anim.fps ?? s.fps,
-          playing: false,
-          playhead: 0,
-          clips: {},
-          clipOrder: [],
-          activeClipId: null,
-          tracks: {},
-        }), true);
+        // Apply payload
+  useAnimationStore.setState((s) => { s.fps = anim.fps ?? s.fps; }, false);
         // Recreate clips and tracks
         anim.clips?.forEach((c) => {
           useAnimationStore.setState((s) => {

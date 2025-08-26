@@ -74,6 +74,9 @@ export interface T3DSceneObject {
   locked: boolean;
   render: boolean;
   meshId?: string;
+  // Optional component links
+  lightId?: string;
+  cameraId?: string;
 }
 
 export interface T3DCamera {
@@ -92,6 +95,34 @@ export interface T3DViewport {
   showAxes: boolean;
   gridSize: number;
   backgroundColor: { x: number; y: number; z: number };
+  activeCameraObjectId?: string | null;
+}
+
+export interface T3DLight {
+  id: string;
+  type: 'directional' | 'spot' | 'point';
+  color: { x: number; y: number; z: number };
+  intensity: number;
+  distance?: number;
+  decay?: number;
+  angle?: number;
+  penumbra?: number;
+}
+
+export interface T3DCameraResource {
+  id: string;
+  type: 'perspective' | 'orthographic';
+  fov?: number;
+  zoom?: number;
+  focus?: number;
+  filmGauge?: number;
+  filmOffset?: number;
+  left?: number;
+  right?: number;
+  top?: number;
+  bottom?: number;
+  near: number;
+  far: number;
 }
 
 export interface T3DScene {
@@ -102,6 +133,9 @@ export interface T3DScene {
   rootObjects: string[];
   viewport: T3DViewport;
   selectedObjectId: string | null;
+  // Optional component data
+  lights?: T3DLight[];
+  cameras?: T3DCameraResource[];
   // Optional MVP animation payload
   animations?: {
     fps: number;

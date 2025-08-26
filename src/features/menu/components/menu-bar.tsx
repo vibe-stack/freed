@@ -53,7 +53,7 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 		};
 	}, []);
 
-	const buildWorkspaceData = useCallback((): WorkspaceData => ({
+		const buildWorkspaceData = useCallback((): WorkspaceData => ({
 		meshes: Array.from(geometryStore.meshes.values()),
 		materials: Array.from(geometryStore.materials.values()),
 		objects: Object.values(sceneStore.objects),
@@ -67,6 +67,8 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 			backgroundColor: viewportStore.backgroundColor,
 		},
 		selectedObjectId: sceneStore.selectedObjectId,
+			lights: sceneStore.lights,
+			cameras: geometryStore.cameras,
 	}), [geometryStore, sceneStore, viewportStore]);
 
 	// Save (T3D) with existing handle when possible
@@ -105,31 +107,50 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 	}, []);
 
 	const handleOpen = useCallback(() => {
-		openImportDialog(
-			(data) => {
-				Array.from(geometryStore.meshes.keys()).forEach(id => geometryStore.removeMesh(id));
-				data.meshes.forEach(m => geometryStore.addMesh(m));
-				Array.from(geometryStore.materials.keys()).forEach(id => geometryStore.removeMaterial(id));
-				data.materials.forEach(m => geometryStore.addMaterial(m));
-				Object.keys(sceneStore.objects).forEach(id => sceneStore.removeObject(id));
-				data.objects.forEach(o => sceneStore.addObject(o));
-				sceneStore.rootObjects.splice(0, sceneStore.rootObjects.length, ...data.rootObjects);
-				sceneStore.selectObject(data.selectedObjectId);
-				viewportStore.setCamera(data.viewport.camera);
-				viewportStore.setShadingMode(data.viewport.shadingMode);
-				viewportStore.setGridSize(data.viewport.gridSize);
-				viewportStore.setBackgroundColor([
-					data.viewport.backgroundColor.x,
-					data.viewport.backgroundColor.y,
-					data.viewport.backgroundColor.z,
-				]);
-				if (data.viewport.showGrid !== viewportStore.showGrid) viewportStore.toggleGrid();
-				if (data.viewport.showAxes !== viewportStore.showAxes) viewportStore.toggleAxes();
-				// update workspace current file (cannot get real name without FS handle)
-				workspace.setFileInfo('scene.t3d', null);
-			},
-			(err) => console.error(err)
-		);
+			openImportDialog(
+				(data) => {
+					// Geometry: replace maps in a controlled way
+					Array.from(geometryStore.meshes.keys()).forEach(id => geometryStore.removeMesh(id));
+					data.meshes.forEach(m => geometryStore.addMesh(m));
+					Array.from(geometryStore.materials.keys()).forEach(id => geometryStore.removeMaterial(id));
+					data.materials.forEach(m => geometryStore.addMaterial(m));
+
+							// Scene: atomic rebuild to maintain proper parent-child links
+					sceneStore.setScene(data.objects, data.rootObjects);
+					sceneStore.selectObject(data.selectedObjectId);
+
+					// Viewport state
+					viewportStore.setCamera(data.viewport.camera);
+					viewportStore.setShadingMode(data.viewport.shadingMode);
+					viewportStore.setGridSize(data.viewport.gridSize);
+					viewportStore.setBackgroundColor([
+						data.viewport.backgroundColor.x,
+						data.viewport.backgroundColor.y,
+						data.viewport.backgroundColor.z,
+					]);
+							if ((data.viewport as any).activeCameraObjectId !== undefined) {
+								viewportStore.setActiveCamera((data.viewport as any).activeCameraObjectId ?? null);
+							}
+							// Lights and Cameras (optional payloads)
+							if (data.lights) {
+								// sceneStore has a lights map keyed by lightId; objects reference them by lightId
+								useSceneStore.setState((s) => { s.lights = {} as any; });
+								Object.entries(data.lights).forEach(([id, l]) => {
+									useSceneStore.setState((s) => { (s.lights as any)[id] = l as any; });
+								});
+							}
+							if (data.cameras) {
+								// geometry-store holds camera resources
+								Object.keys(useGeometryStore.getState().cameras).forEach((id) => useGeometryStore.getState().removeCamera(id));
+								Object.values(data.cameras).forEach((c: any) => useGeometryStore.getState().addCamera(c));
+							}
+					if (data.viewport.showGrid !== viewportStore.showGrid) viewportStore.toggleGrid();
+					if (data.viewport.showAxes !== viewportStore.showAxes) viewportStore.toggleAxes();
+					// update workspace current file (cannot get real name without FS handle)
+					workspace.setFileInfo('scene.t3d', null);
+				},
+				(err) => console.error(err)
+			);
 	}, [geometryStore, sceneStore, viewportStore, workspace]);
 
 	const handleNewScene = useCallback(() => {

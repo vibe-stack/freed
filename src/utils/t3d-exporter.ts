@@ -12,9 +12,11 @@ import {
   T3DMesh,
   T3DMaterial,
   T3DSceneObject,
-  T3DViewport
+  T3DViewport,
+  T3DLight,
+  T3DCameraResource,
 } from '../types/t3d';
-import { Mesh, Material, SceneObject, ViewportState } from '../types/geometry';
+import { Mesh, Material, SceneObject, ViewportState, Light, CameraResource } from '../types/geometry';
 import { useAnimationStore } from '@/stores/animation-store';
 
 /**
@@ -102,6 +104,39 @@ function sceneObjectToT3D(object: SceneObject): T3DSceneObject {
     locked: object.locked,
   render: object.render,
     meshId: object.meshId,
+    lightId: object.lightId,
+    cameraId: object.cameraId,
+  };
+}
+
+function lightToT3D(id: string, l: Light): T3DLight {
+  return {
+    id,
+    type: l.type,
+    color: vector3ToT3D(l.color),
+    intensity: l.intensity,
+    distance: l.distance,
+    decay: l.decay,
+    angle: l.angle,
+    penumbra: l.penumbra,
+  };
+}
+
+function cameraResToT3D(c: CameraResource): T3DCameraResource {
+  return {
+    id: c.id,
+    type: c.type,
+    fov: c.fov,
+    zoom: c.zoom,
+    focus: c.focus,
+    filmGauge: c.filmGauge,
+    filmOffset: c.filmOffset,
+    left: c.left,
+    right: c.right,
+    top: c.top,
+    bottom: c.bottom,
+    near: c.near,
+    far: c.far,
   };
 }
 
@@ -144,6 +179,8 @@ export interface WorkspaceData {
   rootObjects: string[];
   viewport: ViewportState;
   selectedObjectId: string | null;
+  lights?: Record<string, Light>;
+  cameras?: Record<string, CameraResource>;
 }
 
 /**
@@ -186,7 +223,7 @@ export async function exportToT3D(
     materials: filteredMaterials.map(materialToT3D),
     objects: filteredObjects.map(sceneObjectToT3D),
     rootObjects: [...workspaceData.rootObjects],
-    viewport: filter?.includeViewport !== false ? viewportToT3D(workspaceData.viewport) : {
+    viewport: filter?.includeViewport !== false ? { ...viewportToT3D(workspaceData.viewport), activeCameraObjectId: workspaceData.viewport.activeCameraObjectId ?? null } : {
       camera: {
         position: { x: 5, y: 5, z: 5 },
         target: { x: 0, y: 0, z: 0 },
@@ -200,9 +237,18 @@ export async function exportToT3D(
       showAxes: true,
       gridSize: 10,
       backgroundColor: { x: 0.2, y: 0.2, z: 0.2 },
+      activeCameraObjectId: null,
     },
     selectedObjectId: workspaceData.selectedObjectId,
   };
+
+  // Optional payloads for lights and cameras
+  if (workspaceData.lights && Object.keys(workspaceData.lights).length > 0) {
+    t3dScene.lights = Object.entries(workspaceData.lights).map(([id, l]) => lightToT3D(id, l));
+  }
+  if (workspaceData.cameras && Object.keys(workspaceData.cameras).length > 0) {
+    t3dScene.cameras = Object.values(workspaceData.cameras).map((c) => cameraResToT3D(c));
+  }
 
   // Optionally include animations and UI prefs (MVP)
   try {

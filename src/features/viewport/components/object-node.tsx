@@ -335,7 +335,7 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
       };
 
   return (
-    <group ref={groupRef} visible={obj.visible} {...transformProps}>
+    <group ref={groupRef} visible={obj.visible} {...transformProps} userData={{ ...((groupRef.current?.userData as any) ?? {}), sceneObjectId: objectId }}>
     {obj.type === 'mesh' && <MeshView objectId={objectId} noTransform />}
   {obj.type === 'light' && obj.lightId && (() => {
         const light = scene.lights[obj.lightId!];

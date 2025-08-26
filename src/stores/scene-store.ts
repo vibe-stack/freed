@@ -21,6 +21,8 @@ interface SceneActions {
   removeObject: (objectId: string) => void;
   updateObject: (objectId: string, updater: (object: SceneObject) => void) => void;
   selectObject: (objectId: string | null) => void;
+  // Bulk scene hydration (import/load)
+  setScene: (objects: SceneObject[], rootObjects: string[]) => void;
   setParent: (childId: string, parentId: string | null) => void;
   moveObject: (objectId: string, newParentId: string | null, index?: number) => void;
   reset: () => void;
@@ -139,6 +141,39 @@ export const useSceneStore = create<SceneStore>()(
       selectObject: (objectId: string | null) => {
         set((state) => {
           state.selectedObjectId = objectId;
+        });
+      },
+
+      // Replace entire scene graph in one atomic update
+      setScene: (objectsIn: SceneObject[], rootIds: string[]) => {
+        set((state) => {
+          // Reset graphs
+          state.objects = {} as Record<string, SceneObject>;
+          state.rootObjects = [];
+          state.selectedObjectId = null;
+          // Lights map is kept; component data gets re-linked by object properties
+          // First pass: insert all objects with empty children; preserve other fields
+          for (const o of objectsIn) {
+            state.objects[o.id] = {
+              ...o,
+              children: [], // will be rebuilt
+            } as SceneObject;
+          }
+          // Second pass: link children to parents
+          for (const o of objectsIn) {
+            const id = o.id;
+            const parentId = o.parentId;
+            if (parentId && state.objects[parentId]) {
+              state.objects[parentId].children.push(id);
+            }
+          }
+          // Root order: trust provided rootIds when valid; otherwise compute
+          const rootsProvided = (rootIds ?? []).filter((id) => state.objects[id] && state.objects[id].parentId === null);
+          if (rootsProvided.length > 0) {
+            state.rootObjects = rootsProvided.slice();
+          } else {
+            state.rootObjects = objectsIn.filter((o) => o.parentId === null).map((o) => o.id);
+          }
         });
       },
       
