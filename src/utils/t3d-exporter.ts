@@ -17,6 +17,7 @@ import {
   T3DCameraResource,
 } from '../types/t3d';
 import { Mesh, Material, SceneObject, ViewportState, Light, CameraResource } from '../types/geometry';
+import { useParticlesStore } from '@/stores/particles-store';
 import { useAnimationStore } from '@/stores/animation-store';
 
 /**
@@ -92,7 +93,7 @@ function sceneObjectToT3D(object: SceneObject): T3DSceneObject {
   return {
     id: object.id,
     name: object.name,
-    type: object.type,
+  type: (['mesh', 'light', 'camera', 'group'] as const).includes(object.type as any) ? (object.type as any) : 'group',
     parentId: object.parentId,
     children: [...object.children],
     transform: {
@@ -105,7 +106,9 @@ function sceneObjectToT3D(object: SceneObject): T3DSceneObject {
   render: object.render,
     meshId: object.meshId,
     lightId: object.lightId,
-    cameraId: object.cameraId,
+  cameraId: object.cameraId,
+  // Preserve particle link for editor round-trips
+  particleSystemId: (object as any).particleSystemId,
   };
 }
 
@@ -182,6 +185,7 @@ export interface WorkspaceData {
   lights?: Record<string, Light>;
   cameras?: Record<string, CameraResource>;
 }
+// Note: Three export path has its own input type; no additional types needed here.
 
 /**
  * Exports workspace data to T3D format
@@ -249,6 +253,36 @@ export async function exportToT3D(
   if (workspaceData.cameras && Object.keys(workspaceData.cameras).length > 0) {
     t3dScene.cameras = Object.values(workspaceData.cameras).map((c) => cameraResToT3D(c));
   }
+
+  // Optional particle systems payload (editor extension only)
+  try {
+    const p = useParticlesStore.getState();
+    const systems = Object.values(p.systems);
+    if (systems.length > 0) {
+      t3dScene.particles = {
+        systems: systems.map((s) => ({
+          id: s.id,
+          name: s.name,
+          seed: s.seed,
+          capacity: (s as any).capacity,
+          emitterObjectId: s.emitterObjectId,
+          particleObjectId: s.particleObjectId,
+          emissionRate: s.emissionRate,
+          velocity: vector3ToT3D(s.velocity),
+          velocityLocal: (s as any).velocityLocal,
+          velocityJitter: (s as any).velocityJitter,
+          spawnMode: (s as any).spawnMode,
+          positionJitter: (s as any).positionJitter,
+          particleLifetime: s.particleLifetime,
+          minScale: s.minScale,
+          maxScale: s.maxScale,
+          angularVelocity: vector3ToT3D(s.angularVelocity),
+          gravity: vector3ToT3D(s.gravity),
+          wind: vector3ToT3D(s.wind),
+        }))
+      };
+    }
+  } catch {}
 
   // Optionally include animations and UI prefs (MVP)
   try {

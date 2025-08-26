@@ -77,6 +77,8 @@ export interface T3DSceneObject {
   // Optional component links
   lightId?: string;
   cameraId?: string;
+  // Optional particle system link (editor extension)
+  particleSystemId?: string;
 }
 
 export interface T3DCamera {
@@ -136,6 +138,29 @@ export interface T3DScene {
   // Optional component data
   lights?: T3DLight[];
   cameras?: T3DCameraResource[];
+  // Optional particle systems payload (editor extension)
+  particles?: {
+    systems: Array<{
+      id: string;
+      name?: string;
+  seed?: number;
+  capacity?: number;
+      emitterObjectId: string | null;
+      particleObjectId: string | null;
+      emissionRate: number;
+      velocity: { x: number; y: number; z: number };
+  velocityLocal?: boolean;
+  velocityJitter?: number;
+  spawnMode?: 'point' | 'surface';
+  positionJitter?: number;
+      particleLifetime: number;
+      minScale: number;
+      maxScale: number;
+      angularVelocity: { x: number; y: number; z: number };
+      gravity: { x: number; y: number; z: number };
+      wind: { x: number; y: number; z: number };
+    }>;
+  };
   // Optional MVP animation payload
   animations?: {
     fps: number;

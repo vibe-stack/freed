@@ -46,6 +46,7 @@ interface SceneActions {
   createGroupObject: (name: string) => string;
   createLightObject: (name: string, type: LightType) => string;
   createCameraObject: (name: string, type: CameraType) => string;
+  createParticleSystemObject: (name: string) => string;
   groupObjects: (objectIds: string[], name?: string) => string | null;
   ungroupObject: (groupId: string) => void;
   getObject: (objectId: string) => SceneObject | null;
@@ -113,6 +114,12 @@ export const useSceneStore = create<SceneStore>()(
                 // Remove camera resource from geometry store
                 try {
                   useGeometryStore.getState().removeCamera(obj.cameraId);
+                } catch {}
+              }
+              if ((obj as any).particleSystemId) {
+                try {
+                  const { useParticlesStore } = require('./particles-store');
+                  useParticlesStore.getState().removeSystem((obj as any).particleSystemId);
                 } catch {}
               }
               obj.children.forEach((childId: string) => removeRecursive(childId));
@@ -505,6 +512,29 @@ export const useSceneStore = create<SceneStore>()(
           cameraId: id,
         };
         get().addObject(object);
+        return object.id;
+      },
+      createParticleSystemObject: (name: string) => {
+        const { useParticlesStore } = require('./particles-store');
+        const sysId: string = useParticlesStore.getState().addSystem();
+        const object: SceneObject = {
+          id: nanoid(),
+          name,
+          type: 'particles',
+          parentId: null,
+          children: [],
+          transform: {
+            position: vec3(0, 0, 0),
+            rotation: vec3(0, 0, 0),
+            scale: vec3(1, 1, 1),
+          },
+          visible: true,
+          locked: false,
+          render: true,
+          particleSystemId: sysId,
+        } as any;
+        get().addObject(object);
+        // Default: the system uses its owning object as emitter (emitterObjectId null)
         return object.id;
       },
       groupObjects: (objectIds: string[], name: string = 'Group') => {

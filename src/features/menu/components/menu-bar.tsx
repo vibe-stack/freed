@@ -162,6 +162,11 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 		shapeCreationStore.reset();
 	}, [geometryStore, sceneStore, selectionStore, viewportStore, toolStore, shapeCreationStore]);
 
+	const handleCreateParticleSystem = useCallback(() => {
+		const id = sceneStore.createParticleSystemObject('Particle System');
+		sceneStore.selectObject(id);
+	}, [sceneStore]);
+
 	// View actions
 	const handleZoom = useCallback((scale: number) => {
 		const cam = viewportStore.camera;
@@ -293,6 +298,20 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 									}
 								}}>Delete</Menu.Item>
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => useSelectionStore.getState().selectAll()}>Select All</Menu.Item>
+							</Menu.Popup>
+						</Menu.Positioner>
+					</Menu.Portal>
+				</Menu.Root>
+
+				{/* Add */}
+				<Menu.Root modal={false} openOnHover>
+					<Menu.Trigger className="px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5 data-[open]:bg-white/10 data-[open]:text-white">
+						Add
+					</Menu.Trigger>
+					<Menu.Portal>
+						<Menu.Positioner side="bottom" align="start" sideOffset={4} className="z-90">
+							<Menu.Popup className="mt-0 w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-40">
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleCreateParticleSystem}>Particle System</Menu.Item>
 							</Menu.Popup>
 						</Menu.Positioner>
 					</Menu.Portal>

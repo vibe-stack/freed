@@ -86,7 +86,7 @@ export interface Selection {
 export interface SceneObject {
   id: string;
   name: string;
-  type: 'mesh' | 'light' | 'camera' | 'group';
+  type: 'mesh' | 'light' | 'camera' | 'group' | 'particles';
   parentId: string | null;
   children: string[];
   transform: Transform;
@@ -98,6 +98,8 @@ export interface SceneObject {
   // Component references for non-mesh objects
   lightId?: string; // For light objects
   cameraId?: string; // For camera objects
+  // Particle system component reference
+  particleSystemId?: string; // For particle system objects
 }
 
 // Scene component data types

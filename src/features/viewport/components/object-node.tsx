@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { useSceneStore } from '@/stores/scene-store';
 import MeshView from './mesh-view';
+import ParticleSystemNode from '@/features/particles/components/particle-system-node';
 import { useToolStore } from '@/stores/tool-store';
 import {
   Color,
@@ -337,6 +338,9 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
   return (
     <group ref={groupRef} visible={obj.visible} {...transformProps} userData={{ ...((groupRef.current?.userData as any) ?? {}), sceneObjectId: objectId }}>
     {obj.type === 'mesh' && <MeshView objectId={objectId} noTransform />}
+    {obj.type === 'particles' && obj.particleSystemId && (
+        <ParticleSystemNode objectId={objectId} systemId={obj.particleSystemId} />
+      )}
   {obj.type === 'light' && obj.lightId && (() => {
         const light = scene.lights[obj.lightId!];
         if (!light) return null;

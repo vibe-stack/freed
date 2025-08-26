@@ -25,6 +25,7 @@ import {
   Transform
 } from '../types/geometry';
 import { useAnimationStore } from '@/stores/animation-store';
+import { useParticlesStore } from '@/stores/particles-store';
 
 /**
  * Converts T3D Vector3 to internal format
@@ -123,6 +124,8 @@ function t3dToSceneObject(t3dObject: T3DSceneObject): SceneObject {
   meshId: t3dObject.meshId,
   lightId: (t3dObject as any).lightId,
   cameraId: (t3dObject as any).cameraId,
+  // Keep particle link for editor round-trips
+  particleSystemId: (t3dObject as any).particleSystemId,
   };
 }
 
@@ -285,6 +288,41 @@ export async function importFromT3D(file: File): Promise<ImportedWorkspaceData> 
           timelinePanelOpen: !!ui.timelinePanelOpen,
           lastUsedFps: ui.lastUsedFps ?? s.lastUsedFps,
         }), false);
+      }
+    } catch {}
+
+    // Rebuild particle systems if payload exists
+    try {
+      const p = (t3dScene as any).particles as T3DScene['particles'] | undefined;
+      if (p?.systems && Array.isArray(p.systems)) {
+        const store = useParticlesStore.getState();
+        // Clear existing systems first
+        useParticlesStore.setState((s) => { s.systems = {}; }, false);
+        p.systems.forEach((sys) => {
+          // Create with given id to preserve links
+          useParticlesStore.setState((s) => {
+            s.systems[sys.id] = {
+              id: sys.id,
+              name: sys.name,
+              seed: sys.seed ?? Math.floor(Math.random() * 1_000_000),
+              capacity: (sys as any).capacity ?? 512,
+              emitterObjectId: sys.emitterObjectId ?? null,
+              particleObjectId: sys.particleObjectId ?? null,
+              emissionRate: sys.emissionRate,
+              velocity: t3dToVector3(sys.velocity),
+              velocityLocal: (sys as any).velocityLocal ?? true,
+              velocityJitter: (sys as any).velocityJitter ?? 0,
+              spawnMode: (sys as any).spawnMode ?? 'point',
+              positionJitter: (sys as any).positionJitter ?? 0,
+              particleLifetime: sys.particleLifetime,
+              minScale: sys.minScale,
+              maxScale: sys.maxScale,
+              angularVelocity: t3dToVector3(sys.angularVelocity),
+              gravity: t3dToVector3(sys.gravity),
+              wind: t3dToVector3(sys.wind),
+            } as any;
+          }, false);
+        });
       }
     } catch {}
 
