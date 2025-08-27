@@ -206,7 +206,7 @@ const ParticleSystemSection: React.FC<{ objectId: string; systemId: string }>
             value={sys.emitterObjectId ?? ''}
             onChange={(e) => update({ emitterObjectId: e.target.value || null })}
           >
-            <option value="">Use this object's transform</option>
+            <option value="">Use this object&apos;s transform</option>
             {allIds.map((id) => (
               <option key={id} value={id}>{scene.objects[id]?.name || id}</option>
             ))}

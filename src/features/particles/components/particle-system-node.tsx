@@ -112,7 +112,7 @@ function sampleSurfacePosition(emitter3D: any, rng: () => number): T3V | null {
   const posAttr: any = (geom as any).attributes.position; const positions = posAttr.array as Float32Array;
   const index: any = (geom as any).index; const idx = hasIndex ? (index.array as Uint32Array | Uint16Array) : null;
   const total = cum[cum.length - 1];
-  let r = rng() * total;
+  const r = rng() * total;
   // binary search
   let lo = 0, hi = cum.length - 1, mid = 0;
   while (lo < hi) { mid = (lo + hi) >>> 1; if (r <= cum[mid]) hi = mid; else lo = mid + 1; }

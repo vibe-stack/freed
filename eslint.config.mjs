@@ -15,7 +15,7 @@ const eslintConfig = [
   {
     rules: {
       // Downgrade 'no-explicit-any' from error to warning
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 ];

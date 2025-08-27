@@ -48,8 +48,8 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
 
     const geo = new BufferGeometry();
     const vertexMap = new Map(dmesh.vertices.map((v) => [v.id, v] as const));
-  const positions: number[] = [];
-  const normals: number[] = [];
+    const positions: number[] = [];
+    const normals: number[] = [];
 
     dmesh.faces.forEach((face) => {
       const tris = convertQuadToTriangles(face.vertexIds);
@@ -75,7 +75,7 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
           p2.y,
           p2.z
         );
-  const useSmooth = (dmesh.shading ?? 'flat') === 'smooth';
+        const useSmooth = (dmesh.shading ?? 'flat') === 'smooth';
         if (useSmooth) {
           const n0 = v0.normal; const n1 = v1.normal; const n2 = v2.normal;
           normals.push(n0.x, n0.y, n0.z, n1.x, n1.y, n1.z, n2.x, n2.y, n2.z);
@@ -89,19 +89,20 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     geo.setAttribute('normal', new Float32BufferAttribute(normals, 3));
     geo.computeBoundingSphere();
 
-  // Material selection: use mesh.materialId when shading === 'material'
+    // Material selection: use mesh.materialId when shading === 'material'
     let color = new Color(0.8, 0.8, 0.85);
     let roughness = 0.8;
     let metalness = 0.05;
     let emissive = new Color(0, 0, 0);
   let emissiveIntensity = 1;
-  if (shading === 'material' && dmesh.materialId) {
+    if (shading === 'material' && dmesh.materialId) {
       const matRes = geometryStore.materials.get(dmesh.materialId);
       if (matRes) {
         color = new Color(matRes.color.x, matRes.color.y, matRes.color.z);
         roughness = matRes.roughness;
         metalness = matRes.metalness;
         emissive = new Color(matRes.emissive.x, matRes.emissive.y, matRes.emissive.z);
+    // Default to 1 when not specified; 0 kills emissive which can hide bloom
     emissiveIntensity = matRes.emissiveIntensity ?? 1;
       }
     }
@@ -109,12 +110,12 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     if (isSelected && shading !== 'material') {
       color = new Color('#ff9900');
     }
-  const material = new MeshStandardMaterial({
+    const material = new MeshStandardMaterial({
       color,
       roughness,
       metalness,
       emissive,
-  emissiveIntensity,
+      emissiveIntensity,
       wireframe: shading === 'wireframe',
       side: DoubleSide,
       flatShading: (dmesh.shading ?? 'flat') === 'flat',
@@ -137,10 +138,20 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
   // Node-based material integration
   const nodeMaterial = useMaterialNodes(displayMesh?.materialId);
 
-  if (!obj || !displayMesh || !geomAndMat) return null;
+  // Effective emissive intensity used when applying node materials
+  const emissiveIntensityForNode = useMemo(() => {
+    let ei = 1;
+    if (shading === 'material' && displayMesh?.materialId) {
+      const matRes = geometryStore.materials.get(displayMesh.materialId);
+      if (matRes) ei = matRes.emissiveIntensity ?? 1;
+    }
+    return ei;
+  }, [shading, displayMesh?.materialId, geometryStore.materials]);
 
   // Track the pointer-down position to distinguish orbit/drag from a click
   const downRef = useRef<{ x: number; y: number; id: string } | null>(null);
+
+  if (!obj || !displayMesh || !geomAndMat) return null;
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (viewMode !== 'object') return;
@@ -190,10 +201,10 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
   // Use noop to disable and the prototype method to enable.
   const raycastFn: ((raycaster: Raycaster, intersects: Intersection[]) => void) | undefined =
     isLocked
-      ? (() => {})
+      ? (() => { })
       : (viewMode === 'edit' && obj.meshId === editMeshId)
-      ? (() => {})
-      : (Mesh.prototype.raycast as unknown as (raycaster: Raycaster, intersects: Intersection[]) => void);
+        ? (() => { })
+        : (Mesh.prototype.raycast as unknown as (raycaster: Raycaster, intersects: Intersection[]) => void);
 
   // If we have a TSL node material, prefer it always (TSL-only system)
   const activeMaterial: Material = (nodeMaterial as unknown as Material) ?? (geomAndMat.mat as unknown as Material);
@@ -204,6 +215,9 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     // Enforce double-sided rendering always for materials
     (nodeMaterial as any).side = DoubleSide;
     (nodeMaterial as any).shadowSide = 1; // BackSide
+  // Carry emissive intensity through to node materials when available
+  // Node materials from TSL support emissiveIntensity like standard node materials
+  (nodeMaterial as any).emissiveIntensity = emissiveIntensityForNode;
   }
 
   const meshEl = (
@@ -214,9 +228,9 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
       receiveShadow={!!displayMesh.receiveShadow}
       // Disable raycast when locked so clicks pass through
       // In edit mode, disable raycast only for the specific object being edited
-  raycast={raycastFn}
-  onPointerDown={onPointerDown}
-  onPointerUp={onPointerUp}
+      raycast={raycastFn}
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
       onDoubleClick={onDoubleClick}
     />
   );
