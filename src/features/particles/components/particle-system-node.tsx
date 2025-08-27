@@ -7,6 +7,7 @@ import { useSceneStore } from '@/stores/scene-store';
 import { useParticlesStore } from '@/stores/particles-store';
 import { useAnimationStore } from '@/stores/animation-store';
 import { getObject3D } from '@/features/viewport/hooks/object3d-registry';
+import { useForceFieldStore } from '@/stores/force-field-store';
 
 type Particle = {
   alive: boolean;
@@ -194,6 +195,7 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
   const playing = useAnimationStore((s) => s.playing);
   const fps = useAnimationStore((s) => s.fps);
   const playhead = useAnimationStore((s) => s.playhead);
+  const forceFields = useForceFieldStore((s) => s.fields);
 
   // Source geom/material from selected particle object (the thing each particle instances)
     const { geom, material } = useSourceGeometry(sys?.particleObjectId || null);
@@ -248,7 +250,7 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
 
       const gravity = new T3V(sys.gravity.x, sys.gravity.y, sys.gravity.z);
       const wind = new T3V(sys.wind.x, sys.wind.y, sys.wind.z);
-      while (steps-- > 0) {
+  while (steps-- > 0) {
         // Emit N new particles per frame
         emitAccumRef.current += Math.max(0, sys.emissionRate);
         const toEmit = Math.max(0, Math.floor(emitAccumRef.current));
@@ -289,6 +291,41 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
           if (p.t >= p.lifetime) { p.alive = false; continue; }
           // v += (gravity + wind)
           p.velocity.add(gravity).add(wind);
+          // Apply force fields
+          try {
+            for (const fid in forceFields) {
+              const f = (forceFields as any)[fid];
+              if (!f?.enabled) continue;
+              // Force object world position
+              const fObj = Object.values(scene.objects).find((o) => (o as any).forceFieldId === f.id);
+              const f3d = fObj ? getObject3D(fObj.id) : null;
+              const fpos = f3d ? f3d.getWorldPosition(new T3V()) : null;
+              if (!fpos) continue;
+              const toP = p.position.clone().sub(fpos);
+              const dist = toP.length();
+              if (dist > f.radius || dist < 1e-4) continue;
+              const dir = toP.normalize();
+              const k = Math.max(0, 1 - dist / Math.max(1e-4, f.radius));
+              if (f.type === 'attractor' || f.type === 'repulsor') {
+                const sign = f.type === 'attractor' ? -1 : 1;
+                const accel = dir.multiplyScalar(sign * f.strength * k);
+                p.velocity.add(accel);
+              } else if (f.type === 'vortex') {
+                // Tangential around the field's local +Z axis
+                const fquat = f3d?.getWorldQuaternion(new Quaternion()) ?? new Quaternion();
+                const zAxis = new T3V(0, 0, 1).applyQuaternion(fquat).normalize();
+                // Project radial direction onto plane orthogonal to zAxis to get tangential direction
+                const radial = dir.clone();
+                const radialOnPlane = radial.sub(zAxis.clone().multiplyScalar(radial.dot(zAxis)));
+                if (radialOnPlane.lengthSq() > 1e-8) {
+                  // Tangential = zAxis x radialOnPlane (right-hand rule)
+                  const tangential = zAxis.clone().cross(radialOnPlane).normalize();
+                  const accel = tangential.multiplyScalar(f.strength * k);
+                  p.velocity.add(accel);
+                }
+              }
+            }
+          } catch {}
           // x += v
           p.position.add(p.velocity);
           // rotation
@@ -332,7 +369,7 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
       const emitter3D = emitterObj ? getObject3D(emitterObj.id) : null;
       const emitterPos = emitter3D ? emitter3D.getWorldPosition(new T3V()) : new T3V();
       const emitterQuat = emitter3D ? emitter3D.getWorldQuaternion(new Quaternion()) : new Quaternion();
-      const gravity = new T3V(sys.gravity.x, sys.gravity.y, sys.gravity.z);
+  const gravity = new T3V(sys.gravity.x, sys.gravity.y, sys.gravity.z);
       const wind = new T3V(sys.wind.x, sys.wind.y, sys.wind.z);
       const rng = makeRng(sys.seed ?? 1);
       // Simulate from frame 0 -> frame (inclusive-exclusive)
@@ -369,6 +406,36 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
           if (!p.alive) continue;
           if (p.t >= p.lifetime) { p.alive = false; continue; }
           p.velocity.add(gravity).add(wind);
+          try {
+            for (const fid in useForceFieldStore.getState().fields) {
+              const f = (useForceFieldStore.getState().fields as any)[fid];
+              if (!f?.enabled) continue;
+              const fObj = Object.values(scene.objects).find((o) => (o as any).forceFieldId === f.id);
+              const f3d = fObj ? getObject3D(fObj.id) : null;
+              const fpos = f3d ? f3d.getWorldPosition(new T3V()) : null;
+              if (!fpos) continue;
+              const toP = p.position.clone().sub(fpos);
+              const dist = toP.length();
+              if (dist > f.radius || dist < 1e-4) continue;
+              const dir = toP.normalize();
+              const k = Math.max(0, 1 - dist / Math.max(1e-4, f.radius));
+              if (f.type === 'attractor' || f.type === 'repulsor') {
+                const sign = f.type === 'attractor' ? -1 : 1;
+                const accel = dir.multiplyScalar(sign * f.strength * k);
+                p.velocity.add(accel);
+              } else if (f.type === 'vortex') {
+                const fquat = f3d?.getWorldQuaternion(new Quaternion()) ?? new Quaternion();
+                const zAxis = new T3V(0, 0, 1).applyQuaternion(fquat).normalize();
+                const radial = dir.clone();
+                const radialOnPlane = radial.sub(zAxis.clone().multiplyScalar(radial.dot(zAxis)));
+                if (radialOnPlane.lengthSq() > 1e-8) {
+                  const tangential = zAxis.clone().cross(radialOnPlane).normalize();
+                  const accel = tangential.multiplyScalar(f.strength * k);
+                  p.velocity.add(accel);
+                }
+              }
+            }
+          } catch {}
           p.position.add(p.velocity);
           p.rotation.x += p.angularVelocity.x;
           p.rotation.y += p.angularVelocity.y;

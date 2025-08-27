@@ -24,6 +24,7 @@ import { useGeometryStore, useCameraResource } from '@/stores/geometry-store';
 import { registerCamera, unregisterCamera } from '../hooks/camera-registry';
 import { registerObject3D, unregisterObject3D } from '../hooks/object3d-registry';
 import { useAnimationStore } from '@/stores/animation-store';
+import ForceFieldNode from './force-field-node';
 // Light helper wrappers
 const DirectionalLightNode: React.FC<{ color: Color; intensity: number }> = ({ color, intensity }) => {
   const ref = useRef<DirectionalLight>(null!);
@@ -386,6 +387,9 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
       })()}
   {obj.type === 'camera' && obj.cameraId && (
         <CameraObjectNode objectId={objectId} cameraId={obj.cameraId!} isMaterial={(shading as unknown as string) === 'material'} />
+      )}
+    {obj.type === 'force' && obj.forceFieldId && (
+        <ForceFieldNode fieldId={obj.forceFieldId} />
       )}
       {obj.children.map((cid) => (
         <ObjectNode key={cid} objectId={cid} />

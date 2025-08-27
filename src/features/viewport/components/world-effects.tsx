@@ -6,6 +6,7 @@ import { Environment } from '@react-three/drei';
 // Postprocessing is not WebGPU compatible in this setup; disable for now
 import * as THREE from 'three/webgpu';
 import { useBloom, useDoF, useEnvironment, useFog, useRendererSettings } from '@/stores/world-store';
+import { useShadingMode } from '@/stores/viewport-store';
 // three WebGPU postprocessing via TSL
 import { pass } from 'three/tsl';
 import { bloom as bloomNode } from 'three/addons/tsl/display/BloomNode.js';
@@ -35,6 +36,7 @@ export const WorldEffects: React.FC = () => {
   const dof = useDoF();
   const fog = useFog();
   const renderer = useRendererSettings();
+  const shading = useShadingMode();
   const { gl, scene, camera } = useThree();
 
   // Post-processing refs
@@ -61,7 +63,7 @@ export const WorldEffects: React.FC = () => {
     };
   }, [scene]);
 
-  // Setup/teardown WebGPU bloom post-processing
+  // Setup/teardown WebGPU bloom post-processing. Only enable in material shading mode.
   useEffect(() => {
     // Tear down any previous chain first
     if (postRef.current && typeof (postRef.current as any).dispose === 'function') {
@@ -70,8 +72,8 @@ export const WorldEffects: React.FC = () => {
     postRef.current = null;
     bloomRef.current = null;
     scenePassColorRef.current = null;
-
-  if (!bloom.enabled) return;
+  // enable only when bloom is on and we are in material shading mode
+  if (!bloom.enabled || shading !== 'material') return;
   // Only available with WebGPU renderer
   if (!(gl as any)?.isWebGPURenderer) return;
 
@@ -112,7 +114,7 @@ export const WorldEffects: React.FC = () => {
       bloomRef.current = null;
       scenePassColorRef.current = null;
     };
-  }, [gl, scene, camera, bloom.enabled]);
+  }, [gl, scene, camera, bloom.enabled, shading]);
 
   // React to bloom parameter changes
   useEffect(() => {
@@ -131,7 +133,7 @@ export const WorldEffects: React.FC = () => {
       // Fallback: if no postprocessing chain is active, ensure the renderer still draws the scene.
       // In some WebGPU setups the default React-Three-Fiber render path can be bypassed; call render explicitly.
       try {
-        (gl as any).render(scene as any, camera as any);
+        (gl as any).render(scene, camera);
       } catch (e) {
         // ignore render errors here
       }

@@ -201,6 +201,13 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 		if (useSelectionStore.getState().selection.viewMode === 'object') useSelectionStore.getState().selectObjects([id]);
 	}, [sceneStore]);
 
+	const addForce = useCallback((type: 'attractor'|'repulsor'|'vortex') => {
+		const pretty = type.charAt(0).toUpperCase() + type.slice(1);
+		const id = sceneStore.createForceFieldObject(pretty, type);
+		sceneStore.selectObject(id);
+		if (useSelectionStore.getState().selection.viewMode === 'object') useSelectionStore.getState().selectObjects([id]);
+	}, [sceneStore]);
+
 	// View actions
 	const handleZoom = useCallback((scale: number) => {
 		const cam = viewportStore.camera;
@@ -386,6 +393,19 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 											<Menu.Popup className="min-w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
 												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => addCamera('perspective')}>Perspective</Menu.Item>
 												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => addCamera('orthographic')}>Orthographic</Menu.Item>
+											</Menu.Popup>
+										</Menu.Positioner>
+									</Menu.Portal>
+								</Menu.SubmenuRoot>
+								{/* Force Field submenu */}
+								<Menu.SubmenuRoot>
+									<Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200">Force Field</Menu.SubmenuTrigger>
+									<Menu.Portal container={portalContainer}>
+										<Menu.Positioner sideOffset={6} className="z-90">
+											<Menu.Popup className="min-w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
+												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => addForce('attractor')}>Attractor</Menu.Item>
+												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => addForce('repulsor')}>Repulsor</Menu.Item>
+												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => addForce('vortex')}>Vortex</Menu.Item>
 											</Menu.Popup>
 										</Menu.Positioner>
 									</Menu.Portal>

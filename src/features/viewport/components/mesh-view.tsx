@@ -135,8 +135,8 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     geometryStore.materials,
   ]);
 
-  // Node-based material integration
-  const nodeMaterial = useMaterialNodes(displayMesh?.materialId);
+  // Node-based material integration (only in material shading mode)
+  const nodeMaterial = useMaterialNodes(shading === 'material' ? displayMesh?.materialId : undefined);
 
   // Effective emissive intensity used when applying node materials
   const emissiveIntensityForNode = useMemo(() => {

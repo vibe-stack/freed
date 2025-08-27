@@ -19,7 +19,7 @@ type RowProps = {
 	depth: number;
 	visible: boolean;
 	locked: boolean;
-	type: 'mesh' | 'light' | 'camera' | 'group' | 'particles';
+	type: 'mesh' | 'light' | 'camera' | 'group' | 'particles' | 'force';
 	render: boolean;
 	renamingId: string | null;
 	draftName: string;

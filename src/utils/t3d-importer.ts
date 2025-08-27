@@ -26,6 +26,7 @@ import {
 } from '../types/geometry';
 import { useAnimationStore } from '@/stores/animation-store';
 import { useParticlesStore } from '@/stores/particles-store';
+import { useForceFieldStore } from '@/stores/force-field-store';
 
 /**
  * Converts T3D Vector3 to internal format
@@ -124,8 +125,9 @@ function t3dToSceneObject(t3dObject: T3DSceneObject): SceneObject {
   meshId: t3dObject.meshId,
   lightId: (t3dObject as any).lightId,
   cameraId: (t3dObject as any).cameraId,
-  // Keep particle link for editor round-trips
+  // Keep editor component links for round-trips
   particleSystemId: (t3dObject as any).particleSystemId,
+  forceFieldId: (t3dObject as any).forceFieldId,
   };
 }
 
@@ -288,6 +290,27 @@ export async function importFromT3D(file: File): Promise<ImportedWorkspaceData> 
           timelinePanelOpen: !!ui.timelinePanelOpen,
           lastUsedFps: ui.lastUsedFps ?? s.lastUsedFps,
         }), false);
+      }
+    } catch {}
+
+    // Rebuild force fields if payload exists
+    try {
+      const forces = (t3dScene as any).forces as any;
+      if (forces?.fields && Array.isArray(forces.fields)) {
+        useForceFieldStore.setState((s: any) => { s.fields = {}; }, false as any);
+        forces.fields.forEach((f: any) => {
+          // Respect provided id when possible
+          useForceFieldStore.setState((s: any) => {
+            s.fields[f.id] = {
+              id: f.id,
+              type: f.type,
+              name: f.name,
+              enabled: f.enabled ?? true,
+              radius: f.radius ?? 3,
+              strength: f.strength ?? 0.02,
+            };
+          }, false as any);
+        });
       }
     } catch {}
 

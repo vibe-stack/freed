@@ -101,6 +101,14 @@ const TopToolbar: React.FC = () => {
     setMenuOpen(false);
   };
 
+  const addForce = (type: 'attractor'|'repulsor'|'vortex') => {
+    const pretty = type.charAt(0).toUpperCase() + type.slice(1);
+    const id = scene.createForceFieldObject(pretty, type);
+    scene.selectObject(id);
+    if (selection.viewMode === 'object') selectionActions.selectObjects([id]);
+    setMenuOpen(false);
+  };
+
   const enterEdit = () => {
     if (selection.objectIds.length > 0) {
       const objId = selection.objectIds[0];
@@ -160,6 +168,22 @@ const TopToolbar: React.FC = () => {
               <Menu.Popup className="pointer-events-auto z-90 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-44" style={{ zIndex: 10050 }}>
                 {/* Quick actions */}
                 <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={addParticleSystem}>Particle System</Menu.Item>
+                <div className="my-1 h-px bg-white/10" />
+                {/* Force Field submenu */}
+                <Menu.SubmenuRoot>
+                  <Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 rounded hover:bg-white/5">
+                    Force Field
+                  </Menu.SubmenuTrigger>
+                  <Menu.Portal>
+                    <Menu.Positioner sideOffset={6} className="z-90">
+                      <Menu.Popup className="z-90 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-40" style={{ zIndex: 10050 }}>
+                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addForce('attractor')}>Attractor</Menu.Item>
+                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addForce('repulsor')}>Repulsor</Menu.Item>
+                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addForce('vortex')}>Vortex</Menu.Item>
+                      </Menu.Popup>
+                    </Menu.Positioner>
+                  </Menu.Portal>
+                </Menu.SubmenuRoot>
                 <div className="my-1 h-px bg-white/10" />
                 {/* Mesh submenu */}
                 <Menu.SubmenuRoot>

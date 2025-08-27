@@ -47,6 +47,7 @@ interface SceneActions {
   createLightObject: (name: string, type: LightType) => string;
   createCameraObject: (name: string, type: CameraType) => string;
   createParticleSystemObject: (name: string) => string;
+  createForceFieldObject: (name: string, type: 'attractor' | 'repulsor' | 'vortex') => string;
   groupObjects: (objectIds: string[], name?: string) => string | null;
   ungroupObject: (groupId: string) => void;
   getObject: (objectId: string) => SceneObject | null;
@@ -120,6 +121,12 @@ export const useSceneStore = create<SceneStore>()(
                 try {
                   const { useParticlesStore } = require('./particles-store');
                   useParticlesStore.getState().removeSystem((obj as any).particleSystemId);
+                } catch {}
+              }
+              if ((obj as any).forceFieldId) {
+                try {
+                  const { useForceFieldStore } = require('./force-field-store');
+                  useForceFieldStore.getState().removeField((obj as any).forceFieldId);
                 } catch {}
               }
               obj.children.forEach((childId: string) => removeRecursive(childId));
@@ -535,6 +542,28 @@ export const useSceneStore = create<SceneStore>()(
         } as any;
         get().addObject(object);
         // Default: the system uses its owning object as emitter (emitterObjectId null)
+        return object.id;
+      },
+      createForceFieldObject: (name: string, type: 'attractor' | 'repulsor' | 'vortex') => {
+        const { useForceFieldStore } = require('./force-field-store');
+        const fieldId: string = useForceFieldStore.getState().addField(type);
+        const object: SceneObject = {
+          id: nanoid(),
+          name,
+          type: 'force',
+          parentId: null,
+          children: [],
+          transform: {
+            position: vec3(0, 0, 0),
+            rotation: vec3(0, 0, 0),
+            scale: vec3(1, 1, 1),
+          },
+          visible: true,
+          locked: false,
+          render: true,
+          forceFieldId: fieldId,
+        } as any;
+        get().addObject(object);
         return object.id;
       },
       groupObjects: (objectIds: string[], name: string = 'Group') => {

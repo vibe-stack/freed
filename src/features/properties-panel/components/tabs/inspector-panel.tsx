@@ -10,6 +10,7 @@ import { ObjectDataSection } from './sections/object-data-section';
 import { useAnimationStore, type PropertyPath } from '@/stores/animation-store';
 import { Diamond as DiamondIcon } from 'lucide-react';
 import { useParticlesStore } from '@/stores/particles-store';
+import { useForceFieldStore } from '@/stores/force-field-store';
 
 const Label: React.FC<{ label: string } & React.HTMLAttributes<HTMLDivElement>> = ({ label, children, className = '', ...rest }) => (
   <div className={`text-xs text-gray-400 ${className}`} {...rest}>
@@ -169,6 +170,13 @@ export const InspectorPanel: React.FC = () => {
           <ParticleSystemSection objectId={selected.id} systemId={selected.particleSystemId} />
         </div>
       )}
+
+      {selected.type === 'force' && selected.forceFieldId && (
+        <div>
+          <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Force Field</div>
+          <ForceFieldSection fieldId={selected.forceFieldId} />
+        </div>
+      )}
     </div>
   );
 };
@@ -281,6 +289,39 @@ const ParticleSystemSection: React.FC<{ objectId: string; systemId: string }>
           </Label>
           <div />
         </div>
+      </div>
+    );
+  };
+
+const ForceFieldSection: React.FC<{ fieldId: string }>
+  = ({ fieldId }) => {
+    const store = useForceFieldStore();
+    const field = useForceFieldStore((s) => s.fields[fieldId]);
+    if (!field) return null;
+    const update = (partial: Partial<typeof field>) => store.updateField(fieldId, partial);
+    return (
+      <div className="bg-white/5 border border-white/10 rounded p-2 space-y-2">
+        <Row>
+          <div className="w-24 text-gray-400 text-xs">Enabled</div>
+          <Switch checked={field.enabled} onCheckedChange={(v) => update({ enabled: !!v })} />
+        </Row>
+        <Label label="Type">
+          <select
+            className="w-full bg-transparent text-xs border border-white/10 rounded p-1"
+            value={field.type}
+            onChange={(e) => update({ type: e.target.value as any })}
+          >
+            <option value="attractor">Attractor</option>
+            <option value="repulsor">Repulsor</option>
+            <option value="vortex">Vortex</option>
+          </select>
+        </Label>
+        <Label label="Radius (world units)">
+          <DragInput compact value={field.radius} precision={2} step={0.05} onChange={(v) => update({ radius: Math.max(0.01, v) })} />
+        </Label>
+        <Label label={field.type === 'vortex' ? 'Angular Strength (rad/frame^2)' : 'Strength (units/frame^2)'}>
+          <DragInput compact value={field.strength} precision={3} step={0.005} onChange={(v) => update({ strength: v })} />
+        </Label>
       </div>
     );
   };

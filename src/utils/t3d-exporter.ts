@@ -19,6 +19,7 @@ import {
 import { Mesh, Material, SceneObject, ViewportState, Light, CameraResource } from '../types/geometry';
 import { useParticlesStore } from '@/stores/particles-store';
 import { useAnimationStore } from '@/stores/animation-store';
+import { useForceFieldStore } from '@/stores/force-field-store';
 
 /**
  * Converts internal Vector3 to T3D format
@@ -107,8 +108,9 @@ function sceneObjectToT3D(object: SceneObject): T3DSceneObject {
     meshId: object.meshId,
     lightId: object.lightId,
   cameraId: object.cameraId,
-  // Preserve particle link for editor round-trips
+  // Preserve editor component links for round-trips
   particleSystemId: (object as any).particleSystemId,
+  forceFieldId: (object as any).forceFieldId,
   };
 }
 
@@ -257,6 +259,14 @@ export async function exportToT3D(
   // Optional particle systems payload (editor extension only)
   try {
     const p = useParticlesStore.getState();
+
+        try {
+            const fieldValues = Object.values(useForceFieldStore.getState().fields) as any[];
+            const fields = fieldValues.map((f: any) => ({
+              id: f.id, type: f.type as any, name: f.name, enabled: f.enabled, radius: f.radius, strength: f.strength,
+            }));
+          if (fields.length) (t3dScene as any).forces = { fields };
+        } catch {}
     const systems = Object.values(p.systems);
     if (systems.length > 0) {
       t3dScene.particles = {
