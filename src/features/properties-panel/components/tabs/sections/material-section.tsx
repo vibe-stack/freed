@@ -37,39 +37,33 @@ export const MaterialSection: React.FC<Props> = ({ materialId, onAssignMaterial 
     geo.updateMaterial(material.id, updater);
   };
 
-  // Helper: if shader graph connects an output to a const node, update that const node instead of raw material
-  const updateGraphIfSimple = (field: 'color' | 'roughness' | 'metalness' | 'emissive' | 'emissiveIntensity', value: any) => {
-    if (!materialId) return false;
+  // Inspector editable-if-const: find direct const node connected to a given output input
+  const getDirectConstNode = (field: 'color' | 'roughness' | 'metalness' | 'emissive' | 'emissiveIntensity') => {
+    if (!materialId) return undefined as any;
     const g = geo.shaderGraphs.get(materialId);
-    if (!g) return false;
-    const out = g.nodes.find((n: any) => n.type === 'output' || n.type === 'output-standard' || n.type === 'output-physical');
-    if (!out) return false;
-    const edge = g.edges.find((e) => e.target === out.id && e.targetHandle === field);
-    if (!edge) return false; // nothing wired; leave material prop as source of truth
-    const node = g.nodes.find((n) => n.id === edge.source);
-    if (!node) return false;
-    if (field === 'color' && node.type === 'const-color') {
-      geo.updateShaderGraph(materialId, (gg: ShaderGraph) => {
-        const nn: any = gg.nodes.find((n) => n.id === node.id);
-        if (nn) nn.data = { r: value.x, g: value.y, b: value.z };
-      });
-      return true;
-    }
-    if ((field === 'roughness' || field === 'metalness' || field === 'emissiveIntensity') && node.type === 'const-float') {
-      geo.updateShaderGraph(materialId, (gg: ShaderGraph) => {
-        const nn: any = gg.nodes.find((n) => n.id === node.id);
-        if (nn) nn.data = { value };
-      });
-      return true;
-    }
-    if (field === 'emissive' && node.type === 'const-color') {
-      geo.updateShaderGraph(materialId, (gg: ShaderGraph) => {
-        const nn: any = gg.nodes.find((n) => n.id === node.id);
-        if (nn) nn.data = { r: value.x, g: value.y, b: value.z };
-      });
-      return true;
-    }
-    return false;
+    if (!g) return undefined as any;
+    const out = g.nodes.find((n: any) => n.type === 'output' || (typeof n.type === 'string' && n.type.startsWith('output-')));
+    if (!out) return undefined as any;
+    const edge = g.edges.find((e) => e.target === (out as any).id && e.targetHandle === field);
+    if (!edge) return undefined as any;
+    const node = g.nodes.find((n) => n.id === edge.source) as any;
+    return node;
+  };
+
+  // Same update semantics as shader editor const nodes
+  const updateConstFloat = (nodeId: string, value: number) => {
+    if (!materialId) return;
+    geo.updateShaderGraph(materialId, (gg: ShaderGraph) => {
+      const nn: any = gg.nodes.find((n) => n.id === nodeId);
+      if (nn && nn.type === 'const-float') nn.data = { ...(nn.data || {}), value };
+    });
+  };
+  const updateConstColor = (nodeId: string, value: { x: number; y: number; z: number }) => {
+    if (!materialId) return;
+    geo.updateShaderGraph(materialId, (gg: ShaderGraph) => {
+      const nn: any = gg.nodes.find((n) => n.id === nodeId);
+      if (nn && nn.type === 'const-color') nn.data = { r: value.x, g: value.y, b: value.z };
+    });
   };
 
   // Change output material type node in the graph
@@ -156,20 +150,111 @@ export const MaterialSection: React.FC<Props> = ({ materialId, onAssignMaterial 
               onChange={(e) => update((m) => { m.name = e.target.value; })}
             />
           </div>
-          <ColorInput label="Color" value={material.color} onChange={(v) => { if (!updateGraphIfSimple('color', v)) update((m) => { m.color = v; }); }} />
-          <ColorInput label="Emissive" value={material.emissive} onChange={(v) => { if (!updateGraphIfSimple('emissive', v)) update((m) => { m.emissive = v; }); }} />
-          <div>
-            <div className="text-gray-400 mb-1">Emissive Intensity</div>
-            <DragInput value={material.emissiveIntensity ?? 1} step={0.05} precision={2} onChange={(v) => { if (!updateGraphIfSimple('emissiveIntensity', v)) update((m) => { m.emissiveIntensity = Math.max(0, v); }); }} />
-          </div>
+          {/* Color */}
+          {(() => {
+            const node: any = getDirectConstNode('color');
+            if (node && node.type === 'const-color') {
+              const d = node.data || { r: 1, g: 1, b: 1 };
+              const v = { x: d.r ?? 1, y: d.g ?? 1, z: d.b ?? 1 };
+              return <ColorInput label="Color" value={v} onChange={(nv) => updateConstColor(node.id, nv)} />;
+            }
+            return (
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-gray-400">Color</div>
+                <button
+                  className="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded border border-white/10"
+                  onClick={() => material && openShaderEditor(material.id)}
+                >Open in editor</button>
+              </div>
+            );
+          })()}
+          {/* Emissive */}
+          {(() => {
+            const node: any = getDirectConstNode('emissive');
+            if (node && node.type === 'const-color') {
+              const d = node.data || { r: 0, g: 0, b: 0 };
+              const v = { x: d.r ?? 0, y: d.g ?? 0, z: d.b ?? 0 };
+              return <ColorInput label="Emissive" value={v} onChange={(nv) => updateConstColor(node.id, nv)} />;
+            }
+            return (
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-gray-400">Emissive</div>
+                <button
+                  className="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded border border-white/10"
+                  onClick={() => material && openShaderEditor(material.id)}
+                >Open in editor</button>
+              </div>
+            );
+          })()}
+          {/* Emissive Intensity */}
+          {(() => {
+            const node: any = getDirectConstNode('emissiveIntensity');
+            if (node && node.type === 'const-float') {
+              const v = (node.data?.value ?? 1) as number;
+              return (
+                <div>
+                  <div className="text-gray-400 mb-1">Emissive Intensity</div>
+                  <DragInput value={v} step={0.05} precision={2} onChange={(nv) => updateConstFloat(node.id, Math.max(0, nv))} />
+                </div>
+              );
+            }
+            return (
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-gray-400">Emissive Intensity</div>
+                <button
+                  className="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded border border-white/10"
+                  onClick={() => material && openShaderEditor(material.id)}
+                >Open in editor</button>
+              </div>
+            );
+          })()}
+          {/* Roughness / Metalness */}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <div className="text-gray-400 mb-1">Roughness</div>
-              <DragInput value={material.roughness} step={0.01} precision={2} onChange={(v) => { if (!updateGraphIfSimple('roughness', v)) update((m) => { m.roughness = Math.max(0, Math.min(1, v)); }); }} />
+              {(() => {
+                const node: any = getDirectConstNode('roughness');
+                if (node && node.type === 'const-float') {
+                  const v = (node.data?.value ?? (material?.roughness ?? 1)) as number;
+                  return (
+                    <div>
+                      <div className="text-gray-400 mb-1">Roughness</div>
+                      <DragInput value={v} step={0.01} precision={2} onChange={(nv) => updateConstFloat(node.id, Math.max(0, Math.min(1, nv)))} />
+                    </div>
+                  );
+                }
+                return (
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs text-gray-400">Roughness</div>
+                    <button
+                      className="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded border border-white/10"
+                      onClick={() => material && openShaderEditor(material.id)}
+                    >Open in editor</button>
+                  </div>
+                );
+              })()}
             </div>
             <div>
-              <div className="text-gray-400 mb-1">Metalness</div>
-              <DragInput value={material.metalness} step={0.01} precision={2} onChange={(v) => { if (!updateGraphIfSimple('metalness', v)) update((m) => { m.metalness = Math.max(0, Math.min(1, v)); }); }} />
+              {(() => {
+                const node: any = getDirectConstNode('metalness');
+                if (node && node.type === 'const-float') {
+                  const v = (node.data?.value ?? (material?.metalness ?? 0)) as number;
+                  return (
+                    <div>
+                      <div className="text-gray-400 mb-1">Metalness</div>
+                      <DragInput value={v} step={0.01} precision={2} onChange={(nv) => updateConstFloat(node.id, Math.max(0, Math.min(1, nv)))} />
+                    </div>
+                  );
+                }
+                return (
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs text-gray-400">Metalness</div>
+                    <button
+                      className="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded border border-white/10"
+                      onClick={() => material && openShaderEditor(material.id)}
+                    >Open in editor</button>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

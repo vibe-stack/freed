@@ -151,15 +151,19 @@ export const useGeometryStore = create<GeometryStore>()(
               materialId: material.id,
               nodes: [
                 { id: idIn, type: 'input', position: { x: 40, y: 160 } } as any,
-                { id: idOut, type: 'output-standard', position: { x: 520, y: 120 } } as any,
-                { id: 'baseColor', type: 'const-color', position: { x: 260, y: 80 }, data: { r: material.color.x, g: material.color.y, b: material.color.z } } as any,
-                { id: 'rough', type: 'const-float', position: { x: 260, y: 180 }, data: { value: material.roughness } } as any,
-                { id: 'metal', type: 'const-float', position: { x: 260, y: 240 }, data: { value: material.metalness } } as any,
+                { id: idOut, type: 'output-standard', position: { x: 760, y: 160 } } as any,
+                { id: 'color', type: 'const-color', position: { x: 360, y: 80 }, data: { r: material.color.x, g: material.color.y, b: material.color.z } } as any,
+                { id: 'rough', type: 'const-float', position: { x: 360, y: 200 }, data: { value: material.roughness } } as any,
+                { id: 'metal', type: 'const-float', position: { x: 360, y: 320 }, data: { value: material.metalness } } as any,
+                { id: 'emissive', type: 'const-color', position: { x: 360, y: 440 }, data: { r: material.emissive.x, g: material.emissive.y, b: material.emissive.z } } as any,
+                { id: 'emissiveIntensity', type: 'const-float', position: { x: 360, y: 560 }, data: { value: material.emissiveIntensity ?? 1 } } as any,
               ],
               edges: [
-                { id: nanoid(), source: 'baseColor', sourceHandle: 'out', target: idOut, targetHandle: 'color' },
+                { id: nanoid(), source: 'color', sourceHandle: 'out', target: idOut, targetHandle: 'color' },
                 { id: nanoid(), source: 'rough', sourceHandle: 'out', target: idOut, targetHandle: 'roughness' },
                 { id: nanoid(), source: 'metal', sourceHandle: 'out', target: idOut, targetHandle: 'metalness' },
+                { id: nanoid(), source: 'emissive', sourceHandle: 'out', target: idOut, targetHandle: 'emissive' },
+                { id: nanoid(), source: 'emissiveIntensity', sourceHandle: 'out', target: idOut, targetHandle: 'emissiveIntensity' },
               ],
             });
           }
@@ -193,15 +197,19 @@ export const useGeometryStore = create<GeometryStore>()(
             materialId,
             nodes: [
               { id: idIn, type: 'input', position: { x: 40, y: 160 } } as any,
-              { id: idOut, type: 'output-standard', position: { x: 520, y: 120 } } as any,
-              { id: 'color', type: 'const-color', position: { x: 260, y: 80 }, data: { r: mat?.color.x ?? 0.8, g: mat?.color.y ?? 0.8, b: mat?.color.z ?? 0.85 } } as any,
-              { id: 'rough', type: 'const-float', position: { x: 260, y: 180 }, data: { value: mat?.roughness ?? 0.8 } } as any,
-              { id: 'metal', type: 'const-float', position: { x: 260, y: 240 }, data: { value: mat?.metalness ?? 0.05 } } as any,
+              { id: idOut, type: 'output-standard', position: { x: 760, y: 160 } } as any,
+              { id: 'color', type: 'const-color', position: { x: 360, y: 80 }, data: { r: mat?.color.x ?? 0.8, g: mat?.color.y ?? 0.8, b: mat?.color.z ?? 0.85 } } as any,
+              { id: 'rough', type: 'const-float', position: { x: 360, y: 200 }, data: { value: mat?.roughness ?? 0.8 } } as any,
+              { id: 'metal', type: 'const-float', position: { x: 360, y: 320 }, data: { value: mat?.metalness ?? 0.05 } } as any,
+              { id: 'emissive', type: 'const-color', position: { x: 360, y: 440 }, data: { r: mat?.emissive.x ?? 0, g: mat?.emissive.y ?? 0, b: mat?.emissive.z ?? 0 } } as any,
+              { id: 'emissiveIntensity', type: 'const-float', position: { x: 360, y: 560 }, data: { value: mat?.emissiveIntensity ?? 1 } } as any,
             ],
             edges: [
               { id: nanoid(), source: 'color', sourceHandle: 'out', target: idOut, targetHandle: 'color' },
               { id: nanoid(), source: 'rough', sourceHandle: 'out', target: idOut, targetHandle: 'roughness' },
               { id: nanoid(), source: 'metal', sourceHandle: 'out', target: idOut, targetHandle: 'metalness' },
+              { id: nanoid(), source: 'emissive', sourceHandle: 'out', target: idOut, targetHandle: 'emissive' },
+              { id: nanoid(), source: 'emissiveIntensity', sourceHandle: 'out', target: idOut, targetHandle: 'emissiveIntensity' },
             ],
           });
         });
