@@ -71,30 +71,30 @@ export const InspectorPanel: React.FC = () => {
     };
 
   return (
-  <div className="p-3 space-y-4 text-gray-200 text-sm">
+  <div className="p-2 space-y-3 text-gray-200 text-[12px]">
       <div>
-        <div className="text-xs uppercase tracking-wide text-gray-400 mb-2">Object</div>
-        <div className="bg-white/5 border border-white/10 rounded p-2">
+    <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Object</div>
+    <div className="bg-white/5 border border-white/10 rounded p-1.5">
           <Row>
-            <div className="w-16 text-gray-400 text-xs">Name</div>
+      <div className="w-16 text-gray-400 text-[11px]">Name</div>
             <div className="flex-1 truncate">{selected.name}</div>
           </Row>
           <Row>
-            <div className="w-16 text-gray-400 text-xs">Visible</div>
+      <div className="w-16 text-gray-400 text-[11px]">Visible</div>
             <Switch checked={selected.visible} onCheckedChange={(v) => scene.setVisible(selected.id, v)} />
           </Row>
           <Row>
-            <div className="w-16 text-gray-400 text-xs">Locked</div>
+      <div className="w-16 text-gray-400 text-[11px]">Locked</div>
             <Switch checked={selected.locked} onCheckedChange={(v) => scene.setLocked(selected.id, v)} />
           </Row>
         </div>
       </div>
 
       <div>
-        <div className="text-xs uppercase tracking-wide text-gray-400 mb-2">Transform</div>
-        <div className="bg-white/5 border border-white/10 rounded p-2 space-y-2">
+    <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Transform</div>
+    <div className="bg-white/5 border border-white/10 rounded p-1.5 space-y-1.5">
           <Label label="Location">
-            <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-1.5">
               <div className="flex items-center">
                 <KeyButton property="position.x" value={selected.transform.position.x} title="Key X location" />
                 <DragInput compact label="X" value={selected.transform.position.x} precision={2} step={0.05} onChange={(v) => updateTransform({ position: { ...selected.transform.position, x: v } })} />
@@ -110,7 +110,7 @@ export const InspectorPanel: React.FC = () => {
             </div>
           </Label>
           <Label label="Rotation">
-            <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-1.5">
               <div className="flex items-center">
                 <KeyButton property="rotation.x" value={selected.transform.rotation.x} title="Key X rotation" />
                 <DragInput compact label="X" value={selected.transform.rotation.x} precision={2} step={1} onChange={(v) => updateTransform({ rotation: { ...selected.transform.rotation, x: v } })} />
@@ -126,7 +126,7 @@ export const InspectorPanel: React.FC = () => {
             </div>
           </Label>
           <Label label="Scale">
-            <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-1.5">
               <div className="flex items-center">
                 <KeyButton property="scale.x" value={selected.transform.scale.x} title="Key X scale" />
                 <DragInput compact label="X" value={selected.transform.scale.x} precision={2} step={0.05} onChange={(v) => updateTransform({ scale: { ...selected.transform.scale, x: v } })} />
@@ -146,7 +146,7 @@ export const InspectorPanel: React.FC = () => {
 
       {selected.type === 'mesh' && (
         <div>
-          <div className="text-xs uppercase tracking-wide text-gray-400 mb-2">Object Data</div>
+          <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Object Data</div>
           <ObjectDataSection objectId={selected.id} />
         </div>
       )}
@@ -165,7 +165,7 @@ export const InspectorPanel: React.FC = () => {
 
       {selected.type === 'particles' && selected.particleSystemId && (
         <div>
-          <div className="text-xs uppercase tracking-wide text-gray-400 mb-2">Particle System</div>
+          <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Particle System</div>
           <ParticleSystemSection objectId={selected.id} systemId={selected.particleSystemId} />
         </div>
       )}

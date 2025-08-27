@@ -7,8 +7,8 @@ import { Eye, EyeOff, Lock, Unlock, Camera, CameraOff, Folder, FolderOpen, Shape
 import { useClipboardStore } from '@/stores/clipboard-store';
 import { ContextMenu } from '@base-ui-components/react/context-menu';
 
-const Panel: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = '', children, ...rest }) => (
-	<div className={`bg-black/40 backdrop-blur-md border border-white/10 rounded-lg shadow-lg shadow-black/30 w-64 h-full ${className}`} {...rest}>
+	const Panel: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = '', children, ...rest }) => (
+		<div className={`bg-black/40 backdrop-blur-md border border-white/10 rounded-lg shadow-lg shadow-black/30 w-64 h-full ${className}`} {...rest}>
 		{children}
 	</div>
 );
@@ -371,7 +371,7 @@ const SceneHierarchyPanel: React.FC = () => {
 					</button>
 				</div>
 			</div>
-			<div className="h-[60dvh] overflow-auto">
+			<div className="h-full max-h-[60dvh] overflow-auto">
 				{/* Root drop zone */}
 				<div
 					className="mx-2 my-1 rounded border border-dashed border-white/10 px-2 py-1 text-[11px] text-gray-400"

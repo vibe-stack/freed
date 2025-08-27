@@ -158,11 +158,11 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
   return (
     <>
       {/* Unselected vertices */}
-      <instancedMesh
+    <instancedMesh
         ref={unselectedRef}
     // Capacity equals total vertex count to keep instanceId stable
     args={[boxGeo, blackMat, Math.max(1, (mesh?.vertices.length ?? 1))]}
-  onClick={handleUnselectedClick}
+  onPointerDown={handleUnselectedClick}
     // Only raycast in vertex mode; otherwise don't steal clicks
     raycast={selectionMode === 'vertex' ? (InstancedMesh.prototype.raycast as unknown as any) : (() => {})}
         renderOrder={3000}
@@ -171,10 +171,10 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
       </instancedMesh>
 
       {/* Selected vertices */}
-      <instancedMesh
+    <instancedMesh
         ref={selectedRef}
     args={[boxGeo, orangeMat, Math.max(1, (mesh?.vertices.length ?? 1))]}
-  onClick={handleSelectedClick}
+  onPointerDown={handleSelectedClick}
     raycast={selectionMode === 'vertex' ? (InstancedMesh.prototype.raycast as unknown as any) : (() => {})}
         renderOrder={3001}
       >

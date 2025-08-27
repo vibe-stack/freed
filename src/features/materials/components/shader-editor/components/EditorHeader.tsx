@@ -15,7 +15,7 @@ export const EditorHeader: React.FC<Props> = ({ materialId, materials, onMateria
       <div className="flex items-center gap-2">
         <span className="uppercase tracking-wide text-[11px] text-gray-400">Shader Editor</span>
         <select
-          className="bg-transparent border border-white/10 rounded px-2 py-1 text-gray-200"
+          className="bg-transparent border border-white/10 rounded px-2 py-1 text-gray-200 z-50"
           value={materialId ?? ''}
           onChange={(e) => { const v = e.target.value || undefined; onMaterialChange(v); }}
         >

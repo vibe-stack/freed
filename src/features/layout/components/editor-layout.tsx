@@ -57,20 +57,17 @@ const EditorLayout: React.FC = () => {
             </div>
           </div>
 
-          {/* Left Scene Hierarchy Panel */}
-          <div className="absolute left-4 top-32 z-20">
-            <SceneHierarchyPanel />
+          {/* Left Scene Hierarchy Panel - shrink when timeline open */}
+          <div className="absolute left-4 z-20" style={{ top: timelineOpen ? 80 : 128 }}>
+            <div style={{ height: timelineOpen ? '44dvh' : '60dvh' }}>
+              <SceneHierarchyPanel />
+            </div>
           </div>
 
-          {/* Right Properties Panel */}
-          <div className="absolute right-4 top-32 z-20">
-            <PropertiesPanel />
-          </div>
-
-          {/* Bottom-left selection summary */}
-          <div className="absolute left-4 bottom-4 z-20 max-w-md">
-            <div className="bg-black/30 backdrop-blur-sm rounded-md border border-white/10 p-3">
-              <SelectionSummary />
+          {/* Right Properties Panel - shrink when timeline open */}
+          <div className="absolute right-4 z-20" style={{ top: timelineOpen ? 80 : 128 }}>
+            <div style={{ height: timelineOpen ? '44dvh' : '60dvh' }}>
+              <PropertiesPanel />
             </div>
           </div>
           

@@ -50,6 +50,20 @@ export const ShaderEditor: React.FC<Props> = ({ open, onOpenChange }) => {
     } = useShaderEditorState(seMaterialId);
 
     const containerRef = useRef<HTMLDivElement>(null);
+    const [pos, setPos] = useState<{ x: number; y: number }>(() => {
+        if (typeof window === 'undefined') return { x: 0, y: 0 };
+        try {
+            const raw = localStorage.getItem('shaderEditorPos');
+            if (raw) return JSON.parse(raw);
+        } catch {}
+        return { x: 0, y: 0 };
+    });
+    const dragRef = useRef<{ dragging: boolean; ox: number; oy: number; sx: number; sy: number }>({ dragging: false, ox: 0, oy: 0, sx: 0, sy: 0 });
+    // Track if we are actively dragging (for global listeners)
+    const dragging = useRef(false);
+    useEffect(() => {
+        try { localStorage.setItem('shaderEditorPos', JSON.stringify(pos)); } catch {}
+    }, [pos]);
     const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
     const [cmPos, setCmPos] = useState<{ x: number; y: number } | null>(null);
     const [cmOpen, setCmOpen] = useState(false);
@@ -260,10 +274,41 @@ export const ShaderEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         setCmOpen(true);
     };
 
+    // --- Global drag logic ---
+    const handleHeaderMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+        const withinHeader = e.clientY >= rect.top && e.clientY <= rect.top + 36;
+        if (!withinHeader) return;
+        dragRef.current = { dragging: true, ox: e.clientX, oy: e.clientY, sx: pos.x, sy: pos.y };
+        dragging.current = true;
+        function onMouseMove(ev: MouseEvent) {
+            if (!dragging.current) return;
+            const dx = ev.clientX - dragRef.current.ox;
+            const dy = ev.clientY - dragRef.current.oy;
+            setPos({ x: dragRef.current.sx + dx, y: dragRef.current.sy - dy });
+        }
+        function onMouseUp() {
+            dragging.current = false;
+            dragRef.current.dragging = false;
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        }
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+        // e.preventDefault();
+    };
+
     if (!effectiveOpen) return null;
     return (
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-0 z-30 pointer-events-auto w-[min(1100px,calc(100%-18rem))]">
-                    <div className="mx-auto mb-4 h-[calc(50vh-0.75rem)] rounded-lg border border-white/10 bg-[#0b0e13]/70 backdrop-blur-md shadow-xl overflow-hidden">
+        <div
+            className="absolute z-40 pointer-events-auto w-[min(1100px,calc(100%-18rem))]"
+            style={{ left: `calc(50% + ${pos.x}px)`, transform: 'translateX(-50%)', bottom: `${16 + pos.y}px` }}
+        >
+            <div
+                className="mx-auto mb-4 h-[calc(50vh-0.75rem)] rounded-lg border border-white/10 bg-black/60 backdrop-blur-lg shadow-xl overflow-hidden"
+                style={{ background: 'rgba(11,14,19,0.6)', backdropFilter: 'blur(16px)' }}
+                onMouseDown={handleHeaderMouseDown}
+            >
                 <EditorHeader
                     materialId={materialId}
                     materials={materialsMap}

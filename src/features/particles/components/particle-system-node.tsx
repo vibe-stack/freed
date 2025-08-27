@@ -219,6 +219,16 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
       }
     }, [systemId, capacity, sys?.particleLifetime, sys?.seed]);
 
+    // If capacity changes while mounted, ensure instanced mesh count can't exceed new capacity
+    useEffect(() => {
+      const mesh = meshRef.current;
+      if (!mesh) return;
+      if (mesh.count > capacity) {
+        mesh.count = Math.max(0, capacity);
+        if ((mesh as any).instanceMatrix) (mesh as any).instanceMatrix.needsUpdate = true;
+      }
+    }, [capacity]);
+
     // Accumulator to step in whole frames at animation fps
   const accumRef = useRef(0);
   const emitAccumRef = useRef(0); // fractional emission accumulator

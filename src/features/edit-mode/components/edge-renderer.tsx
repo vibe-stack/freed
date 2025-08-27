@@ -150,7 +150,7 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
   return (
   <lineSegments
       ref={lineRef}
-      onClick={handleClick}
+      onPointerDown={handleClick}
       // Important: disable raycasting when not in edge mode so it doesn't steal clicks
   raycast={selectionMode === 'edge' ? (LineSegments.prototype.raycast as unknown as any) : (() => {})}
     >

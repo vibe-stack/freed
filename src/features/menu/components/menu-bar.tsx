@@ -24,6 +24,8 @@ type Props = { onOpenShaderEditor?: () => void };
 const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 	const [donateOpen, setDonateOpen] = useState(false);
 	const [exportOpen, setExportOpen] = useState(false);
+	const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+	useEffect(() => { setPortalContainer(document.body); }, []);
 	const geometryStore = useGeometryStore();
 	const sceneStore = useSceneStore();
 	const viewportStore = useViewportStore();
@@ -167,6 +169,38 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 		sceneStore.selectObject(id);
 	}, [sceneStore]);
 
+	const beginShape = useCallback((shape: 'cube' | 'plane' | 'cylinder' | 'cone' | 'uvsphere' | 'icosphere' | 'torus') => {
+		let id = '';
+		let name = '';
+		switch (shape) {
+			case 'cube': id = geometryStore.createCube(1.5); name = 'Cube'; break;
+			case 'plane': id = geometryStore.createPlane(2, 2, 1, 1); name = 'Plane'; break;
+			case 'cylinder': id = geometryStore.createCylinder(0.75, 0.75, 2, 24, 1); name = 'Cylinder'; break;
+			case 'cone': id = geometryStore.createCone(0.9, 2, 24, 1); name = 'Cone'; break;
+			case 'uvsphere': id = geometryStore.createUVSphere(1, 24, 16); name = 'UV Sphere'; break;
+			case 'icosphere': id = geometryStore.createIcoSphere(1, 1); name = 'Ico Sphere'; break;
+			case 'torus': id = geometryStore.createTorus(1.2, 0.35, 16, 24); name = 'Torus'; break;
+		}
+		const objId = sceneStore.createMeshObject(`${name} ${id.slice(-4)}`, id);
+		sceneStore.selectObject(objId);
+		if (useSelectionStore.getState().selection.viewMode === 'object') {
+			useSelectionStore.getState().selectObjects([objId]);
+		}
+		useShapeCreationStore.getState().start(shape, id);
+	}, [geometryStore, sceneStore]);
+
+	const addLight = useCallback((type: 'directional' | 'spot' | 'point') => {
+		const id = sceneStore.createLightObject(`${type.charAt(0).toUpperCase() + type.slice(1)} Light`, type);
+		sceneStore.selectObject(id);
+		if (useSelectionStore.getState().selection.viewMode === 'object') useSelectionStore.getState().selectObjects([id]);
+	}, [sceneStore]);
+
+	const addCamera = useCallback((type: 'perspective' | 'orthographic') => {
+		const id = sceneStore.createCameraObject(type === 'perspective' ? 'Perspective Camera' : 'Orthographic Camera', type);
+		sceneStore.selectObject(id);
+		if (useSelectionStore.getState().selection.viewMode === 'object') useSelectionStore.getState().selectObjects([id]);
+	}, [sceneStore]);
+
 	// View actions
 	const handleZoom = useCallback((scale: number) => {
 		const cam = viewportStore.camera;
@@ -252,9 +286,9 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 					<Menu.Trigger className="px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5 data-[open]:bg-white/10 data-[open]:text-white">
 						File
 					</Menu.Trigger>
-					<Menu.Portal>
+					<Menu.Portal container={portalContainer}>
 						<Menu.Positioner side="bottom" align="start" sideOffset={4} className="z-90">
-							<Menu.Popup className="mt-0 w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-40">
+							<Menu.Popup className="mt-0 w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleNewScene}>New</Menu.Item>
 								<Menu.Separator className="my-1 h-px bg-white/10" />
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleOpen}>
@@ -280,9 +314,9 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 					<Menu.Trigger className="px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5 data-[open]:bg-white/10 data-[open]:text-white">
 						Edit
 					</Menu.Trigger>
-					<Menu.Portal>
+					<Menu.Portal container={portalContainer}>
 						<Menu.Positioner side="bottom" align="start" sideOffset={4} className="z-90">
-							<Menu.Popup className="mt-0 w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-40">
+							<Menu.Popup className="mt-0 w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
 								<Menu.Item disabled={!canUndo} className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200 data-[disabled]:opacity-50 data-[disabled]:pointer-events-none" onClick={() => geometryUndo()}>Undo</Menu.Item>
 								<Menu.Item disabled={!canRedo} className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200 data-[disabled]:opacity-50 data-[disabled]:pointer-events-none" onClick={() => geometryRedo()}>Redo</Menu.Item>
 								<Menu.Separator className="my-1 h-px bg-white/10" />
@@ -308,10 +342,54 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 					<Menu.Trigger className="px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5 data-[open]:bg-white/10 data-[open]:text-white">
 						Add
 					</Menu.Trigger>
-					<Menu.Portal>
+					<Menu.Portal container={portalContainer}>
 						<Menu.Positioner side="bottom" align="start" sideOffset={4} className="z-90">
-							<Menu.Popup className="mt-0 w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-40">
+								<Menu.Popup className="mt-0 min-w-48 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
+								{/* Quick */}
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleCreateParticleSystem}>Particle System</Menu.Item>
+								<Menu.Separator className="my-1 h-px bg-white/10" />
+								{/* Mesh submenu */}
+								<Menu.SubmenuRoot>
+									<Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200">Mesh</Menu.SubmenuTrigger>
+									<Menu.Portal container={portalContainer}>
+										<Menu.Positioner sideOffset={6} className="z-90">
+											<Menu.Popup className="min-w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
+												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => beginShape('cube')}>Cube</Menu.Item>
+												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => beginShape('plane')}>Plane</Menu.Item>
+												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => beginShape('cylinder')}>Cylinder</Menu.Item>
+												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => beginShape('cone')}>Cone</Menu.Item>
+												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => beginShape('uvsphere')}>UV Sphere</Menu.Item>
+												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => beginShape('icosphere')}>Ico Sphere</Menu.Item>
+												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => beginShape('torus')}>Torus</Menu.Item>
+											</Menu.Popup>
+										</Menu.Positioner>
+									</Menu.Portal>
+								</Menu.SubmenuRoot>
+								{/* Light submenu */}
+								<Menu.SubmenuRoot>
+									<Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200">Light</Menu.SubmenuTrigger>
+									<Menu.Portal container={portalContainer}>
+										<Menu.Positioner sideOffset={6} className="z-90">
+											<Menu.Popup className="min-w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
+												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => addLight('directional')}>Directional</Menu.Item>
+												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => addLight('spot')}>Spot</Menu.Item>
+												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => addLight('point')}>Point</Menu.Item>
+											</Menu.Popup>
+										</Menu.Positioner>
+									</Menu.Portal>
+								</Menu.SubmenuRoot>
+								{/* Camera submenu */}
+								<Menu.SubmenuRoot>
+									<Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200">Camera</Menu.SubmenuTrigger>
+									<Menu.Portal container={portalContainer}>
+										<Menu.Positioner sideOffset={6} className="z-90">
+											<Menu.Popup className="min-w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
+												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => addCamera('perspective')}>Perspective</Menu.Item>
+												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => addCamera('orthographic')}>Orthographic</Menu.Item>
+											</Menu.Popup>
+										</Menu.Positioner>
+									</Menu.Portal>
+								</Menu.SubmenuRoot>
 							</Menu.Popup>
 						</Menu.Positioner>
 					</Menu.Portal>
@@ -322,9 +400,9 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 					<Menu.Trigger className="px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5 data-[open]:bg-white/10 data-[open]:text-white">
 						View
 					</Menu.Trigger>
-					<Menu.Portal>
+					<Menu.Portal container={portalContainer}>
 						<Menu.Positioner side="bottom" align="start" sideOffset={4} className="z-90">
-							<Menu.Popup className="mt-0 w-56 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-40">
+							<Menu.Popup className="mt-0 w-56 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleZoomIn}>Zoom In</Menu.Item>
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleZoomOut}>Zoom Out</Menu.Item>
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleFitToScreen}>Fit to Screen</Menu.Item>

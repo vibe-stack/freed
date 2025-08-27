@@ -44,6 +44,8 @@ const TopToolbar: React.FC = () => {
   const shapeCreation = useShapeCreationStore();
   const clipboard = useClipboardStore();
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const [portalContainer, setPortalContainer] = React.useState<HTMLElement | null>(null);
+  React.useEffect(() => { setPortalContainer(document.body); }, []);
 
   const beginShape = (shape: 'cube' | 'plane' | 'cylinder' | 'cone' | 'uvsphere' | 'icosphere' | 'torus') => {
     let id = '';
@@ -90,6 +92,13 @@ const TopToolbar: React.FC = () => {
     );
     scene.selectObject(id);
     if (selection.viewMode === 'object') selectionActions.selectObjects([id]);
+  };
+
+  const addParticleSystem = () => {
+    const id = scene.createParticleSystemObject('Particle System');
+    scene.selectObject(id);
+    if (selection.viewMode === 'object') selectionActions.selectObjects([id]);
+    setMenuOpen(false);
   };
 
   const enterEdit = () => {
@@ -146,17 +155,20 @@ const TopToolbar: React.FC = () => {
           <Menu.Trigger className="px-3 py-1.5 text-xs rounded-md transition-colors text-gray-300 hover:text-white hover:bg-white/5">
             +
           </Menu.Trigger>
-          <Menu.Portal>
-            <Menu.Positioner sideOffset={6}>
-              <Menu.Popup className="pointer-events-auto z-30 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-44">
+          <Menu.Portal container={portalContainer}>
+            <Menu.Positioner sideOffset={6} className="z-90">
+              <Menu.Popup className="pointer-events-auto z-90 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-44" style={{ zIndex: 10050 }}>
+                {/* Quick actions */}
+                <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={addParticleSystem}>Particle System</Menu.Item>
+                <div className="my-1 h-px bg-white/10" />
                 {/* Mesh submenu */}
                 <Menu.SubmenuRoot>
                   <Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 rounded hover:bg-white/5">
                     Mesh
                   </Menu.SubmenuTrigger>
                   <Menu.Portal>
-                    <Menu.Positioner sideOffset={6}>
-                      <Menu.Popup className="bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-40">
+                    <Menu.Positioner sideOffset={6} className="z-90">
+                      <Menu.Popup className="z-90 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-40" style={{ zIndex: 10050 }}>
                         <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('cube')}>Cube</Menu.Item>
                         <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('plane')}>Plane</Menu.Item>
                         <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('cylinder')}>Cylinder</Menu.Item>
@@ -174,8 +186,8 @@ const TopToolbar: React.FC = () => {
                     Light
                   </Menu.SubmenuTrigger>
                   <Menu.Portal>
-                    <Menu.Positioner sideOffset={6}>
-                      <Menu.Popup className="bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-40">
+                    <Menu.Positioner sideOffset={6} className="z-90">
+                      <Menu.Popup className="z-90 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-40" style={{ zIndex: 10050 }}>
                         <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addLight('directional')}>Directional</Menu.Item>
                         <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addLight('spot')}>Spot</Menu.Item>
                         <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addLight('point')}>Point</Menu.Item>
@@ -189,8 +201,8 @@ const TopToolbar: React.FC = () => {
                     Camera
                   </Menu.SubmenuTrigger>
                   <Menu.Portal>
-                    <Menu.Positioner sideOffset={6}>
-                      <Menu.Popup className="bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-40">
+                    <Menu.Positioner sideOffset={6} className="z-90">
+                      <Menu.Popup className="z-90 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-40" style={{ zIndex: 10050 }}>
                         <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addCamera('perspective')}>Perspective</Menu.Item>
                         <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addCamera('orthographic')}>Orthographic</Menu.Item>
                       </Menu.Popup>
