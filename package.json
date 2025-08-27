@@ -20,6 +20,7 @@
     "immer": "^10.1.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.539.0",
+    "motion": "^12.23.12",
     "nanoid": "^5.1.5",
     "next": "15.4.5",
     "postprocessing": "^6.37.7",
