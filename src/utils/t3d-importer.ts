@@ -328,7 +328,7 @@ export async function importFromT3D(file: File): Promise<ImportedWorkspaceData> 
               id: sys.id,
               name: sys.name,
               seed: sys.seed ?? Math.floor(Math.random() * 1_000_000),
-              capacity: (sys as any).capacity ?? 512,
+              capacity: (sys as any).capacity ?? 1024,
               emitterObjectId: sys.emitterObjectId ?? null,
               particleObjectId: sys.particleObjectId ?? null,
               emissionRate: sys.emissionRate,

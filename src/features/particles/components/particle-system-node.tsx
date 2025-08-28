@@ -190,18 +190,18 @@ function useSourceGeometry(objectId: string | null | undefined): { geom: BufferG
 export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }>
   = ({ objectId, systemId }) => {
     const scene = useSceneStore();
-  const { systems } = useParticlesStore();
-  const sys = systems[systemId];
-  const playing = useAnimationStore((s) => s.playing);
-  const fps = useAnimationStore((s) => s.fps);
-  const playhead = useAnimationStore((s) => s.playhead);
-  const forceFields = useForceFieldStore((s) => s.fields);
+    const { systems } = useParticlesStore();
+    const sys = systems[systemId];
+    const playing = useAnimationStore((s) => s.playing);
+    const fps = useAnimationStore((s) => s.fps);
+    const playhead = useAnimationStore((s) => s.playhead);
+    const forceFields = useForceFieldStore((s) => s.fields);
 
-  // Source geom/material from selected particle object (the thing each particle instances)
+    // Source geom/material from selected particle object (the thing each particle instances)
     const { geom, material } = useSourceGeometry(sys?.particleObjectId || null);
     // Clamp capacity to a conservative range to avoid WebGPU uniform/storage buffer limits
-    const capacity = Math.max(1, Math.min(sys?.capacity ?? 512, 2048));
-  const particlesRef = useRef<Particle[]>(Array.from({ length: capacity }, () => makeParticle(sys?.particleLifetime ?? 60)));
+    const capacity = Math.max(1, Math.min(sys?.capacity ?? 1024, 2048));
+    const particlesRef = useRef<Particle[]>(Array.from({ length: capacity }, () => makeParticle(sys?.particleLifetime ?? 60)));
     const tempObj = useMemo(() => new Object3D(), []);
     const mat4 = useMemo(() => new Matrix4(), []);
     const quat = useMemo(() => new Quaternion(), []);
@@ -210,8 +210,11 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
     // Reset particle pool when system changes
     const rngRef = useRef<() => number>(() => Math.random());
     useEffect(() => {
-      // Rebuild pool when system, capacity, or lifetime changes
+      // Rebuild pool when system, capacity, or lifetime/seed changes
       particlesRef.current = Array.from({ length: capacity }, () => makeParticle(sys?.particleLifetime ?? 60));
+      // Reset accumulators to avoid weird transients after capacity changes
+      accumRef.current = 0;
+      emitAccumRef.current = 0;
       rngRef.current = makeRng(sys?.seed ?? 1);
       // Also clear any instance matrices on reset
       const mesh = meshRef.current;
@@ -221,19 +224,29 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
       }
     }, [systemId, capacity, sys?.particleLifetime, sys?.seed]);
 
-    // If capacity changes while mounted, ensure instanced mesh count can't exceed new capacity
+    // Handle capacity changes by updating the instanced mesh
     useEffect(() => {
       const mesh = meshRef.current;
       if (!mesh) return;
+
+      // Update the mesh's max instance count when capacity changes
+      // This is crucial for proper GPU buffer allocation
+      (mesh as any).maxInstancedCount = capacity;
+
+      // If current count exceeds new capacity, clamp it
       if (mesh.count > capacity) {
-        mesh.count = Math.max(0, capacity);
-        if ((mesh as any).instanceMatrix) (mesh as any).instanceMatrix.needsUpdate = true;
+        mesh.count = capacity;
+      }
+
+      // Force update instance matrix to reflect new capacity
+      if ((mesh as any).instanceMatrix) {
+        (mesh as any).instanceMatrix.needsUpdate = true;
       }
     }, [capacity]);
 
     // Accumulator to step in whole frames at animation fps
-  const accumRef = useRef(0);
-  const emitAccumRef = useRef(0); // fractional emission accumulator
+    const accumRef = useRef(0);
+    const emitAccumRef = useRef(0); // fractional emission accumulator
     // Emit and simulate in lockstep with animation fps while playing
     useFrame((_, delta) => {
       if (!sys) return;
@@ -250,10 +263,19 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
 
       const gravity = new T3V(sys.gravity.x, sys.gravity.y, sys.gravity.z);
       const wind = new T3V(sys.wind.x, sys.wind.y, sys.wind.z);
-  while (steps-- > 0) {
+      while (steps-- > 0) {
         // Emit N new particles per frame
         emitAccumRef.current += Math.max(0, sys.emissionRate);
-        const toEmit = Math.max(0, Math.floor(emitAccumRef.current));
+        // Respect available free slots so we don't thrash searching for dead entries
+        let toEmit = Math.max(0, Math.floor(emitAccumRef.current));
+        if (toEmit > 0) {
+          let free = 0;
+          for (let i = 0; i < particlesRef.current.length; i++) {
+            if (!particlesRef.current[i].alive) free++;
+            if (free >= toEmit) break;
+          }
+          toEmit = Math.min(toEmit, free);
+        }
         emitAccumRef.current -= toEmit;
         const rng = rngRef.current;
         for (let n = 0; n < toEmit; n++) {
@@ -325,7 +347,7 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
                 }
               }
             }
-          } catch {}
+          } catch { }
           // x += v
           p.position.add(p.velocity);
           // rotation
@@ -340,7 +362,7 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
       if (!mesh) return;
       let i = 0;
       const obj = tempObj;
-  for (const p of particlesRef.current) {
+      for (const p of particlesRef.current) {
         if (!p.alive) continue;
         obj.position.copy(p.position);
         obj.rotation.copy(p.rotation);
@@ -369,13 +391,21 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
       const emitter3D = emitterObj ? getObject3D(emitterObj.id) : null;
       const emitterPos = emitter3D ? emitter3D.getWorldPosition(new T3V()) : new T3V();
       const emitterQuat = emitter3D ? emitter3D.getWorldQuaternion(new Quaternion()) : new Quaternion();
-  const gravity = new T3V(sys.gravity.x, sys.gravity.y, sys.gravity.z);
+      const gravity = new T3V(sys.gravity.x, sys.gravity.y, sys.gravity.z);
       const wind = new T3V(sys.wind.x, sys.wind.y, sys.wind.z);
       const rng = makeRng(sys.seed ?? 1);
       // Simulate from frame 0 -> frame (inclusive-exclusive)
       for (let f = 0; f < frame; f++) {
         emitAccumRef.current += Math.max(0, sys.emissionRate);
-        const toEmit = Math.max(0, Math.floor(emitAccumRef.current));
+        let toEmit = Math.max(0, Math.floor(emitAccumRef.current));
+        if (toEmit > 0) {
+          let free = 0;
+          for (let i = 0; i < particlesRef.current.length; i++) {
+            if (!particlesRef.current[i].alive) free++;
+            if (free >= toEmit) break;
+          }
+          toEmit = Math.min(toEmit, free);
+        }
         emitAccumRef.current -= toEmit;
         for (let n = 0; n < toEmit; n++) {
           const p = particlesRef.current.find((pp) => !pp.alive);
@@ -435,7 +465,7 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
                 }
               }
             }
-          } catch {}
+          } catch { }
           p.position.add(p.velocity);
           p.rotation.x += p.angularVelocity.x;
           p.rotation.y += p.angularVelocity.y;
@@ -448,7 +478,7 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
       if (!mesh) return;
       let i = 0;
       const obj = tempObj;
-  for (const p of particlesRef.current) {
+      for (const p of particlesRef.current) {
         if (!p.alive) continue;
         obj.position.copy(p.position);
         obj.rotation.copy(p.rotation);
@@ -461,7 +491,7 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
     }, [playing, playhead, fps, sys, scene.objects, objectId]);
 
     // Render instanced mesh
-  const meshRef = useRef<InstancedMesh>(null!);
+    const meshRef = useRef<InstancedMesh>(null!);
 
     // Propagate live material/geometry pointer changes to the instanced mesh without remounting
     useEffect(() => {
@@ -469,7 +499,7 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
       if (!mesh) return;
       if (material && (mesh.material as any) !== material) {
         (mesh as any).material = material as any;
-  (material as any).needsUpdate = true;
+        (material as any).needsUpdate = true;
       }
       if (geom && mesh.geometry !== geom) {
         mesh.geometry = geom;
@@ -480,8 +510,8 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
     if (!geom || !material) return null;
     return (
       // InstancedMesh signature in R3F: <instancedMesh args={[geometry, material, count]} />
-      // Key the mesh by capacity to force a safe reallocation when capacity changes
-      <instancedMesh key={`psys-${systemId}-${capacity}`} ref={meshRef} args={[geom, material, capacity]} frustumCulled={false} />
+      // Don't key by capacity - handle resizing in effects instead
+      <instancedMesh ref={meshRef} args={[geom, material, capacity]} frustumCulled={false} />
     );
   };
 

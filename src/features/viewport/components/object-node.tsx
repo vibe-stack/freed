@@ -307,6 +307,23 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
   const shading = useViewportStore((s) => s.shadingMode);
   const tool = useToolStore();
   const playing = useAnimationStore((s) => s.playing);
+  // Determine if this object is driven by any transform tracks in the active clip
+  const isDrivenByAnim = useAnimationStore((s) => {
+    const clip = s.activeClipId ? s.clips[s.activeClipId] : null;
+    if (!clip) return false;
+    const solo = s.soloTrackIds;
+    for (const tid of clip.trackIds) {
+      if (solo.size > 0 && !solo.has(tid)) continue;
+      const tr = s.tracks[tid];
+      if (!tr || tr.muted) continue;
+      if (tr.targetType !== 'sceneObject') continue;
+      if (tr.targetId !== objectId) continue;
+      // Any of position/rotation/scale component qualifies
+      const p = tr.property as string;
+      if (p.startsWith('position') || p.startsWith('rotation') || p.startsWith('scale')) return true;
+    }
+    return false;
+  });
 
   const groupRef = useRef<Group>(null!);
   useEffect(() => {
@@ -328,7 +345,9 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
 
   if (!obj || !t) return null;
 
-  const transformProps = playing
+  // While playing, only skip transform props if animation is actively driving this object.
+  // Otherwise, keep applying the scene transform so non-animated objects don't reset.
+  const transformProps = (playing && isDrivenByAnim)
     ? { }
     : {
         position: [t.position.x, t.position.y, t.position.z] as [number, number, number],
