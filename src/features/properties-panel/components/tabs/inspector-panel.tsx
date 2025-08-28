@@ -241,7 +241,7 @@ const ParticleSystemSection: React.FC<{ objectId: string; systemId: string }>
             value={sys.capacity}
             precision={0}
             step={16}
-            onChange={(v) => update({ capacity: Math.max(1, Math.min(50000, Math.round(v))) })}
+            onChange={(v) => update({ capacity: Math.max(1, Math.min(500000, Math.round(v))) })}
           />
         </Label>
         <div className="grid grid-cols-2 gap-2">

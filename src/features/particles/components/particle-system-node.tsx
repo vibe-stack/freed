@@ -384,8 +384,13 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
               const dir = toP.normalize();
               const k = Math.max(0, 1 - dist / Math.max(1e-4, f.radius));
               if (f.type === 'attractor' || f.type === 'repulsor') {
-                const sign = f.type === 'attractor' ? -1 : 1;
-                p.velocity.add(dir.multiplyScalar(sign * f.strength * k));
+                // Gravity-like inverse-square falloff with softening and radius cutoff
+                const R = Math.max(1e-4, f.radius);
+                const soft = 0.05 * R; // softening length to avoid singularity
+                const inv = 1.0 / Math.max(1e-8, (dist * dist + soft * soft));
+                const sign = f.type === 'attractor' ? -1 : 1; // -dir pulls toward center
+                const accel = sign * f.strength * inv;
+                p.velocity.addScaledVector(dir, accel);
               } else if (f.type === 'vortex' && f.zAxis) {
                 // Project radial direction onto plane orthogonal to zAxis to get tangential direction
                 const radialOnPlane = tmpV2.copy(dir).sub(tmpV1.copy(f.zAxis).multiplyScalar(dir.dot(f.zAxis)));
@@ -535,8 +540,13 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
               const dir = toP.normalize();
               const k = Math.max(0, 1 - dist / Math.max(1e-4, f.radius));
               if (f.type === 'attractor' || f.type === 'repulsor') {
+                // Gravity-like inverse-square falloff with softening and radius cutoff
+                const R = Math.max(1e-4, f.radius);
+                const soft = 0.05 * R;
+                const inv = 1.0 / Math.max(1e-8, (dist * dist + soft * soft));
                 const sign = f.type === 'attractor' ? -1 : 1;
-                p.velocity.add(dir.multiplyScalar(sign * f.strength * k));
+                const accel = sign * f.strength * inv;
+                p.velocity.addScaledVector(dir, accel);
               } else if (f.type === 'vortex' && f.zAxis) {
                 const radialOnPlane = tmpV2.copy(dir).sub(tmpV1.copy(f.zAxis).multiplyScalar(dir.dot(f.zAxis)));
                 if (radialOnPlane.lengthSq() > 1e-8) {
