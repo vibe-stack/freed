@@ -43,7 +43,7 @@ const defaultSystem = (): ParticleSystemConfig => ({
   id: nanoid(),
   name: 'Particle System',
   seed: Math.floor(Math.random() * 1_000_000) | 0,
-  capacity: 1024,
+  capacity: 5000,
   emitterObjectId: null,
   particleObjectId: null,
   emissionRate: 5,
