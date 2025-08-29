@@ -20,6 +20,8 @@ import { Mesh, Material, SceneObject, ViewportState, Light, CameraResource } fro
 import { useParticlesStore } from '@/stores/particles-store';
 import { useAnimationStore } from '@/stores/animation-store';
 import { useForceFieldStore } from '@/stores/force-field-store';
+import { useGeometryStore } from '@/stores/geometry-store';
+import { listAllFiles, getSuggestedFilename } from '@/stores/files-store';
 
 /**
  * Converts internal Vector3 to T3D format
@@ -248,6 +250,17 @@ export async function exportToT3D(
     selectedObjectId: workspaceData.selectedObjectId,
   };
 
+  // Include shader graphs for selected materials to preserve node materials
+  try {
+    const geo = useGeometryStore.getState();
+    const graphs: Record<string, any> = {};
+    filteredMaterials.forEach((m) => {
+      const g = geo.shaderGraphs.get(m.id);
+      if (g) graphs[m.id] = g;
+    });
+    if (Object.keys(graphs).length) (t3dScene as any).shaderGraphs = graphs;
+  } catch {}
+
   // Optional payloads for lights and cameras
   if (workspaceData.lights && Object.keys(workspaceData.lights).length > 0) {
     t3dScene.lights = Object.entries(workspaceData.lights).map(([id, l]) => lightToT3D(id, l));
@@ -328,11 +341,20 @@ export async function exportToT3D(
   
   zip.file('scene.json', sceneJson);
   
-  // Create assets folder (for future use with textures)
+  // Create assets for textures used in graphs
   if (includeAssets) {
-    zip.folder('assets');
-    // Add a placeholder file to ensure the folder exists
-    zip.file('assets/.gitkeep', '');
+    const folder = zip.folder('assets');
+    const files = listAllFiles();
+    if (files.length === 0) {
+      zip.file('assets/.gitkeep', '');
+    } else {
+      for (const f of files) {
+        const suggested = getSuggestedFilename(f.id) || f.name || `${f.id}.bin`;
+        const safeName = suggested.replace(/[^A-Za-z0-9._-]/g, '_');
+        const filePath = `assets/${f.id}_${safeName}`;
+        folder?.file(filePath, f.blob);
+      }
+    }
   }
 
   // Generate and return the blob

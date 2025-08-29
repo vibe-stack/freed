@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useGeometryStore } from '@/stores/geometry-store';
@@ -9,6 +9,7 @@ import { DragInput } from '@/components/drag-input';
 import type { ShaderNode as SNode } from '@/types/shader';
 import ColorInput from '@/components/color-input';
 import type { Vector3 } from '@/types/geometry';
+import { ensureFileIdForBlob, getOrCreateDownloadUrl, getSuggestedFilename } from '@/stores/files-store';
 
 type NodeData = { materialId?: string };
 export const ShaderFlowNode: React.FC<any> = ({ id, data, isConnectable, selected }) => {
@@ -19,6 +20,8 @@ export const ShaderFlowNode: React.FC<any> = ({ id, data, isConnectable, selecte
     const baseOutputs = (ShaderTypes.NodeOutputs as any)[n.type] ?? {} as Record<string, ShaderTypes.SocketType>;
     const updateShaderGraph = useGeometryStore((s) => s.updateShaderGraph);
     const updateNodeInternals = useUpdateNodeInternals();
+    const [hoveringDrop, setHoveringDrop] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const updateFloat = (value: number) => {
     if (!materialId) return;
@@ -51,11 +54,63 @@ export const ShaderFlowNode: React.FC<any> = ({ id, data, isConnectable, selecte
         return (n as any).data?.value ?? 0;
     }, [n]);
 
+    const textureFileId = useMemo<string | null>(() => {
+        if ((n as any).type !== 'texture') return null;
+        return (n as any).data?.fileId ?? null;
+    }, [n]);
+
+    const textureColorSpace = useMemo<'sRGB' | 'linear'>(() => {
+        if ((n as any).type !== 'texture') return 'sRGB';
+        const v = (n as any).data?.colorSpace;
+        return v === 'linear' ? 'linear' : 'sRGB';
+    }, [n]);
+
+    const onPickTexture = useCallback(() => {
+        if (!fileInputRef.current) return;
+        fileInputRef.current.click();
+    }, []);
+
+    const onFileChosen = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!materialId) return;
+        const f = e.target.files?.[0];
+        (e.target as any).value = '';
+        if (!f) return;
+        const id = await ensureFileIdForBlob(f, f.name);
+        updateShaderGraph(materialId, (g) => {
+            const node = g.nodes.find((nn) => nn.id === n.id);
+            if (node && (node as any).type === 'texture') {
+                (node as any).data = { ...(node as any).data, fileId: id, name: f.name };
+            }
+        });
+    }, [materialId, n?.id, updateShaderGraph]);
+
+    const onDropFiles = useCallback(async (e: React.DragEvent) => {
+        e.preventDefault();
+        setHoveringDrop(false);
+        if (!materialId || (n as any).type !== 'texture') return;
+        const f = e.dataTransfer.files?.[0];
+        if (!f) return;
+        const id = await ensureFileIdForBlob(f, f.name);
+        updateShaderGraph(materialId, (g) => {
+            const node = g.nodes.find((nn) => nn.id === n.id);
+            if (node && (node as any).type === 'texture') {
+                (node as any).data = { ...(node as any).data, fileId: id, name: f.name };
+            }
+        });
+    }, [materialId, n?.id, updateShaderGraph]);
+
+    const onDragOver = useCallback((e: React.DragEvent) => {
+        if ((n as any).type !== 'texture') return;
+        e.preventDefault();
+        setHoveringDrop(true);
+    }, [n]);
+    const onDragLeave = useCallback(() => setHoveringDrop(false), []);
+
     // Force RF to re-measure this node after mount and when dynamic content changes
     useEffect(() => {
         const t = setTimeout(() => updateNodeInternals(id), 0);
         return () => clearTimeout(t);
-    }, [id, updateNodeInternals, (n as any)?.type, floatVal, colorVec?.x, colorVec?.y, colorVec?.z]);
+    }, [id, updateNodeInternals, (n as any)?.type, floatVal, colorVec?.x, colorVec?.y, colorVec?.z, textureFileId]);
 
     // Dynamic output typing for math nodes (add/sub/mul/div/mod/mix)
     const dynOutputs = useMemo(() => {
@@ -119,7 +174,7 @@ export const ShaderFlowNode: React.FC<any> = ({ id, data, isConnectable, selecte
                     ))}
                 </div>
             </div>
-            {/* Inline controls for const nodes */}
+            {/* Inline controls for const/texture nodes */}
         {(n as any).type === 'const-float' && (
                 <div className="px-2 pb-2">
             <DragInput value={floatVal ?? 0} onChange={updateFloat} onValueCommit={updateFloat} precision={2} step={0.01} label="Value" />
@@ -128,6 +183,48 @@ export const ShaderFlowNode: React.FC<any> = ({ id, data, isConnectable, selecte
             {(n as any).type === 'const-color' && colorVec && (
                 <div className="px-2 pb-2">
                     <ColorInput value={colorVec} onChange={updateColor} label="Color" />
+                </div>
+            )}
+            {(n as any).type === 'texture' && (
+                <div className={`px-2 pb-2`} onDrop={onDropFiles} onDragOver={onDragOver} onDragLeave={onDragLeave}>
+                    <div className={`border border-white/10 rounded p-2 flex items-center gap-2 ${hoveringDrop ? 'bg-white/5' : ''}`}>
+                        <div className="w-12 h-12 bg-black/30 rounded overflow-hidden flex items-center justify-center">
+                            {textureFileId ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={getOrCreateDownloadUrl(textureFileId) ?? undefined} alt={getSuggestedFilename(textureFileId) || 'texture'} className="w-full h-full object-cover" />
+                            ) : (
+                                <span className="text-[10px] text-gray-500 text-center px-1">Drop image</span>
+                            )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="text-[11px] text-gray-400">{textureFileId ? (getSuggestedFilename(textureFileId) || 'Texture') : 'No texture'}</div>
+                            <div className="flex gap-2 mt-1">
+                                <button className="px-2 py-1 rounded border border-white/10 hover:bg-white/10" onClick={onPickTexture}>Choose…</button>
+                                {textureFileId && <a className="px-2 py-1 rounded border border-white/10 hover:bg-white/10" href={getOrCreateDownloadUrl(textureFileId) || '#'} download>Download</a>}
+                            </div>
+                            <div className="mt-2 flex items-center gap-2">
+                                <label className="text-[10px] text-gray-500">Color Space</label>
+                                <select
+                                    className="bg-transparent border border-white/10 rounded px-1 py-0.5 text-[11px]"
+                                    value={textureColorSpace}
+                                    onChange={(e) => {
+                                        if (!materialId) return;
+                                        const value = e.target.value === 'linear' ? 'linear' : 'sRGB';
+                                        updateShaderGraph(materialId, (g) => {
+                                            const node = g.nodes.find((nn) => nn.id === n.id);
+                                            if (node && (node as any).type === 'texture') {
+                                                (node as any).data = { ...(node as any).data, colorSpace: value };
+                                            }
+                                        });
+                                    }}
+                                >
+                                    <option value="sRGB">sRGB (color)</option>
+                                    <option value="linear">Linear (data)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onFileChosen} />
                 </div>
             )}
         </div>

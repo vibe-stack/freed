@@ -1,6 +1,6 @@
 // Shader node graph types for TSL-based materials
 
-export type SocketType = 'float' | 'vec2' | 'vec3' | 'vec4' | 'bool' | 'mat3' | 'mat4';
+export type SocketType = 'float' | 'vec2' | 'vec3' | 'vec4' | 'bool' | 'mat3' | 'mat4' | 'texture';
 
 export type ShaderNodeType =
   | 'input' // scene/builtins provider (uv, normal)
@@ -11,6 +11,8 @@ export type ShaderNodeType =
   | 'output-toon' // toon output
   | 'const-float'
   | 'const-color' // vec3
+  | 'texture' // sampler2D provider from uploaded file
+  | 'sampleTexture' // sample a texture: tex+uv -> vec4
   | 'uv' // vec2
   | 'normal' // vec3 (world)
   | 'add'
@@ -230,6 +232,8 @@ export const NodeInputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   },
   'const-float': {},
   'const-color': {},
+  'texture': {},
+  'sampleTexture': { tex: 'texture', uv: 'vec2' },
   'uv': {},
   'normal': {},
   'add': { a: 'float', b: 'float' },
@@ -385,6 +389,8 @@ export const NodeOutputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'output-toon': {},
   'const-float': { out: 'float' },
   'const-color': { out: 'vec3' },
+  'texture': { tex: 'texture' },
+  'sampleTexture': { out: 'vec4' },
   'uv': { out: 'vec2' },
   'normal': { out: 'vec3' },
   'add': { out: 'float' },
@@ -536,13 +542,15 @@ function isNumericVector(t: SocketType) {
 
 export function isCompatible(outT: SocketType, inT: SocketType) {
   if (outT === inT) return true;
+  // Special handling for texture sockets: only texture -> texture
+  if ((outT === 'texture') !== (inT === 'texture')) return false;
   // Allow feeding smaller vectors into vec4-typed inputs (we'll fill missing comps)
   if (inT === 'vec4' && (outT === 'vec2' || outT === 'vec3')) return true;
   // Generic numeric compatibility: allow scalar-vector ops and vice versa
   if (isNumericVector(outT) && isNumericVector(inT)) {
     if (outT === 'float' || inT === 'float') return true; // scalar with any vector size
     // Both vectors: must match dimensionality
-    const dims: Record<SocketType, number> = { float: 1, vec2: 2, vec3: 3, vec4: 4, bool: 0, mat3: 9, mat4: 16 };
+  const dims: Record<SocketType, number> = { float: 1, vec2: 2, vec3: 3, vec4: 4, bool: 0, mat3: 9, mat4: 16, texture: 0 };
     return dims[outT] === dims[inT];
   }
   return false;

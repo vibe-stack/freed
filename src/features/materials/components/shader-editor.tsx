@@ -81,6 +81,8 @@ export const ShaderEditor: React.FC<Props> = ({ open, onOpenChange }) => {
     'output-toon': ShaderFlowNode,
         'const-float': ShaderFlowNode,
         'const-color': ShaderFlowNode,
+    texture: ShaderFlowNode,
+    sampleTexture: ShaderFlowNode,
         uv: ShaderFlowNode,
         normal: ShaderFlowNode,
         add: ShaderFlowNode,
@@ -243,6 +245,7 @@ export const ShaderEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         const node: any =
             type === 'const-float' ? ({ id, type, position: basePos as any, data: { value: 1 } } as any) :
             type === 'const-color' ? ({ id, type, position: basePos as any, data: { r: 1, g: 1, b: 1 } } as any) :
+            type === 'texture' ? ({ id, type, position: basePos as any, data: { fileId: undefined } } as any) :
             ({ id, type, position: basePos as any } as any);
         // Update RF internal state immediately
         if (rf) { (rf as any).addNodes([{ id, type: type as any, position: basePos as any, data: { materialId }, dragHandle: '.rf-drag', draggable: true } as any]); }

@@ -77,6 +77,8 @@ export const ShaderContextMenuContent: React.FC<Props> = ({ onAdd }) => {
         <SubMenu id="inputs">
           <Item onSelect={() => onAdd('uv')}>UV</Item>
           <Item onSelect={() => onAdd('normal')}>Normal</Item>
+          <Item onSelect={() => onAdd('texture')}>Texture</Item>
+          <Item onSelect={() => onAdd('sampleTexture')}>Sample Texture</Item>
         </SubMenu>
       </div>
 

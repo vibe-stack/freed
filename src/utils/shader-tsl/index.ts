@@ -42,6 +42,7 @@ import { randomResolvers } from './nodes/random-nodes';
 import { rotateResolvers } from './nodes/rotate-nodes';
 import { blendResolvers } from './nodes/blend-nodes';
 import { packResolvers } from './nodes/pack-nodes';
+import { textureResolvers } from './nodes/texture-nodes';
 
 const resolvers: Record<string, NodeResolver> = {
   ...constResolvers,
@@ -62,6 +63,7 @@ const resolvers: Record<string, NodeResolver> = {
   ...rotateResolvers,
   ...blendResolvers,
   ...packResolvers,
+  ...textureResolvers,
 };
 
 function resolveNode(
@@ -105,10 +107,10 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
       return pair ? buildNodeExpr(pair.from, pair.fromHandle) : null;
     };
 
-    const color = resolveIn('color') ?? TSL.vec3(0.8, 0.8, 0.85);
+  const color = resolveIn('color') ?? TSL.vec3(0.8, 0.8, 0.85);
     const roughness = resolveIn('roughness') ?? TSL.float(0.8);
     const metalness = resolveIn('metalness') ?? TSL.float(0.05);
-    const emissive = resolveIn('emissive') ?? TSL.vec3(0, 0, 0);
+  const emissive = resolveIn('emissive') ?? TSL.vec3(0, 0, 0);
     const emissiveIntensity = resolveIn('emissiveIntensity') ?? TSL.float(1);
 
   const mat = new MeshStandardNodeMaterial();
@@ -121,10 +123,11 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
   const envNode = resolveIn('env');
   const aoNode = resolveIn('ao');
 
-  (mat as any).colorNode = color;
+  const toVec3 = (v: any) => (v && (v as any).getMember ? (v as any).getMember('xyz') : v);
+  (mat as any).colorNode = toVec3(color);
   (mat as any).roughnessNode = roughness;
   (mat as any).metalnessNode = metalness;
-  (mat as any).emissiveNode = emissive;
+  (mat as any).emissiveNode = toVec3(emissive);
   (mat as any).emissiveIntensity = emissiveIntensity;
   if (opacity) (mat as any).opacityNode = opacity;
   if (alphaTest) (mat as any).alphaTestNode = alphaTest;
@@ -148,10 +151,10 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
       return pair ? buildNodeExpr(pair.from, pair.fromHandle) : null;
     };
 
-    const color = resolveIn('color') ?? TSL.vec3(0.8, 0.8, 0.85);
+  const color = resolveIn('color') ?? TSL.vec3(0.8, 0.8, 0.85);
     const roughness = resolveIn('roughness') ?? TSL.float(0.8);
     const metalness = resolveIn('metalness') ?? TSL.float(0.05);
-    const emissive = resolveIn('emissive') ?? TSL.vec3(0, 0, 0);
+  const emissive = resolveIn('emissive') ?? TSL.vec3(0, 0, 0);
     const emissiveIntensity = resolveIn('emissiveIntensity') ?? TSL.float(1);
     // TODO: wire up physical-only channels when nodes exist: clearcoat, sheen, transmission, etc.
 
@@ -183,10 +186,11 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
   const dispersion = resolveIn('dispersion');
   const anisotropy = resolveIn('anisotropy');
 
-  (mat as any).colorNode = color;
+  const toVec3 = (v: any) => (v && (v as any).getMember ? (v as any).getMember('xyz') : v);
+  (mat as any).colorNode = toVec3(color);
   (mat as any).roughnessNode = roughness;
   (mat as any).metalnessNode = metalness;
-  (mat as any).emissiveNode = emissive;
+  (mat as any).emissiveNode = toVec3(emissive);
   (mat as any).emissiveIntensity = emissiveIntensity;
   if (opacity) (mat as any).opacityNode = opacity;
   if (alphaTest) (mat as any).alphaTestNode = alphaTest;
@@ -226,8 +230,8 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
       return pair ? buildNodeExpr(pair.from, pair.fromHandle) : null;
     };
 
-    const color = resolveIn('color') ?? TSL.vec3(0.8, 0.8, 0.85);
-    const emissive = resolveIn('emissive') ?? TSL.vec3(0, 0, 0);
+  const color = resolveIn('color') ?? TSL.vec3(0.8, 0.8, 0.85);
+  const emissive = resolveIn('emissive') ?? TSL.vec3(0, 0, 0);
     const emissiveIntensity = resolveIn('emissiveIntensity') ?? TSL.float(1);
     const shininess = resolveIn('shininess') ?? TSL.float(30);
     const specular = resolveIn('specular') ?? TSL.vec3(0.2, 0.2, 0.2);
@@ -242,8 +246,9 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
     const aoNode = resolveIn('ao');
 
   const mat = new MeshPhongNodeMaterial();
-    (mat as any).colorNode = color;
-    (mat as any).emissiveNode = emissive;
+    const toVec3 = (v: any) => (v && (v as any).getMember ? (v as any).getMember('xyz') : v);
+    (mat as any).colorNode = toVec3(color);
+    (mat as any).emissiveNode = toVec3(emissive);
     (mat as any).emissiveIntensity = emissiveIntensity;
     (mat as any).shininessNode = shininess;
     (mat as any).specularNode = specular;

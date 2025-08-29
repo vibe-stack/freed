@@ -27,6 +27,7 @@ import {
 import { useAnimationStore } from '@/stores/animation-store';
 import { useParticlesStore } from '@/stores/particles-store';
 import { useForceFieldStore } from '@/stores/force-field-store';
+import { registerFileWithId } from '@/stores/files-store';
 
 /**
  * Converts T3D Vector3 to internal format
@@ -290,6 +291,30 @@ export async function importFromT3D(file: File): Promise<ImportedWorkspaceData> 
           timelinePanelOpen: !!ui.timelinePanelOpen,
           lastUsedFps: ui.lastUsedFps ?? s.lastUsedFps,
         }), false);
+      }
+    } catch {}
+
+    // Restore files from assets folder if present
+    try {
+      const assetsFolder = Object.values(zipContents.files).filter((f) => f.name.startsWith('assets/') && !f.dir);
+      for (const file of assetsFolder) {
+        const name = file.name.split('/').pop() || 'asset.bin';
+        const [idPart, ...rest] = name.split('_');
+        const origName = rest.join('_') || name;
+        const blob = await file.async('blob');
+        registerFileWithId(idPart, blob, origName);
+      }
+    } catch {}
+
+    // Restore shader graphs if present
+    try {
+      const graphs = (t3dScene as any).shaderGraphs as Record<string, any> | undefined;
+      if (graphs) {
+        // Apply into geometry store
+        const geo = (await import('@/stores/geometry-store')).useGeometryStore;
+        for (const [mid, g] of Object.entries(graphs)) {
+          geo.getState().setShaderGraph(mid, g as any);
+        }
       }
     } catch {}
 
