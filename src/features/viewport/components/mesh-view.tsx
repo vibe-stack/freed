@@ -48,8 +48,9 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
 
     const geo = new BufferGeometry();
     const vertexMap = new Map(dmesh.vertices.map((v) => [v.id, v] as const));
-    const positions: number[] = [];
-    const normals: number[] = [];
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const uvs: number[] = [];
 
     dmesh.faces.forEach((face) => {
       const tris = convertQuadToTriangles(face.vertexIds);
@@ -64,7 +65,7 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
           .subVectors(p1, p0)
           .cross(new Vector3().subVectors(p2, p0))
           .normalize();
-        positions.push(
+    positions.push(
           p0.x,
           p0.y,
           p0.z,
@@ -75,6 +76,9 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
           p2.y,
           p2.z
         );
+    // Per-vertex UVs matching the triangle order
+    const uv0 = v0.uv; const uv1 = v1.uv; const uv2 = v2.uv;
+    uvs.push(uv0.x, uv0.y, uv1.x, uv1.y, uv2.x, uv2.y);
         const useSmooth = (dmesh.shading ?? 'flat') === 'smooth';
         if (useSmooth) {
           const n0 = v0.normal; const n1 = v1.normal; const n2 = v2.normal;
@@ -87,6 +91,7 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
 
     geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
     geo.setAttribute('normal', new Float32BufferAttribute(normals, 3));
+  if (uvs.length) geo.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
     geo.computeBoundingSphere();
 
     // Material selection: use mesh.materialId when shading === 'material'

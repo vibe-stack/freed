@@ -36,26 +36,17 @@ function textureFromFileId(id?: string, colorSpace?: 'sRGB' | 'linear'): THREE.T
 }
 
 export const textureResolvers = {
-  texture: (n: ShaderNode) => {
+  texture: (n: ShaderNode, _o: string, ctx: Ctx, build: any) => {
     const fileId: string | undefined = (n as any).data?.fileId;
     const colorSpace: 'sRGB' | 'linear' | undefined = (n as any).data?.colorSpace === 'linear' ? 'linear' : 'sRGB';
     const tex = textureFromFileId(fileId, colorSpace);
-    if (!tex) return null;
-  // Return the texture handle itself; sampling is done by sampleTexture via TSL.texture(tex, uv)
-  return tex as any;
-  },
-  sampleTexture: (n: ShaderNode, _o: string, ctx: Ctx, build: any) => {
-    const texIn = ctx.findInput(n.id, 'tex');
+    if (!tex) return TSL.vec4(0, 0, 0, 1);
+    
+    // Get UV input or use default uv()
     const uvIn = ctx.findInput(n.id, 'uv');
-    const texExpr = texIn ? build(texIn.from, texIn.fromHandle) : null;
     const uvExpr = uvIn ? build(uvIn.from, uvIn.fromHandle) : (TSL as any).uv?.();
-    const tfn = (TSL as any).texture;
-    if (!tfn || !texExpr) return null;
-    // If texExpr is already a texture(...) node, calling without uv returns vec4; else pass uv
-    try {
-      return uvExpr ? tfn(texExpr, uvExpr) : tfn(texExpr);
-    } catch {
-      return null;
-    }
+    
+    // Sample the texture directly with TSL.texture()
+    return (TSL as any).texture?.(tex, uvExpr) ?? TSL.vec4(0, 0, 0, 1);
   },
 } as const;
