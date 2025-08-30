@@ -44,6 +44,7 @@ export type ShaderNodeType =
   // Vectors and swizzles
   | 'vec2' | 'vec3' | 'vec4' | 'swizzle' | 'combine'
   | 'unpack'
+  | 'uvScale' | 'uvTransform'
   // Oscillators
   | 'oscSine'
   | 'oscSquare'
@@ -293,6 +294,9 @@ export const NodeInputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'swizzle': { in: 'vec4' },
   'combine': { x: 'float', y: 'float', z: 'float', w: 'float' },
   'unpack': { value: 'vec4' },
+  // UV transforms
+  'uvScale': { uv: 'vec2', scale: 'vec2' },
+  'uvTransform': { uv: 'vec2', offset: 'vec2', rotation: 'float', scale: 'vec2' },
   // oscillators have no inputs (use global timer)
   'oscSine': {},
   'oscSquare': {},
@@ -448,6 +452,9 @@ export const NodeOutputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'swizzle': { out: 'float' },
   'combine': { out: 'vec4' },
   'unpack': { x: 'float', y: 'float', z: 'float', w: 'float' },
+  // UV transforms
+  'uvScale': { out: 'vec2' },
+  'uvTransform': { out: 'vec2' },
   // oscillators
   'oscSine': { out: 'float' },
   'oscSquare': { out: 'float' },

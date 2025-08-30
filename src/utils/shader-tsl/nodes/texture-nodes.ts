@@ -24,6 +24,12 @@ function textureFromFileId(id?: string, colorSpace?: 'sRGB' | 'linear'): THREE.T
   const SRGB = (THREE as any).SRGBColorSpace;
   const LINEAR = (THREE as any).LinearSRGBColorSpace ?? (THREE as any).LinearSRGBColorSpace;
   (tex as any).colorSpace = colorSpace === 'linear' ? LINEAR : SRGB;
+  // Enable tiling so scaled UVs repeat instead of clamping to edge (which causes streaks)
+  (tex as any).wrapS = (THREE as any).RepeatWrapping;
+  (tex as any).wrapT = (THREE as any).RepeatWrapping;
+  // Sensible default filters
+  (tex as any).magFilter = (THREE as any).LinearFilter;
+  (tex as any).minFilter = (THREE as any).LinearMipmapLinearFilter ?? (THREE as any).LinearFilter;
   // Kick async upload via ImageBitmap
   createImageBitmap(sf.blob).then((bmp) => {
     (tex as any).image = bmp;
