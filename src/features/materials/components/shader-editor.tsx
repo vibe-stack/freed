@@ -82,6 +82,8 @@ export const ShaderEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         'const-float': ShaderFlowNode,
         'const-color': ShaderFlowNode,
     texture: ShaderFlowNode,
+    uvScale: ShaderFlowNode,
+    uvTransform: ShaderFlowNode,
         uv: ShaderFlowNode,
         normal: ShaderFlowNode,
         add: ShaderFlowNode,
