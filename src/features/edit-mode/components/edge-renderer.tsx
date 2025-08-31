@@ -108,74 +108,100 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
   const handleClick = (event: ThreeEvent<PointerEvent>) => {
     if (selectionMode !== 'edge') return;
     event.stopPropagation();
-    // Robust picking: choose the edge with minimum distance to the click ray in WORLD space
-    // and accept only if within a screen-space pixel threshold
+    
     if (!lineRef.current) return;
+    
+    // Get mouse position in normalized device coordinates (-1 to +1)
+    const mouse = {
+      x: (event.nativeEvent.offsetX / size.width) * 2 - 1,
+      y: -(event.nativeEvent.offsetY / size.height) * 2 + 1
+    };
+    
     const matWorld = new Matrix4().copy(lineRef.current.matrixWorld);
-    const aW = new Vector3();
-    const bW = new Vector3();
-    const tmp = new Vector3();
-    const rayOrigin = event.ray.origin.clone();
-    const rayDir = event.ray.direction.clone();
     const vtxMap = new Map(vertices.map(v => [v.id, v] as const));
-
-    // Helper: squared distance between world-space segment AB and ray O + t*D
-    function raySegmentDist2(o: Vector3, d: Vector3, a: Vector3, b: Vector3) {
-      // Based on closest points between two segments (ray treated as infinite in +t)
-      const u = d; // ray direction (unit)
-      const v = tmp.copy(b).sub(a); // segment direction
-      const w0 = a.clone().sub(o);
-      const aU = u.dot(u); // =1 if normalized
-      const bU = u.dot(v);
-      const cU = v.dot(v);
-      const dU = u.dot(w0);
-      const eU = v.dot(w0);
-      const denom = aU * cU - bU * bU + 1e-12;
-      let sc = (bU * eU - cU * dU) / denom; // ray param
-      let tc = (aU * eU - bU * dU) / denom; // seg param [0,1]
-      // Clamp segment param to [0,1]
-      if (tc < 0) tc = 0; else if (tc > 1) tc = 1;
-      // For the ray, only allow sc >= 0
-      if (sc < 0) sc = 0;
-      const pc = o.clone().addScaledVector(u, sc);
-      const qc = a.clone().addScaledVector(v, tc);
-      return { dist2: pc.distanceToSquared(qc), pc, qc };
+    const worldPos1 = new Vector3();
+    const worldPos2 = new Vector3();
+    const screenPos1 = new Vector3();
+    const screenPos2 = new Vector3();
+    
+    // Helper function to calculate perpendicular distance from point to line segment in 2D
+    function distanceToLineSegment2D(px: number, py: number, x1: number, y1: number, x2: number, y2: number) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const lengthSq = dx * dx + dy * dy;
+      
+      if (lengthSq === 0) {
+        // Degenerate case: line segment is a point
+        const distSq = (px - x1) * (px - x1) + (py - y1) * (py - y1);
+        return Math.sqrt(distSq);
+      }
+      
+      // Find the projection parameter t (0 <= t <= 1)
+      let t = ((px - x1) * dx + (py - y1) * dy) / lengthSq;
+      t = Math.max(0, Math.min(1, t));
+      
+      // Find the closest point on the segment
+      const closestX = x1 + t * dx;
+      const closestY = y1 + t * dy;
+      
+      // Calculate distance
+      const distX = px - closestX;
+      const distY = py - closestY;
+      return Math.sqrt(distX * distX + distY * distY);
     }
-
-    let bestIdx = -1;
-    let bestDist2 = Infinity;
-    let bestPoint: Vector3 | null = null;
+    
+    const SELECTION_THRESHOLD = 8; // pixels
+    const candidates: Array<{edgeIndex: number, distance: number, depth: number}> = [];
+    
+    // Test all edges
     for (let i = 0; i < edges.length; i++) {
-      const e = edges[i];
-      const v0 = vtxMap.get(e.vertexIds[0]);
-      const v1 = vtxMap.get(e.vertexIds[1]);
+      const edge = edges[i];
+      const v0 = vtxMap.get(edge.vertexIds[0]);
+      const v1 = vtxMap.get(edge.vertexIds[1]);
       if (!v0 || !v1) continue;
-      aW.set(v0.position.x, v0.position.y, v0.position.z).applyMatrix4(matWorld);
-      bW.set(v1.position.x, v1.position.y, v1.position.z).applyMatrix4(matWorld);
-      const { dist2, pc } = raySegmentDist2(rayOrigin, rayDir, aW, bW);
-      if (dist2 < bestDist2) { bestDist2 = dist2; bestIdx = i; bestPoint = pc; }
+      
+      // Transform vertices to world space
+      worldPos1.set(v0.position.x, v0.position.y, v0.position.z).applyMatrix4(matWorld);
+      worldPos2.set(v1.position.x, v1.position.y, v1.position.z).applyMatrix4(matWorld);
+      
+      // Project to screen space
+      screenPos1.copy(worldPos1).project(camera);
+      screenPos2.copy(worldPos2).project(camera);
+      
+      // Skip if both points are behind the camera
+      if (screenPos1.z > 1 && screenPos2.z > 1) continue;
+      
+      // Calculate screen-space distance in pixels
+      const screenDist = distanceToLineSegment2D(
+        mouse.x, mouse.y,
+        screenPos1.x, screenPos1.y,
+        screenPos2.x, screenPos2.y
+      );
+      
+      // Convert normalized distance to pixels
+      const pixelDistance = screenDist * Math.min(size.width, size.height) * 0.5;
+      
+      if (pixelDistance <= SELECTION_THRESHOLD) {
+        // Calculate depth (average Z of the edge in view space)
+        const avgDepth = (screenPos1.z + screenPos2.z) * 0.5;
+        candidates.push({
+          edgeIndex: i,
+          distance: pixelDistance,
+          depth: avgDepth
+        });
+      }
     }
-
-    if (bestIdx >= 0) {
-      // Screen-space threshold: accept only if within ~10px
-      const pixThreshold = 10; // px
-      // Convert pixel threshold to world units at the hit depth
-      const cam = camera;
-      const center = lineRef.current?.geometry.boundingSphere?.center?.clone?.().applyMatrix4(lineRef.current.matrixWorld) || lineRef.current?.getWorldPosition(new Vector3()) || new Vector3();
-      const dist = cam.position.distanceTo(center);
-      let worldTol = 0.01; // fallback
-      if (cam instanceof PerspectiveCamera) {
-        const vFOV = (cam.fov * Math.PI) / 180;
-        const worldScreenHeight = 2 * Math.tan(vFOV / 2) * Math.max(dist, 0.1); // prevent zero
-        worldTol = (pixThreshold / size.height) * worldScreenHeight;
-      } else if (cam instanceof OrthographicCamera) {
-        const worldScreenHeight = cam.top - cam.bottom;
-        worldTol = (pixThreshold / size.height) * worldScreenHeight;
-      }
-
-      if (Math.sqrt(bestDist2) / 100 <= worldTol) {
-        onEdgeClick(edges[bestIdx].id, event);
-      }
+    
+    if (candidates.length > 0) {
+      // Sort by depth first (closest first), then by distance if depths are equal
+      candidates.sort((a, b) => {
+        const depthDiff = a.depth - b.depth;
+        if (Math.abs(depthDiff) > 0.001) return depthDiff;
+        return a.distance - b.distance;
+      });
+      
+      const bestEdge = candidates[0];
+      onEdgeClick(edges[bestEdge.edgeIndex].id, event);
     }
   };
 
