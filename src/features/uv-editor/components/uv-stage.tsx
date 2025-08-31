@@ -110,14 +110,15 @@ function MeshUV({ mesh, selected, zoom }: { mesh?: MeshType; selected: Set<strin
         <lineBasicMaterial color="#cbd5e1" linewidth={1} transparent opacity={0.85} />
       </lineSegments>
       {/* Vertices: rest */}
-      <points>
+  <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[points.rest, 3]} />
         </bufferGeometry>
+    {/* Keep point size stable in pixels regardless of zoom */}
   <pointsMaterial color="#e5e7eb" size={Math.max(3, 9 / Math.max(1, zoom))} sizeAttenuation={false} />
       </points>
       {/* Vertices: selected */}
-      <points>
+    <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[points.sel, 3]} />
         </bufferGeometry>

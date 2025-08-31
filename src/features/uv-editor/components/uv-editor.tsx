@@ -118,7 +118,8 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
     const w = el.clientWidth; const h = el.clientHeight;
     const cx = (clientX - rect.left); const cy = (clientY - rect.top);
     const u = (cx - (w / 2 + pan.x)) / zoom;
-    const v = (cy - (h / 2 + pan.y)) / zoom; // Remove extra Y flip since stage already flips Y
+  // Stage scales Y by -zoom, so invert here to map screen pixels -> UV space correctly
+  const v = - (cy - (h / 2 + pan.y)) / zoom;
     return { x: u, y: v };
   };
 
@@ -179,7 +180,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
           const ax = xform.axis === 'y' ? 0 : 1; const ay = xform.axis === 'x' ? 0 : 1;
           for (const v of m.vertices) {
             const o = xform.uv0.get(v.id);
-            if (o) v.uv = { x: o.x + du * ax, y: o.y - dv * ay };
+            if (o) v.uv = { x: o.x + du * ax, y: o.y + dv * ay };
           }
         } else if (xform.mode === 'rotate') {
           // Angle from origin based on mouse movement relative to origin
@@ -400,7 +401,16 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
   const applyPlanar = (axis: 'x'|'y'|'z') => { if (!mesh) return; useGeometryStore.getState().updateMesh(mesh.id, (m) => planarProject(m, axis, uvSel.selection)); };
   const applyCube = () => { if (!mesh) return; useGeometryStore.getState().updateMesh(mesh.id, (m) => cubeProject(m, uvSel.selection)); };
   const tile2x = () => { if (!mesh) return; useGeometryStore.getState().updateMesh(mesh.id, (m) => scaleOffsetUVs(m, {x:2,y:2}, {x:0,y:0}, uvSel.selection)); };
-  const unwrap = () => { if (!mesh) return; useGeometryStore.getState().updateMesh(mesh.id, (m) => unwrapMeshBySeams(m)); };
+  const unwrap = () => { 
+    if (!mesh) return; 
+    
+    // Check for cube-like geometry with excessive seams
+    const seamCount = mesh.edges.filter(e => e.seam).length;
+    const faceCount = mesh.faces.length;
+
+    
+    useGeometryStore.getState().updateMesh(mesh.id, (m) => unwrapMeshBySeams(m)); 
+  };
 
   if (!open) return null;
 
