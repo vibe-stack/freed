@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Color, BufferGeometry, Float32BufferAttribute, LineSegments, Matrix4, Vector3, PerspectiveCamera } from 'three/webgpu';
+import { Color, BufferGeometry, Float32BufferAttribute, LineSegments, Matrix4, Vector3, PerspectiveCamera, OrthographicCamera } from 'three/webgpu';
 import type { ThreeEvent } from '@react-three/fiber';
 import { useMesh } from '../../../stores/geometry-store';
 import { Vertex } from '../../../types/geometry';
@@ -9,6 +9,7 @@ import { useThree } from '@react-three/fiber';
 
 const ORANGE = new Color(1.0, 0.5, 0.0);
 const BLACK = new Color(0, 0, 0);
+const RED = new Color(1, 0, 0);
 
 interface EdgeRendererProps {
   meshId: string;
@@ -28,7 +29,7 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
   const { camera, size } = useThree();
   const mesh = useMesh(meshId);
   const lineRef = useRef<LineSegments | null>(null);
-  
+
   // Merge local vertex overrides when provided
   const vertices = useMemo(() => {
     const base = mesh?.vertices || [];
@@ -37,7 +38,7 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
     return base.map(v => overrides.get(v.id) || v);
   }, [mesh?.vertices, localVertices]);
   const edges = mesh?.edges || [];
-  
+
   const batched = useMemo(() => {
     const vertexMap = new Map(vertices.map(v => [v.id, v] as const));
     const count = edges.length;
@@ -61,7 +62,7 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
         const o = i * 6;
         positions[o + 0] = v0.position.x; positions[o + 1] = v0.position.y; positions[o + 2] = v0.position.z;
         positions[o + 3] = v1.position.x; positions[o + 4] = v1.position.y; positions[o + 5] = v1.position.z;
-        const c = sel.has(e.id) ? ORANGE : BLACK;
+        const c = e.seam ? RED : (sel.has(e.id) ? ORANGE : BLACK);
         for (let j = 0; j < 2; j++) {
           const k = o + j * 3;
           colors[k + 0] = c.r; colors[k + 1] = c.g; colors[k + 2] = c.b;
@@ -80,6 +81,29 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
       lineRef.current.renderOrder = 2000;
     }
   }, []);
+
+  // Custom raycast that expands line threshold to ~8px in screen space
+  const customRaycast = function(this: any, raycaster: any, intersects: any[]) {
+    const obj = lineRef.current as any;
+    if (!obj) return;
+    const cam: any = (camera as any);
+    let worldTol = 0.01; // fallback
+    if (cam.isPerspectiveCamera) {
+      const center = obj.geometry.boundingSphere?.center?.clone?.().applyMatrix4(obj.matrixWorld) || obj.getWorldPosition(new Vector3());
+      const dist = cam.position.distanceTo(center);
+      const vFOV = (cam.fov * Math.PI) / 180;
+      const worldScreenHeight = 2 * Math.tan(vFOV / 2) * dist;
+      worldTol = (8 / size.height) * worldScreenHeight; // 8px
+    } else if (cam.isOrthographicCamera) {
+      const worldScreenHeight = cam.top - cam.bottom;
+      worldTol = (8 / size.height) * worldScreenHeight;
+    }
+    const prev = raycaster.params?.Line?.threshold ?? 1;
+    raycaster.params = raycaster.params || {};
+    raycaster.params.Line = { ...(raycaster.params.Line || {}), threshold: Math.max(prev, worldTol) };
+    (LineSegments.prototype.raycast as any).call(this, raycaster, intersects);
+    // restore not strictly necessary
+  } as any;
 
   const handleClick = (event: ThreeEvent<PointerEvent>) => {
     if (selectionMode !== 'edge') return;
@@ -136,23 +160,31 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({
       // Screen-space threshold: accept only if within ~10px
       const pixThreshold = 10; // px
       // Convert pixel threshold to world units at the hit depth
-      const cam = camera as PerspectiveCamera;
-      const hitDist = bestPoint ? cam.position.distanceTo(bestPoint) : cam.position.distanceTo(lineRef.current.position);
-      const vFOV = (cam.fov * Math.PI) / 180;
-      const worldScreenHeight = 2 * Math.tan(vFOV / 2) * hitDist;
-      const worldTol = (pixThreshold / size.height) * worldScreenHeight;
-      if (Math.sqrt(bestDist2) <= worldTol) {
+      const cam = camera;
+      const center = lineRef.current?.geometry.boundingSphere?.center?.clone?.().applyMatrix4(lineRef.current.matrixWorld) || lineRef.current?.getWorldPosition(new Vector3()) || new Vector3();
+      const dist = cam.position.distanceTo(center);
+      let worldTol = 0.01; // fallback
+      if (cam instanceof PerspectiveCamera) {
+        const vFOV = (cam.fov * Math.PI) / 180;
+        const worldScreenHeight = 2 * Math.tan(vFOV / 2) * Math.max(dist, 0.1); // prevent zero
+        worldTol = (pixThreshold / size.height) * worldScreenHeight;
+      } else if (cam instanceof OrthographicCamera) {
+        const worldScreenHeight = cam.top - cam.bottom;
+        worldTol = (pixThreshold / size.height) * worldScreenHeight;
+      }
+
+      if (Math.sqrt(bestDist2) / 100 <= worldTol) {
         onEdgeClick(edges[bestIdx].id, event);
       }
     }
   };
 
   return (
-  <lineSegments
+    <lineSegments
       ref={lineRef}
       onPointerDown={handleClick}
       // Important: disable raycasting when not in edge mode so it doesn't steal clicks
-  raycast={selectionMode === 'edge' ? (LineSegments.prototype.raycast as unknown as any) : (() => {})}
+      raycast={selectionMode === 'edge' ? (customRaycast as any) : (() => { })}
     >
       <bufferGeometry attach="geometry">
         <bufferAttribute attach="attributes-position" args={[batched.geometry.getAttribute('position')!.array as Float32Array, 3]} />

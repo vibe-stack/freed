@@ -25,6 +25,8 @@ export interface Edge {
   vertexIds: [string, string];
   faceIds: string[]; // Adjacent faces
   selected: boolean;
+  // If true, this edge is marked as a UV seam (cuts when unwrapping)
+  seam?: boolean;
 }
 
 export interface Face {

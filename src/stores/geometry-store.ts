@@ -42,6 +42,9 @@ interface GeometryActions {
   updateMesh: (meshId: string, updater: (mesh: Mesh) => void) => void;
   selectMesh: (meshId: string | null) => void;
   reset: () => void;
+  // UV seams
+  setEdgeSeams: (meshId: string, edgeIds: string[], seam: boolean) => void;
+  clearAllSeams: (meshId: string) => void;
   
   // Material operations
   addMaterial: (material: Material) => void;
@@ -121,6 +124,24 @@ export const useGeometryStore = create<GeometryStore>()(
             mesh.faces = mesh.faces.slice();
             mesh.edges = mesh.edges.slice();
           }
+        });
+      },
+      // UV seams
+      setEdgeSeams: (meshId, edgeIds, seam) => {
+        set((state) => {
+          const mesh = state.meshes.get(meshId);
+          if (!mesh) return;
+          const set = new Set(edgeIds);
+          for (const e of mesh.edges) if (set.has(e.id)) e.seam = !!seam;
+          mesh.edges = mesh.edges.slice();
+        });
+      },
+      clearAllSeams: (meshId) => {
+        set((state) => {
+          const mesh = state.meshes.get(meshId);
+          if (!mesh) return;
+          for (const e of mesh.edges) e.seam = false;
+          mesh.edges = mesh.edges.slice();
         });
       },
       

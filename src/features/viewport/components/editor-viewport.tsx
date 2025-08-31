@@ -1,11 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { WebGPURenderer } from 'three/webgpu';
 import { WebGLRenderer } from 'three';
 import type { RaycasterParameters } from 'three/webgpu';
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls, PerformanceMonitor } from '@react-three/drei';
 import { useViewportStore } from '@/stores/viewport-store';
 import CalmBg from './calm-bg';
 import SceneContent from './scene-content';
@@ -26,6 +26,7 @@ function ActiveCameraBinding() {
 }
 
 const EditorViewport: React.FC = () => {
+  const [dpr, setDpr] = useState(1.5)
   const camera = useViewportStore((s) => s.camera);
   // activeCameraObjectId is consumed inside useActiveCameraBinding hook
   const shadingMode = useViewportStore((s) => s.shadingMode);
@@ -58,14 +59,15 @@ const EditorViewport: React.FC = () => {
           far: camera.far,
           position: [camera.position.x, camera.position.y, camera.position.z],
         }}
-        dpr={[0.2, 2]}
-  // Slightly relaxed line thresholds so edge picking can register; actual selection uses a stricter pixel test
-  raycaster={{ params: { Mesh: {}, LOD: {}, Points: {}, Sprite: {}, Line2: { threshold: 1.5 }, Line: { threshold: 1.5 } } as unknown as RaycasterParameters }}
+        dpr={dpr}
+        // Slightly relaxed line thresholds so edge picking can register; actual selection uses a stricter pixel test
+        raycaster={{ params: { Mesh: {}, LOD: {}, Points: {}, Sprite: {}, Line2: { threshold: 1.5 }, Line: { threshold: 1.5 } } as unknown as RaycasterParameters }}
       >
+         <PerformanceMonitor onIncline={() => setDpr(2)} onDecline={() => setDpr(1)} />
         <CalmBg />
-  <ActiveCameraBinding />
-  {/* Keep camera aspect matched to canvas size to avoid stretching */}
-  <CameraAspectSync />
+        <ActiveCameraBinding />
+        {/* Keep camera aspect matched to canvas size to avoid stretching */}
+        <CameraAspectSync />
         {shadingMode !== 'material' && (
           <>
             {/* Headlight-style defaults for non-material modes; no shadows */}
@@ -73,9 +75,9 @@ const EditorViewport: React.FC = () => {
             <directionalLight position={[5, 8, 3]} intensity={0.8} />
           </>
         )}
-  <CameraController />
+        <CameraController />
         <AutoOrbitController />
-  <OrbitControls
+        <OrbitControls
           makeDefault
           target={[camera.target.x, camera.target.y, camera.target.z]}
           dampingFactor={0.1}
@@ -89,10 +91,10 @@ const EditorViewport: React.FC = () => {
           // Three.js OrbitControls uses a 60fps-based factor: angle += 2π/60 * autoRotateSpeed per frame
           // For one full rotation every N seconds: speed = 60 / N
           autoRotateSpeed={autoOrbitIntervalSec ? 60 / autoOrbitIntervalSec : 0}
-  />
+        />
         <SceneContent />
         <WorldEffects />
-  <AnimationSampler />
+        <AnimationSampler />
       </Canvas>
     </div>
   );

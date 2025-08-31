@@ -61,6 +61,7 @@ export const createEdge = (vertexId1: string, vertexId2: string): Edge => ({
   vertexIds: [vertexId1, vertexId2],
   faceIds: [],
   selected: false,
+  seam: false,
 });
 
 export const createFace = (vertexIds: string[]): Face => {

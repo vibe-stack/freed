@@ -12,6 +12,7 @@ import { WorkspaceData, exportToT3D } from '@/utils/t3d-exporter';
 import { openImportDialog } from '@/utils/t3d-importer';
 import { Box, Download, FolderOpen, Save, Heart, Check, Orbit } from 'lucide-react';
 import DonateDialog from '@/components/donate-dialog';
+import { useUVEditorStore } from '@/stores/uv-editor-store';
 import ExportDialog from '@/features/export/components/export-dialog';
 import { useWorkspaceStore } from '@/stores/workspace-store';
 import { saveAs, saveWithHandle } from '@/utils/file-access';
@@ -34,6 +35,7 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 	const shapeCreationStore = useShapeCreationStore();
 	const workspace = useWorkspaceStore();
 	const clipboard = useClipboardStore();
+	const setUVOpen = useUVEditorStore((s) => s.setOpen);
 
 	// Track undo/redo availability from zundo temporal API
 	const [canUndo, setCanUndo] = useState(false);
@@ -441,6 +443,7 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 								</Menu.Item>
 								<Menu.Separator className="my-1 h-px bg-white/10" />
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => onOpenShaderEditor?.()}>Shader Editor…</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => setUVOpen(true)}>UV Editor…</Menu.Item>
 								<div className="px-3 py-1.5 text-[11px] uppercase tracking-wide text-gray-400">Shading</div>
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => viewportStore.setShadingMode('wireframe')}>
 									<span className="flex items-center justify-between w-full">

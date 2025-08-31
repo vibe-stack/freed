@@ -18,6 +18,8 @@ import { CameraSwitcher } from '@/features/toolbar';
 import BottomBar from '@/features/animation/components/BottomBar';
 import Timeline from '@/features/animation/components/Timeline';
 import { useAnimationStore } from '@/stores/animation-store';
+import UVEditor from '@/features/uv-editor/components/uv-editor';
+import { useUVEditorStore } from '@/stores/uv-editor-store';
 
 const EditorLayout: React.FC = () => {
   const shaderOpen = useShaderEditorStore((s) => s.open);
@@ -25,6 +27,8 @@ const EditorLayout: React.FC = () => {
   const editPalette = useToolStore((s) => s.editPalette);
   const timelineOpen = useAnimationStore((s) => s.timelinePanelOpen);
   const activeClipId = useAnimationStore((s) => s.activeClipId);
+  const uvOpen = useUVEditorStore((s) => s.open);
+  const setUVOpen = useUVEditorStore((s) => s.setOpen);
   const createClip = useAnimationStore((s) => s.createClip);
   React.useEffect(() => {
     if (!activeClipId) {
@@ -81,6 +85,8 @@ const EditorLayout: React.FC = () => {
 
           {/* Shader Editor Panel */}
           <ShaderEditor open={shaderOpen} onOpenChange={setShaderOpen} />
+          {/* UV Editor Panel */}
+          <UVEditor open={uvOpen} onOpenChange={setUVOpen} />
 
           {/* Timeline overlays inside the viewport region */}
           {timelineOpen && <Timeline />}
