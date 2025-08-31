@@ -6,6 +6,8 @@ import { useSelectionStore } from '../stores/selection-store';
 import { useSceneStore } from '../stores/scene-store';
 import { useToolStore } from '../stores/tool-store';
 import { useClipboardStore } from '@/stores/clipboard-store';
+import { useUVEditorStore } from '@/stores/uv-editor-store';
+import { useGeometryStore } from '@/stores/geometry-store';
 
 interface ShortcutConfig {
   key: string;
@@ -80,9 +82,37 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
     {
       key: 'g',
       action: () => {
+        const uvEditor = useUVEditorStore.getState();
         const selection = useSelectionStore.getState().selection;
         const tool = useToolStore.getState();
         if (tool.isActive) return;
+        
+        // Route to UV editor if it's open and has selection
+        if (uvEditor.open) {
+          const geometry = useGeometryStore.getState();
+          // Get current mesh - prefer edit mode mesh, else selected object mesh
+          let meshId: string | undefined;
+          if (selection.viewMode === 'edit' && selection.meshId) {
+            meshId = selection.meshId;
+          } else {
+            const objId = selection.objectIds[0] || useSceneStore.getState().selectedObjectId || null;
+            const obj = objId ? useSceneStore.getState().objects[objId] : undefined;
+            meshId = (obj?.meshId as string | undefined) || geometry.selectedMeshId || undefined;
+          }
+          
+          const mesh = meshId ? geometry.meshes.get(meshId) : undefined;
+          // Get fresh UV selection at key press time
+          const currentUVSelection = useUVEditorStore.getState().selection;
+          if (mesh && currentUVSelection.size > 0) {
+            // Start UV transform - this will be handled by the UV editor's transform system
+            // We'll add a simple flag to indicate UV transform is active
+            const event = new CustomEvent('uv-transform', { detail: { mode: 'translate', mesh, selection: currentUVSelection } });
+            window.dispatchEvent(event);
+            return;
+          }
+        }
+        
+        // Normal edit/object mode handling
         if (selection.viewMode === 'edit') {
           const hasSelection = selection.vertexIds.length > 0 || selection.edgeIds.length > 0 || selection.faceIds.length > 0;
           if (hasSelection) useToolStore.getState().startOperation('move', null);
@@ -96,9 +126,35 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
     {
       key: 'r',
       action: () => {
+        const uvEditor = useUVEditorStore.getState();
         const selection = useSelectionStore.getState().selection;
         const tool = useToolStore.getState();
         if (tool.isActive) return;
+        
+        // Route to UV editor if it's open and has selection
+        if (uvEditor.open) {
+          const geometry = useGeometryStore.getState();
+          // Get current mesh - prefer edit mode mesh, else selected object mesh
+          let meshId: string | undefined;
+          if (selection.viewMode === 'edit' && selection.meshId) {
+            meshId = selection.meshId;
+          } else {
+            const objId = selection.objectIds[0] || useSceneStore.getState().selectedObjectId || null;
+            const obj = objId ? useSceneStore.getState().objects[objId] : undefined;
+            meshId = (obj?.meshId as string | undefined) || geometry.selectedMeshId || undefined;
+          }
+          
+          const mesh = meshId ? geometry.meshes.get(meshId) : undefined;
+          // Get fresh UV selection at key press time
+          const currentUVSelection = useUVEditorStore.getState().selection;
+          if (mesh && currentUVSelection.size > 0) {
+            const event = new CustomEvent('uv-transform', { detail: { mode: 'rotate', mesh, selection: currentUVSelection } });
+            window.dispatchEvent(event);
+            return;
+          }
+        }
+        
+        // Normal edit/object mode handling
         if (selection.viewMode === 'edit') {
           const hasSelection = selection.vertexIds.length > 0 || selection.edgeIds.length > 0 || selection.faceIds.length > 0;
           if (hasSelection) useToolStore.getState().startOperation('rotate', null);
@@ -112,9 +168,35 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
     {
       key: 's',
       action: () => {
+        const uvEditor = useUVEditorStore.getState();
         const selection = useSelectionStore.getState().selection;
         const tool = useToolStore.getState();
         if (tool.isActive) return;
+        
+        // Route to UV editor if it's open and has selection
+        if (uvEditor.open) {
+          const geometry = useGeometryStore.getState();
+          // Get current mesh - prefer edit mode mesh, else selected object mesh
+          let meshId: string | undefined;
+          if (selection.viewMode === 'edit' && selection.meshId) {
+            meshId = selection.meshId;
+          } else {
+            const objId = selection.objectIds[0] || useSceneStore.getState().selectedObjectId || null;
+            const obj = objId ? useSceneStore.getState().objects[objId] : undefined;
+            meshId = (obj?.meshId as string | undefined) || geometry.selectedMeshId || undefined;
+          }
+          
+          const mesh = meshId ? geometry.meshes.get(meshId) : undefined;
+          // Get fresh UV selection at key press time
+          const currentUVSelection = useUVEditorStore.getState().selection;
+          if (mesh && currentUVSelection.size > 0) {
+            const event = new CustomEvent('uv-transform', { detail: { mode: 'scale', mesh, selection: currentUVSelection } });
+            window.dispatchEvent(event);
+            return;
+          }
+        }
+        
+        // Normal edit/object mode handling
         if (selection.viewMode === 'edit') {
           const hasSelection = selection.vertexIds.length > 0 || selection.edgeIds.length > 0 || selection.faceIds.length > 0;
           if (hasSelection) useToolStore.getState().startOperation('scale', null);

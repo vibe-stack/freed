@@ -1,6 +1,13 @@
 
 @import "tailwindcss";
 
+/* Remove all focus outlines globally */
+*:focus,
+*:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 :root {
   --background: #0a0a0a;
   --foreground: #ededed;

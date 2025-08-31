@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { Mesh as MeshType } from '@/types/geometry';
+import { getOrCreateDownloadUrl } from '@/stores/files-store';
 
 type StageProps = {
   mesh?: MeshType;
   selected: Set<string>;
   pan: { x: number; y: number };
   zoom: number; // pixels per UV unit
+  textureFileId?: string;
   className?: string;
   style?: React.CSSProperties;
 };
@@ -119,23 +121,50 @@ function MeshUV({ mesh, selected, zoom }: { mesh?: MeshType; selected: Set<strin
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[points.sel, 3]} />
         </bufferGeometry>
-  <pointsMaterial color="#9ca3af" size={Math.max(4, 11 / Math.max(1, zoom))} sizeAttenuation={false} />
+  <pointsMaterial color="#ff6d00" size={Math.max(4, 11 / Math.max(1, zoom))} sizeAttenuation={false} />
       </points>
     </>
   );
 }
 
-export const UVStageInner: React.FC<Omit<StageProps, 'className' | 'style'>> = ({ mesh, selected, pan, zoom }) => {
+function TextureTiled({ fileId }: { fileId?: string }) {
+  const [tex, setTex] = useState<THREE.Texture | null>(null);
+  useEffect(() => {
+    if (!fileId) { setTex(null); return; }
+    const url = getOrCreateDownloadUrl(fileId);
+    if (!url) { setTex(null); return; }
+    const t = new THREE.Texture();
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(40, 40);
+    t.magFilter = THREE.LinearFilter as any;
+    t.minFilter = (THREE as any).LinearMipmapLinearFilter ?? THREE.LinearFilter;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => { (t as any).image = img; t.needsUpdate = true; setTex(t); };
+    img.src = url;
+    return () => { setTex(null); };
+  }, [fileId]);
+  if (!tex) return null;
+  return (
+    <mesh position={[0, 0, -0.1]}>
+      <planeGeometry args={[40, 40, 1, 1]} />
+      <meshBasicMaterial map={tex} transparent opacity={0.28} />
+    </mesh>
+  );
+}
+
+export const UVStageInner: React.FC<Omit<StageProps, 'className' | 'style'>> = ({ mesh, selected, pan, zoom, textureFileId }) => {
   return (
     // Root in pixel space; child group maps UV units -> pixels and flips Y
     <group position={[pan.x, pan.y, 0]} scale={[zoom, -zoom, 1]}>
+      <TextureTiled fileId={textureFileId} />
       <GridLines zoom={zoom} />
       <MeshUV mesh={mesh} selected={selected} zoom={zoom} />
     </group>
   );
 };
 
-export const UVStage: React.FC<StageProps> = ({ mesh, selected, pan, zoom, className, style }) => {
+export const UVStage: React.FC<StageProps> = ({ mesh, selected, pan, zoom, textureFileId, className, style }) => {
   return (
     <Canvas
       className={className}
@@ -146,7 +175,7 @@ export const UVStage: React.FC<StageProps> = ({ mesh, selected, pan, zoom, class
       frameloop="always"
     >
       <OrthoSizer />
-      <UVStageInner mesh={mesh} selected={selected} pan={pan} zoom={zoom} />
+      <UVStageInner mesh={mesh} selected={selected} pan={pan} zoom={zoom} textureFileId={textureFileId} />
     </Canvas>
   );
 };

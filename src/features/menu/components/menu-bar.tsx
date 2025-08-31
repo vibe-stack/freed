@@ -279,6 +279,8 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 		// Select All
 		{ key: 'a', meta: true, action: () => useSelectionStore.getState().selectAll(), description: 'Select All (Cmd/Ctrl+A)', preventDefault: true },
 		{ key: 'a', ctrl: true, action: () => useSelectionStore.getState().selectAll(), description: 'Select All (Ctrl+A)', preventDefault: true },
+		// Open UV Editor (Shift+U)
+		{ key: 'u', shift: true, action: () => setUVOpen(true), description: 'Open UV Editor (Shift+U)', preventDefault: true },
 	]);
 
 	return (

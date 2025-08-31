@@ -18,6 +18,8 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(256); // pixels per UV unit
+  // Texture preview dropped into editor
+  const [textureFileId, setTextureFileId] = useState<string | null>(null);
   // Transform state (Blender-like: G/R/S with axis constraints and confirm/cancel)
   type TransformMode = 'translate' | 'rotate' | 'scale';
   type AxisMode = 'xy' | 'x' | 'y';
@@ -32,7 +34,6 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
   const [marquee, setMarquee] = useState<null | { start: { x: number; y: number }; current: { x: number; y: number }; additive: boolean }>(null);
   const areaRef = useRef<HTMLDivElement | null>(null);
   const lastMousePx = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [hasFocus, setHasFocus] = useState(false);
   const [updateTrigger, setUpdateTrigger] = useState(0);
   // Floating panel position/size with persistence
   const [pos, setPos] = useState<{ x: number; y: number }>(() => {
@@ -117,7 +118,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
     const w = el.clientWidth; const h = el.clientHeight;
     const cx = (clientX - rect.left); const cy = (clientY - rect.top);
     const u = (cx - (w / 2 + pan.x)) / zoom;
-    const v = - (cy - (h / 2 + pan.y)) / zoom;
+    const v = (cy - (h / 2 + pan.y)) / zoom; // Remove extra Y flip since stage already flips Y
     return { x: u, y: v };
   };
 
@@ -125,8 +126,6 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
 
   const onPointerDown: React.PointerEventHandler<HTMLElement> = (e) => {
     if (!canvasRef.current || !mesh) return;
-    // Focus the interaction area to receive keyboard shortcuts
-    panelRef.current?.focus();
     // Do not start marquee or selection changes if currently transforming; LMB will confirm on release
     if (xform) return;
     const uv = screenToUV(canvasRef.current, e.clientX, e.clientY);
@@ -296,42 +295,65 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
     }
   };
 
-  // Keyboard controls for G/R/S, axis constraints, confirm/cancel
-  const onKeyDown: React.KeyboardEventHandler = (e) => {
-    if (!mesh || !canvasRef.current) return;
-    // Always stop propagation inside UV editor to avoid global handlers
-    e.stopPropagation();
-    // Start transform modes
-    if (!xform && (e.key.toLowerCase() === 'g' || e.key.toLowerCase() === 'r' || e.key.toLowerCase() === 's')) {
-      const mode: TransformMode = e.key.toLowerCase() === 'g' ? 'translate' : e.key.toLowerCase() === 'r' ? 'rotate' : 'scale';
-      // Use most up-to-date selection from global store when in edit mode, else local UV selection
-      const effectiveSel: Set<string> = (selection.viewMode === 'edit' && selection.meshId === mesh.id)
-        ? new Set(selection.vertexIds)
-        : uvSel.selection;
-      if (!effectiveSel.size) {
-        return; // nothing to transform
-      }
+  // Handle UV transform events from shortcut provider
+  useEffect(() => {
+    if (!open || !mesh) return;
+    
+    const handleUVTransform = (e: CustomEvent) => {
+      const { mode, selection: eventSelection } = e.detail;
+      // Use fresh selection data from the event
+      const effectiveSelection = new Set(Array.from(eventSelection));
+      
+      if (!effectiveSelection.size) return;
+      
       // Use last mouse position over the area; else center
-  const rect = canvasRef.current.getBoundingClientRect();
-  const localX = lastMousePx.current.x || rect.width / 2;
-  const localY = lastMousePx.current.y || rect.height / 2;
-  const mx = rect.left + localX;
-  const my = rect.top + localY;
-  const startUV = screenToUV(canvasRef.current, mx, my);
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect || !canvasRef.current) return;
+      
+      const localX = lastMousePx.current.x || rect.width / 2;
+      const localY = lastMousePx.current.y || rect.height / 2;
+      const mx = rect.left + localX;
+      const my = rect.top + localY;
+      const startUV = screenToUV(canvasRef.current, mx, my);
+      
       // Origin: median of selected UVs
-  let sx = 0, sy = 0, n = 0;
-  for (const v of mesh.vertices) { if (effectiveSel.has(v.id)) { sx += v.uv.x; sy += v.uv.y; n++; } }
+      let sx = 0, sy = 0, n = 0;
+      for (const v of mesh.vertices) { 
+        if (effectiveSelection.has(v.id)) { 
+          sx += v.uv.x; sy += v.uv.y; n++; 
+        } 
+      }
       const origin = { x: n ? sx / n : 0, y: n ? sy / n : 0 };
       const uv0 = new Map<string, { x: number; y: number }>();
-  for (const v of mesh.vertices) { if (effectiveSel.has(v.id)) uv0.set(v.id, { x: v.uv.x, y: v.uv.y }); }
+      for (const v of mesh.vertices) { 
+        if (effectiveSelection.has(v.id)) uv0.set(v.id, { x: v.uv.x, y: v.uv.y }); 
+      }
       
-      const init = { mode, startMouse: { x: mx, y: my }, startUV, origin, uv0, axis: 'xy' } as const;
-      setXform(init as any);
-      e.preventDefault();
-      return;
-    }
-    if (xform) {
-      if (e.key === 'Escape') {
+      const init = { 
+        mode: mode as TransformMode, 
+        startMouse: { x: mx, y: my }, 
+        startUV, 
+        origin, 
+        uv0, 
+        axis: 'xy' as AxisMode 
+      };
+      setXform(init);
+    };
+    
+    window.addEventListener('uv-transform', handleUVTransform as EventListener);
+    return () => window.removeEventListener('uv-transform', handleUVTransform as EventListener);
+  }, [open, mesh, screenToUV]);
+
+  // Handle UV transform keyboard events (when xform is active)
+  useEffect(() => {
+    if (!xform || !mesh) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if UV editor is open
+      if (!open) return;
+      
+      const key = e.key.toLowerCase();
+      if (key === 'escape') {
         // cancel
         useGeometryStore.getState().updateMesh(mesh.id, (m) => {
           for (const v of m.vertices) {
@@ -341,42 +363,34 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         });
         setXform(null);
         e.preventDefault();
+        e.stopPropagation();
         return;
       }
-      if (e.key === 'Enter') {
+      if (key === 'enter') {
         // confirm
         setXform(null);
         e.preventDefault();
+        e.stopPropagation();
         return;
       }
       // Axis constraints
-      if (e.key.toLowerCase() === 'x') { setXform((xf) => (xf ? { ...xf, axis: xf.axis === 'x' ? 'xy' : 'x' } : xf)); e.preventDefault(); return; }
-      if (e.key.toLowerCase() === 'y') { setXform((xf) => (xf ? { ...xf, axis: xf.axis === 'y' ? 'xy' : 'y' } : xf)); e.preventDefault(); return; }
-    }
-  };
-
-  const onKeyUp: React.KeyboardEventHandler = (e) => {
-    // Stop propagation on keyup as well to block global handlers
-    e.stopPropagation();
-  };
-
-  // Block global shortcuts when UV editor is open
-  useEffect(() => {
-    if (!open) return;
-    const guard = (ev: KeyboardEvent) => {
-      const k = ev.key.toLowerCase();
-      if (k === 'g' || k === 'r' || k === 's' || k === 'x' || k === 'y' || k === 'escape' || k === 'enter') {
-        // Only intercept if our panel has focus to avoid stealing global shortcuts
-        if (hasFocus) {
-          ev.preventDefault();
-          onKeyDown(ev as any);
-          ev.stopPropagation();
-        }
+      if (key === 'x') { 
+        setXform((xf) => (xf ? { ...xf, axis: xf.axis === 'x' ? 'xy' : 'x' } : xf)); 
+        e.preventDefault(); 
+        e.stopPropagation();
+        return; 
+      }
+      if (key === 'y') { 
+        setXform((xf) => (xf ? { ...xf, axis: xf.axis === 'y' ? 'xy' : 'y' } : xf)); 
+        e.preventDefault(); 
+        e.stopPropagation();
+        return; 
       }
     };
-    window.addEventListener('keydown', guard, true);
-    return () => window.removeEventListener('keydown', guard, true);
-  }, [open, hasFocus]);
+    
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [xform, open, mesh]);
 
   const applyFit = () => {
     if (!mesh) return;
@@ -436,10 +450,6 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
     className="absolute bg-black/60 backdrop-blur-md border border-white/10 rounded-md shadow-xl pointer-events-auto flex flex-col select-none"
         style={{ left: pos.x, top: pos.y, width: size.w, height: size.h }}
         tabIndex={0}
-    onKeyDown={onKeyDown}
-    onKeyUp={onKeyUp}
-        onFocus={() => setHasFocus(true)}
-        onBlur={() => setHasFocus(false)}
       >
     <div className="px-3 py-2 border-b border-white/10 text-[11px] uppercase tracking-wide text-gray-400 flex items-center justify-between cursor-move" onMouseDown={onHeaderMouseDown}>
           <span>UV Editor</span>
@@ -451,18 +461,26 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
           <div
       className="absolute inset-0 bg-black/40 touch-none outline-none focus:outline-none focus-visible:outline-none"
             ref={(el) => { (canvasRef as any).current = el as any; areaRef.current = el as any; }}
-            onPointerDown={(e) => {
-              // Focus the area when clicked to ensure keyboard events are captured
-              panelRef.current?.focus();
-              onPointerDown(e);
-            }}
+            onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onContextMenu={onContextMenu}
+            onDragOver={(e) => { e.preventDefault(); }}
+            onDrop={async (e) => {
+              e.preventDefault();
+              try {
+                const files = Array.from(e.dataTransfer?.files || []).filter((f) => f.type.startsWith('image/'));
+                if (files.length === 0) return;
+                const f = files[0];
+                const { ensureFileIdForBlob } = await import('@/stores/files-store');
+                const id = await ensureFileIdForBlob(f, f.name);
+                setTextureFileId(id);
+              } catch {}
+            }}
             role="application"
             style={{ outline: 'none' }}
           >
-            <UVStage mesh={mesh} selected={uvSel.selection} pan={pan} zoom={zoom} style={{ width: '100%', height: '100%' }} />
+            <UVStage mesh={mesh} selected={uvSel.selection} pan={pan} zoom={zoom} textureFileId={textureFileId ?? undefined} style={{ width: '100%', height: '100%' }} />
             {xform && (
               <div className="absolute left-2 top-2 text-[12px] text-gray-300 bg-black/40 px-2 py-1 rounded border border-white/10">
                 {xform.mode === 'translate' ? 'Move' : xform.mode === 'rotate' ? 'Rotate' : 'Scale'} {xform.axis !== 'xy' ? `(${xform.axis.toUpperCase()} constrained)` : ''} — LMB: confirm • RMB/Esc: cancel • X/Y: constrain axis
@@ -507,7 +525,14 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
           <button className="px-2 py-1 rounded border border-white/10 hover:bg-white/10" onClick={applySphere}>Sphere</button>
           <button className="px-2 py-1 rounded border border-white/10 hover:bg-white/10" onClick={tile2x}>Tile 2x</button>
           <button className="px-2 py-1 rounded border border-green-400/20 hover:bg-green-400/10" onClick={unwrap}>Unwrap (Seams)</button>
-      <span className="text-gray-400 ml-auto">G: Move • R: Rotate • S: Scale • X/Y: axis • LMB: confirm • RMB/Esc: cancel • LMB drag: marquee • RMB drag: pan • Wheel: zoom</span>
+          <div className="ml-auto flex items-center gap-2 text-gray-400">
+            {textureFileId ? (
+              <button className="px-2 py-1 rounded border border-white/10 hover:bg-white/10" onClick={() => setTextureFileId(null)}>Clear Texture</button>
+            ) : (
+              <span>Drop an image here to preview •</span>
+            )}
+            <span>G: Move • R: Rotate • S: Scale • X/Y: axis • LMB: confirm • RMB/Esc: cancel • LMB drag: marquee • RMB drag: pan • Wheel: zoom</span>
+          </div>
         </div>
       </div>
     </div>

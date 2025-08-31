@@ -94,36 +94,22 @@ function buildEdgeKey(a: string, b: string) { return a < b ? `${a}-${b}` : `${b}
 // Split faces into islands by cutting where edge.seam === true
 function computeIslands(mesh: Mesh): Island[] {
   const adjacency = new Map<string, string[]>(); // faceId -> neighboring faceIds across non-seam edges
-  const edgeByKey = new Map(mesh.edges.map(e => [buildEdgeKey(e.vertexIds[0], e.vertexIds[1]), e] as const));
-  // Build adjacency via shared edges that are not seams
-  const facesByVertexPair = new Map<string, string[]>();
-  for (const face of mesh.faces) {
-    const ids = face.vertexIds;
-    for (let i = 0; i < ids.length; i++) {
-      const a = ids[i]; const b = ids[(i + 1) % ids.length];
-      const key = buildEdgeKey(a, b);
-      const arr = facesByVertexPair.get(key) ?? [];
-      arr.push(face.id);
-      facesByVertexPair.set(key, arr);
-    }
-  }
-  // Record neighbors across non-seam edges
-  for (const [key, fids] of facesByVertexPair) {
-    const e = edgeByKey.get(key);
-    const isSeam = !!e?.seam;
-    if (isSeam) continue;
-    if (fids.length >= 2) {
-      for (let i = 0; i < fids.length; i++) {
-        for (let j = 0; j < fids.length; j++) {
-          if (i === j) continue;
-          const a = fids[i], b = fids[j];
-          const arr = adjacency.get(a) ?? [];
-          arr.push(b);
-          adjacency.set(a, arr);
-        }
+  
+  // Build face-to-face adjacency: faces are connected if they share a non-seam edge
+  for (const edge of mesh.edges) {
+    if (edge.seam || edge.faceIds.length < 2) continue; // Skip seam edges and boundary edges
+    // Connect these faces
+    for (let i = 0; i < edge.faceIds.length; i++) {
+      for (let j = 0; j < edge.faceIds.length; j++) {
+        if (i === j) continue;
+        const a = edge.faceIds[i], b = edge.faceIds[j];
+        const arr = adjacency.get(a) ?? [];
+        if (!arr.includes(b)) arr.push(b);
+        adjacency.set(a, arr);
       }
     }
   }
+
   const visited = new Set<string>();
   const islands: Island[] = [];
   const facesById = new Map(mesh.faces.map(f => [f.id, f] as const));
@@ -146,50 +132,165 @@ function computeIslands(mesh: Mesh): Island[] {
   return islands;
 }
 
-// For each island, project via a best-fit plane using face normals average and PCA-ish axis
+// For each island, flatten by unfolding triangles across non-seam edges (seed + BFS)
 function unwrapIsland(mesh: Mesh, island: Island) {
-  // Compute average normal from faces in island using geometry
-  const faces = mesh.faces.filter(f => island.faceIds.includes(f.id));
   const vmap = new Map(mesh.vertices.map(v => [v.id, v] as const));
-  let nx = 0, ny = 0, nz = 0;
-  for (const f of faces) {
-    if (f.vertexIds.length < 3) continue;
-    const a = vmap.get(f.vertexIds[0])!.position;
-    const b = vmap.get(f.vertexIds[1])!.position;
-    const c = vmap.get(f.vertexIds[2])!.position;
-    const abx = b.x - a.x, aby = b.y - a.y, abz = b.z - a.z;
-    const acx = c.x - a.x, acy = c.y - a.y, acz = c.z - a.z;
-    const cx = aby * acz - abz * acy;
-    const cy = abz * acx - abx * acz;
-    const cz = abx * acy - aby * acx;
-    nx += cx; ny += cy; nz += cz;
-  }
-  const nl = Math.max(1e-6, Math.hypot(nx, ny, nz));
-  const n = { x: nx / nl, y: ny / nl, z: nz / nl };
-  // Build a tangent basis (u,v,n). Choose u as projection of world X unless degenerate, else Y
-  const pick = (ax: {x:number;y:number;z:number}) => {
-    // u = normalize(ax - dot(ax,n)*n)
-    const dot = ax.x * n.x + ax.y * n.y + ax.z * n.z;
-    let ux = ax.x - dot * n.x, uy = ax.y - dot * n.y, uz = ax.z - dot * n.z;
-    const len = Math.hypot(ux, uy, uz) || 1;
-    ux /= len; uy /= len; uz /= len;
-    const vx = n.y * uz - n.z * uy;
-    const vy = n.z * ux - n.x * uz;
-    const vz = n.x * uy - n.y * ux;
-    return { u: {x: ux, y: uy, z: uz}, v: {x: vx, y: vy, z: vz} };
-  };
-  let basis = pick({ x: 1, y: 0, z: 0 });
-  if (!isFinite(basis.u.x)) basis = pick({ x: 0, y: 1, z: 0 });
+  const faces = mesh.faces.filter(f => island.faceIds.includes(f.id));
 
-  // Project all vertices in island to UVs using this basis; preserve relative positions only within island
-  for (const vid of island.verts) {
-    const p = vmap.get(vid)!.position;
-    const u = p.x * basis.u.x + p.y * basis.u.y + p.z * basis.u.z;
-    const v = p.x * basis.v.x + p.y * basis.v.y + p.z * basis.v.z;
-    vmap.get(vid)!.uv = { x: u, y: v };
+  // Triangulate faces into a list of triangles (vid triplets) preserving winding
+  const tris: Array<[string, string, string]> = [];
+  for (const f of faces) {
+    const ids = f.vertexIds;
+    if (ids.length === 3) tris.push([ids[0], ids[1], ids[2]]);
+    else if (ids.length >= 4) {
+      for (let i = 1; i < ids.length - 1; i++) tris.push([ids[0], ids[i], ids[i + 1]]);
+    }
   }
-  // Normalize island to local 0..1 for packing step later
-  fitUVs01(mesh, island.verts);
+  if (tris.length === 0) return;
+
+  // Helper: 3D distance and area
+  const dist3 = (a: string, b: string) => {
+    const pa = vmap.get(a)!.position, pb = vmap.get(b)!.position;
+    return Math.hypot(pa.x - pb.x, pa.y - pb.y, pa.z - pb.z);
+  };
+  const triArea3 = (t: [string,string,string]) => {
+    const a = vmap.get(t[0])!.position, b = vmap.get(t[1])!.position, c = vmap.get(t[2])!.position;
+    const ab = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
+    const ac = { x: c.x - a.x, y: c.y - a.y, z: c.z - a.z };
+    const cx = ab.y * ac.z - ab.z * ac.y;
+    const cy = ab.z * ac.x - ab.x * ac.z;
+    const cz = ab.x * ac.y - ab.y * ac.x;
+    return 0.5 * Math.hypot(cx, cy, cz);
+  };
+
+  // Build adjacency: edge key -> triangle indices (only triangles inside island)
+  const edgeKey = (a: string, b: string) => a < b ? `${a}-${b}` : `${b}-${a}`;
+  const edgeToTris = new Map<string, number[]>();
+  tris.forEach((t, ti) => {
+    const e0 = edgeKey(t[0], t[1]);
+    const e1 = edgeKey(t[1], t[2]);
+    const e2 = edgeKey(t[2], t[0]);
+    [e0, e1, e2].forEach(k => {
+      const arr = edgeToTris.get(k) ?? [];
+      arr.push(ti); edgeToTris.set(k, arr);
+    });
+  });
+
+  // Seed triangle: largest area for numerical stability
+  let seedIndex = 0; let bestArea = -1;
+  for (let i = 0; i < tris.length; i++) { const a = triArea3(tris[i]); if (a > bestArea) { bestArea = a; seedIndex = i; } }
+
+  // UV map for placed vertices within this island
+  const uvs = new Map<string, { x: number; y: number }>();
+  const placedTri = new Array<boolean>(tris.length).fill(false);
+
+  const placeSeed = (ti: number) => {
+    const [a, b, c] = tris[ti];
+    const lab = Math.max(1e-8, dist3(a, b));
+    const lac = Math.max(1e-8, dist3(a, c));
+    const lbc = Math.max(1e-8, dist3(b, c));
+    // Place A->(0,0), B->(lab,0), compute C via law of cosines
+    const x = (lac * lac - lbc * lbc + lab * lab) / (2 * lab);
+    const h2 = Math.max(0, lac * lac - x * x);
+    const y = Math.sqrt(h2);
+    uvs.set(a, { x: 0, y });
+    uvs.set(b, { x: lab, y });
+    uvs.set(c, { x, y: 0 });
+    placedTri[ti] = true;
+  };
+
+  placeSeed(seedIndex);
+
+  // BFS propagate
+  const q: number[] = [seedIndex];
+  const inQueue = new Array<boolean>(tris.length).fill(false);
+  inQueue[seedIndex] = true;
+  const pushNeighbors = (ti: number) => {
+    const [a, b, c] = tris[ti];
+    const edges: Array<[string, string]> = [[a, b], [b, c], [c, a]];
+    for (const [u, v] of edges) {
+      const neigh = edgeToTris.get(edgeKey(u, v)) || [];
+      for (const ni of neigh) if (!placedTri[ni] && !inQueue[ni]) { q.push(ni); inQueue[ni] = true; }
+    }
+  };
+  pushNeighbors(seedIndex);
+
+  const orient2 = (p: {x:number;y:number}, q: {x:number;y:number}, r: {x:number;y:number}) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+
+  while (q.length) {
+    const ti = q.shift()!;
+    // Try to place this triangle if it shares an edge with two placed vertices
+    const [a, b, c] = tris[ti];
+    const candidates: Array<[{u:string;v:string;w:string}, number]> = [
+      [{ u: a, v: b, w: c }, 0],
+      [{ u: b, v: c, w: a }, 1],
+      [{ u: c, v: a, w: b }, 2],
+    ];
+    let placed = false;
+    for (const [ed, _] of candidates) {
+      const U = uvs.get(ed.u); const V = uvs.get(ed.v);
+      if (!U || !V) continue;
+      const L = Math.hypot(V.x - U.x, V.y - U.y) || 1e-8;
+      const dUw = dist3(ed.u, ed.w);
+      const dVw = dist3(ed.v, ed.w);
+      const a = (dUw * dUw - dVw * dVw + L * L) / (2 * L);
+      const h2 = Math.max(0, dUw * dUw - a * a);
+      const h = Math.sqrt(h2);
+      const ex = (V.x - U.x) / L, ey = (V.y - U.y) / L; // unit along edge
+      const px = -ey, py = ex; // perpendicular
+      // Two candidates
+      const cand1 = { x: U.x + a * ex + h * px, y: U.y + a * ey + h * py };
+      const cand2 = { x: U.x + a * ex - h * px, y: U.y + a * ey - h * py };
+      // Pick orientation consistent with 3D
+      const Pu = vmap.get(ed.u)!.position; const Pv = vmap.get(ed.v)!.position; const Pw = vmap.get(ed.w)!.position;
+      const e3 = { x: Pv.x - Pu.x, y: Pv.y - Pu.y, z: Pv.z - Pu.z };
+      const w3 = { x: Pw.x - Pu.x, y: Pw.y - Pu.y, z: Pw.z - Pu.z };
+      const crossZ = (e3.y * w3.z - e3.z * w3.y) + (e3.z * w3.x - e3.x * w3.z) + (e3.x * w3.y - e3.y * w3.x);
+      const s3 = Math.sign(crossZ) || 1;
+      const s2_1 = Math.sign(orient2(U, V, cand1)) || 1;
+      const pick = (s3 === s2_1) ? cand1 : cand2;
+      uvs.set(ed.w, pick);
+      placedTri[ti] = true; placed = true; break;
+    }
+    if (placed) pushNeighbors(ti);
+    else {
+      // Could not place yet; push back to queue to try later
+      if (!inQueue[ti]) { q.push(ti); inQueue[ti] = true; }
+    }
+  }
+
+  // Fallback: any vertex not placed gets simple planar fallback based on local position axes
+  const fallback = () => {
+    // Simple axis: pick largest projection plane for this island using average normal
+    let nx = 0, ny = 0, nz = 0;
+    for (const f of faces) {
+      if (f.vertexIds.length < 3) continue;
+      const a = vmap.get(f.vertexIds[0])!.position;
+      const b = vmap.get(f.vertexIds[1])!.position;
+      const c = vmap.get(f.vertexIds[2])!.position;
+      const abx = b.x - a.x, aby = b.y - a.y, abz = b.z - a.z;
+      const acx = c.x - a.x, acy = c.y - a.y, acz = c.z - a.z;
+      const cx = aby * acz - abz * acy;
+      const cy = abz * acx - abx * acz;
+      const cz = abx * acy - aby * acx;
+      nx += cx; ny += cy; nz += cz;
+    }
+    const an = { x: Math.abs(nx), y: Math.abs(ny), z: Math.abs(nz) };
+    const axis: Axis = (an.z >= an.x && an.z >= an.y) ? 'z' : (an.y >= an.x ? 'y' : 'x');
+    for (const vid of island.verts) if (!uvs.has(vid)) {
+      const p = vmap.get(vid)!.position;
+      if (axis === 'z') uvs.set(vid, { x: p.x, y: p.y });
+      else if (axis === 'y') uvs.set(vid, { x: p.x, y: p.z });
+      else uvs.set(vid, { x: p.z, y: p.y });
+    }
+  };
+  fallback();
+
+  // Write back UVs
+  for (const vid of island.verts) {
+    const uv = uvs.get(vid)!;
+    vmap.get(vid)!.uv = { x: uv.x, y: uv.y };
+  }
 }
 
 // Pack islands into 0..1 with simple row packing
@@ -208,15 +309,16 @@ function packIslands01(mesh: Mesh, islands: Island[], padding = 0.02) {
   // Sort by height desc for better shelf packing
   bbox.sort((a, b) => b.size.y - a.size.y);
   const shelfHeightPad = (h: number) => h * (1 + padding) + padding;
-  const scale = 1; // all islands pre-normalized to 0..1 individually
+  const scale = 1;
   let x = padding, y = padding, rowH = 0;
   for (const b of bbox) {
     const w = b.size.x * scale, h = b.size.y * scale;
     if (x + w + padding > 1) { x = padding; y += shelfHeightPad(rowH); rowH = 0; }
     // If overflow vertically, scale all down (fallback)
     if (y + h + padding > 1) {
-      // Uniformly scale all UVs by 0.5 and restart simple pack once; avoid loops for now
-      for (const v of mesh.vertices) v.uv = { x: v.uv.x * 0.5, y: v.uv.y * 0.5 };
+      // Compute overall scale factor to fit remaining shelves roughly; use conservative factor
+      const s = 0.5;
+      for (const v of mesh.vertices) v.uv = { x: v.uv.x * s, y: v.uv.y * s };
       return packIslands01(mesh, islands, padding);
     }
     const dx = x - b.min.x;
