@@ -71,10 +71,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
     }
     indexToUnselectedId.current = unSelIds;
     indexToSelectedId.current = selIds;
-    // Ensure capacity equals total vertices (stays stable). This avoids GPU buffer reallocation thrash.
-    const cap = Math.max(1, vertices.length);
-    if (unselectedRef.current) unselectedRef.current.count = cap;
-    if (selectedRef.current) selectedRef.current.count = cap;
+    // Note: Don't set count here - let useFrame handle the correct counts
   }, [vertices, selectedVertexIds]);
   
   const { selectedVerts, unselectedVerts } = useMemo(() => {

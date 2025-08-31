@@ -28,6 +28,9 @@ interface ToolState {
   // Sculpt stroke lifecycle
   sculptStrokeActive: boolean;
   setSculptStrokeActive: (active: boolean) => void;
+  // Marquee selection state (disables camera orbit/pan/zoom while active)
+  marqueeActive: boolean;
+  setMarqueeActive: (active: boolean) => void;
   startOperation: (tool: ToolMode, localData: LocalData) => void;
   setLocalData: (localData: LocalData) => void;
   setAxisLock: (axis: AxisLock) => void;
@@ -70,6 +73,8 @@ export const useToolStore = create<ToolState>((set) => ({
   setEditPalette: (p) => set({ editPalette: p }),
   sculptStrokeActive: false,
   setSculptStrokeActive: (active) => set({ sculptStrokeActive: active }),
+  marqueeActive: false,
+  setMarqueeActive: (active) => set({ marqueeActive: active }),
   startOperation: (tool, localData) => set({ tool, isActive: true, localData }),
   setLocalData: (localData) => set({ localData }),
   setAxisLock: (axis) => set({ axisLock: axis }),

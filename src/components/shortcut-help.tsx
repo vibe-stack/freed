@@ -31,6 +31,7 @@ export const ShortcutHelp: React.FC<ShortcutHelpProps> = ({ className }) => {
     { key: '1', description: 'Vertex selection mode (Edit Mode)' },
     { key: '2', description: 'Edge selection mode (Edit Mode)' },
     { key: '3', description: 'Face selection mode (Edit Mode)' },
+  { key: 'Alt + Shift + Drag', description: 'Marquee select (Edit Mode); edges/faces must be fully inside' },
     { key: 'Alt + A', description: 'Clear selection' },
     { key: 'Esc', description: 'Clear selection' },
   ];

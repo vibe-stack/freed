@@ -72,12 +72,103 @@ export const useSelectionStore = create<SelectionStore>()(
         set((state) => {
           // Only allow selection mode changes in edit mode
           if (state.selection.viewMode !== 'edit') return;
-          
-          state.selection.selectionMode = mode;
-          // Clear component selections when changing selection modes
-          state.selection.vertexIds = [];
-          state.selection.edgeIds = [];
-          state.selection.faceIds = [];
+          const sel = state.selection;
+          const prevMode = sel.selectionMode;
+          if (prevMode === mode) return; // no-op
+          sel.selectionMode = mode;
+
+          // If no mesh or topology, just clear
+          const meshId = sel.meshId;
+          const geo = useGeometryStore.getState();
+          const mesh = meshId ? geo.meshes.get(meshId) : null;
+          if (!mesh) {
+            sel.vertexIds = [];
+            sel.edgeIds = [];
+            sel.faceIds = [];
+            return;
+          }
+
+          // Helpers
+          const uniq = <T,>(arr: T[]) => Array.from(new Set(arr));
+          const edgeKey = (a: string, b: string) => (a < b ? `${a}-${b}` : `${b}-${a}`);
+          const edgeIdByKey = new Map(mesh.edges.map((e) => [edgeKey(e.vertexIds[0], e.vertexIds[1]), e.id] as const));
+          const faceEdges = (faceVertexIds: string[]) => {
+            const ids: string[] = [];
+            for (let i = 0; i < faceVertexIds.length; i++) {
+              const a = faceVertexIds[i];
+              const b = faceVertexIds[(i + 1) % faceVertexIds.length];
+              const id = edgeIdByKey.get(edgeKey(a, b));
+              if (id) ids.push(id);
+            }
+            return ids;
+          };
+
+          // Compute next selection based on previous selection content
+          if (mode === 'vertex') {
+            if (prevMode === 'edge') {
+              // Select all vertices from selected edges
+              const next = uniq(
+                mesh.edges
+                  .filter((e) => sel.edgeIds.includes(e.id))
+                  .flatMap((e) => e.vertexIds)
+              );
+              sel.vertexIds = next;
+            } else if (prevMode === 'face') {
+              // Select all vertices from selected faces
+              const next = uniq(
+                mesh.faces
+                  .filter((f) => sel.faceIds.includes(f.id))
+                  .flatMap((f) => f.vertexIds)
+              );
+              sel.vertexIds = next;
+            } else {
+              sel.vertexIds = sel.vertexIds.slice();
+            }
+            sel.edgeIds = [];
+            sel.faceIds = [];
+          } else if (mode === 'edge') {
+            if (prevMode === 'vertex') {
+              // Promote to edges where both vertices are selected
+              const vset = new Set(sel.vertexIds);
+              const next = mesh.edges
+                .filter((e) => vset.has(e.vertexIds[0]) && vset.has(e.vertexIds[1]))
+                .map((e) => e.id);
+              sel.edgeIds = next;
+            } else if (prevMode === 'face') {
+              // Select all edges belonging to selected faces
+              const fset = new Set(sel.faceIds);
+              const next = uniq(
+                mesh.faces
+                  .filter((f) => fset.has(f.id))
+                  .flatMap((f) => faceEdges(f.vertexIds))
+              );
+              sel.edgeIds = next;
+            } else {
+              sel.edgeIds = sel.edgeIds.slice();
+            }
+            sel.vertexIds = [];
+            sel.faceIds = [];
+          } else if (mode === 'face') {
+            if (prevMode === 'vertex') {
+              // Promote to faces where all vertices are selected
+              const vset = new Set(sel.vertexIds);
+              const next = mesh.faces
+                .filter((f) => f.vertexIds.every((v) => vset.has(v)))
+                .map((f) => f.id);
+              sel.faceIds = next;
+            } else if (prevMode === 'edge') {
+              // Promote to faces where all edges are selected
+              const eset = new Set(sel.edgeIds);
+              const next = mesh.faces
+                .filter((f) => faceEdges(f.vertexIds).every((e) => eset.has(e)))
+                .map((f) => f.id);
+              sel.faceIds = next;
+            } else {
+              sel.faceIds = sel.faceIds.slice();
+            }
+            sel.vertexIds = [];
+            sel.edgeIds = [];
+          }
         });
       },
       
