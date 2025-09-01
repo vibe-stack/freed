@@ -179,49 +179,34 @@ export const buildEdgesFromFaces = (vertices: Vertex[], faces: Face[]): Edge[] =
 // Primitive creation functions
 export const buildCubeGeometry = (size: number = 1): BuiltGeometry => {
   const h = size / 2;
-
-  // We'll create 24 unique vertices (4 per face) so each face can have distinct UVs.
-  // UV layout: pack faces into a 3x2 grid (columns: 0..2, rows: 0..1) to avoid stacking.
-  const tileU = 1 / 3;
-  const tileV = 1 / 2;
-  const tile = (c: number, r: number) => ({ u0: c * tileU, v0: r * tileV, u1: (c + 1) * tileU, v1: (r + 1) * tileV });
-
-  // Assign tiles (similar to common box unwrap):
-  // Row 1 (top): Left, Front, Right
-  // Row 0 (bottom): Back, Bottom, Top
-  const T_LEFT   = tile(0, 1);
-  const T_FRONT  = tile(1, 1);
-  const T_RIGHT  = tile(2, 1);
-  const T_BACK   = tile(0, 0);
-  const T_BOTTOM = tile(1, 0);
-  const T_TOP    = tile(2, 0);
-
-  const vertices: Vertex[] = [];
-  const v = (x: number, y: number, z: number, u: number, vv: number) => createVertex(vec3(x, y, z), vec3(0, 0, 0), vec2(u, vv));
-
-  // Helper to push quad in CCW with given positions and tile (u,v from bottom-left to top-right)
-  const quad = (p00: Vector3, p10: Vector3, p11: Vector3, p01: Vector3, t: { u0: number; v0: number; u1: number; v1: number }) => {
-    const i0 = vertices.push(v(p00.x, p00.y, p00.z, t.u0, t.v0)) - 1; // (0,0)
-    const i1 = vertices.push(v(p10.x, p10.y, p10.z, t.u1, t.v0)) - 1; // (1,0)
-    const i2 = vertices.push(v(p11.x, p11.y, p11.z, t.u1, t.v1)) - 1; // (1,1)
-    const i3 = vertices.push(v(p01.x, p01.y, p01.z, t.u0, t.v1)) - 1; // (0,1)
-    return createFace([vertices[i0].id, vertices[i1].id, vertices[i2].id, vertices[i3].id]);
-  };
-
-  const faces: Face[] = [];
-  // Front (+Z)
-  faces.push(quad(vec3(-h, -h,  h), vec3( h, -h,  h), vec3( h,  h,  h), vec3(-h,  h,  h), T_FRONT));
-  // Back (-Z) - keep CCW as seen from outside
-  faces.push(quad(vec3( h, -h, -h), vec3(-h, -h, -h), vec3(-h,  h, -h), vec3( h,  h, -h), T_BACK));
-  // Top (+Y)
-  faces.push(quad(vec3(-h,  h,  h), vec3( h,  h,  h), vec3( h,  h, -h), vec3(-h,  h, -h), T_TOP));
-  // Bottom (-Y)
-  faces.push(quad(vec3(-h, -h, -h), vec3( h, -h, -h), vec3( h, -h,  h), vec3(-h, -h,  h), T_BOTTOM));
-  // Left (-X)
-  faces.push(quad(vec3(-h, -h, -h), vec3(-h, -h,  h), vec3(-h,  h,  h), vec3(-h,  h, -h), T_LEFT));
-  // Right (+X)
-  faces.push(quad(vec3( h, -h,  h), vec3( h, -h, -h), vec3( h,  h, -h), vec3( h,  h,  h), T_RIGHT));
-
+  // 8 shared corner vertices to keep topology connected
+  const corners: Vector3[] = [
+    vec3(-h, -h, -h), // 0
+    vec3( h, -h, -h), // 1
+    vec3( h,  h, -h), // 2
+    vec3(-h,  h, -h), // 3
+    vec3(-h, -h,  h), // 4
+    vec3( h, -h,  h), // 5
+    vec3( h,  h,  h), // 6
+    vec3(-h,  h,  h), // 7
+  ];
+  const vertices: Vertex[] = corners.map(p => createVertex(p, vec3(0, 0, 0), vec2(0, 0)));
+  const id = (i: number) => vertices[i].id;
+  // 6 quad faces (CCW from outside)
+  const faces: Face[] = [
+    // Front (+Z): 4,5,6,7
+    createFace([id(4), id(5), id(6), id(7)]),
+    // Back (-Z): 1,0,3,2 (note winding to keep CCW)
+    createFace([id(1), id(0), id(3), id(2)]),
+    // Top (+Y): 7,6,2,3
+    createFace([id(7), id(6), id(2), id(3)]),
+    // Bottom (-Y): 0,1,5,4
+    createFace([id(0), id(1), id(5), id(4)]),
+    // Left (-X): 0,4,7,3
+    createFace([id(0), id(4), id(7), id(3)]),
+    // Right (+X): 5,1,2,6
+    createFace([id(5), id(1), id(2), id(6)]),
+  ];
   return { vertices, faces };
 };
 
@@ -360,55 +345,30 @@ export const buildCylinderGeometry = (
     }
   }
 
-  // Caps
+  // Caps (reuse side ring vertices to keep topology connected)
   if (capped) {
-    // Helper to planar-map cap UVs into the [0,1] range.
-    const capUV = (x: number, z: number, radius: number, cx: number, cy: number, scale: number) => {
-      // Normalize to [-1,1], then scale to tile and offset to center
-      const nx = radius > 0 ? x / radius : 0;
-      const nz = radius > 0 ? z / radius : 0;
-      return vec2(cx + (nx * 0.5) * scale, cy + (nz * 0.5) * scale);
-    };
-
-    // We'll place both caps as discs with their own vertices and UVs.
-    // Keep side UVs as-is (u: circumference, v: height).
-
     // Top cap (y = +height/2)
     const topRing = rings[hs];
     if (topRing.length > 1 && radiusTop > 0) {
-      const topCenter = createVertex(vec3(0, height / 2, 0), vec3(0, 1, 0), capUV(0, 0, radiusTop, 0.75, 0.75, 0.5));
+      const topCenter = createVertex(vec3(0, height / 2, 0), vec3(0, 1, 0), vec2(0.5, 0.5));
       const topCenterIndex = vertices.push(topCenter) - 1;
-      // Duplicate ring vertices for cap with planar UVs
-      const capRingIdx: number[] = [];
       for (let i = 0; i < rs; i++) {
-        const idx = topRing[i];
-        const p = vertices[idx].position;
-        const uv = capUV(p.x, p.z, radiusTop, 0.75, 0.75, 0.5);
-        capRingIdx.push(vertices.push(createVertex(vec3(p.x, p.y, p.z), vec3(0, 1, 0), uv)) - 1);
-      }
-      for (let i = 0; i < rs; i++) {
-        const v1 = capRingIdx[i];
-        const v2 = capRingIdx[(i + 1) % rs];
-        faces.push(createFace([vertices[v1].id, vertices[v2].id, vertices[topCenterIndex].id]));
+        const a = topRing[i];
+        const b = topRing[(i + 1) % rs];
+        // CCW seen from above: a -> b -> center
+        faces.push(createFace([vertices[a].id, vertices[b].id, vertices[topCenterIndex].id]));
       }
     }
     // Bottom cap (y = -height/2)
     const bottomRing = rings[0];
     if (bottomRing.length > 1 && radiusBottom > 0) {
-      const bottomCenter = createVertex(vec3(0, -height / 2, 0), vec3(0, -1, 0), capUV(0, 0, radiusBottom, 0.25, 0.75, 0.5));
+      const bottomCenter = createVertex(vec3(0, -height / 2, 0), vec3(0, -1, 0), vec2(0.5, 0.5));
       const bottomCenterIndex = vertices.push(bottomCenter) - 1;
-      const capRingIdx: number[] = [];
       for (let i = 0; i < rs; i++) {
-        const idx = bottomRing[i];
-        const p = vertices[idx].position;
-        const uv = capUV(p.x, p.z, radiusBottom, 0.25, 0.75, 0.5);
-        capRingIdx.push(vertices.push(createVertex(vec3(p.x, p.y, p.z), vec3(0, -1, 0), uv)) - 1);
-      }
-      for (let i = 0; i < rs; i++) {
-        const v1 = capRingIdx[(i + 1) % rs];
-        const v2 = capRingIdx[i];
-        // CCW from outside (down): v1 -> v2 -> center
-        faces.push(createFace([vertices[v1].id, vertices[v2].id, vertices[bottomCenterIndex].id]));
+        const a = bottomRing[(i + 1) % rs];
+        const b = bottomRing[i];
+        // CCW seen from below (outside): a -> b -> center
+        faces.push(createFace([vertices[a].id, vertices[b].id, vertices[bottomCenterIndex].id]));
       }
     }
   }
