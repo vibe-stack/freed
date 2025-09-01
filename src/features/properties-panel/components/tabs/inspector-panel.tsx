@@ -113,16 +113,16 @@ export const InspectorPanel: React.FC = () => {
           <Label label="Rotation">
       <div className="grid grid-cols-3 gap-1.5">
               <div className="flex items-center">
-                <KeyButton property="rotation.x" value={selected.transform.rotation.x} title="Key X rotation" />
-                <DragInput compact label="X" value={selected.transform.rotation.x} precision={2} step={1} onChange={(v) => updateTransform({ rotation: { ...selected.transform.rotation, x: v } })} />
+                <KeyButton property="rotation.x" value={selected.transform.rotation.x * (180 / Math.PI)} title="Key X rotation" />
+                <DragInput compact label="X" value={selected.transform.rotation.x * (180 / Math.PI)} precision={1} step={5} onChange={(v) => updateTransform({ rotation: { ...selected.transform.rotation, x: v * (Math.PI / 180) } })} />
               </div>
               <div className="flex items-center">
-                <KeyButton property="rotation.y" value={selected.transform.rotation.y} title="Key Y rotation" />
-                <DragInput compact label="Y" value={selected.transform.rotation.y} precision={2} step={1} onChange={(v) => updateTransform({ rotation: { ...selected.transform.rotation, y: v } })} />
+                <KeyButton property="rotation.y" value={selected.transform.rotation.y * (180 / Math.PI)} title="Key Y rotation" />
+                <DragInput compact label="Y" value={selected.transform.rotation.y * (180 / Math.PI)} precision={1} step={5} onChange={(v) => updateTransform({ rotation: { ...selected.transform.rotation, y: v * (Math.PI / 180) } })} />
               </div>
               <div className="flex items-center">
-                <KeyButton property="rotation.z" value={selected.transform.rotation.z} title="Key Z rotation" />
-                <DragInput compact label="Z" value={selected.transform.rotation.z} precision={2} step={1} onChange={(v) => updateTransform({ rotation: { ...selected.transform.rotation, z: v } })} />
+                <KeyButton property="rotation.z" value={selected.transform.rotation.z * (180 / Math.PI)} title="Key Z rotation" />
+                <DragInput compact label="Z" value={selected.transform.rotation.z * (180 / Math.PI)} precision={1} step={5} onChange={(v) => updateTransform({ rotation: { ...selected.transform.rotation, z: v * (Math.PI / 180) } })} />
               </div>
             </div>
           </Label>
