@@ -208,9 +208,8 @@ const ExportVideoDialog: React.FC<ExportVideoDialogProps> = ({ open, onOpenChang
   }, [container]);
 
   return (
-    <Dialog.Root modal open={open} onOpenChange={(v) => { if (!busy) onOpenChange(v); }}>
+    <Dialog.Root modal={false} open={open} onOpenChange={(v) => { if (!busy) onOpenChange(v); }}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
         <Dialog.Popup className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[820px] max-w-[96vw] rounded-xl border border-white/10 bg-[#0b0e13] p-4 shadow-2xl text-sm text-gray-200">
           <div className="flex items-start gap-3">
             <div className="flex-1">
