@@ -6,7 +6,7 @@ import { useFrame } from '@react-three/fiber';
 import { useViewportStore } from '@/stores/viewport-store';
 import { getObject3D } from '@/features/viewport/hooks/object3d-registry';
 import { useShaderTimeStore } from '@/stores/shader-time-store';
-import { updateAnimUniforms } from '@/utils/shader-tsl/nodes/time-nodes';
+import { animationTimer, animationFps } from '@/utils/shader-tsl/animation-timer';
 
 type SampleUpdate = { targetId: string; property: PropertyPath; value: number };
 
@@ -118,9 +118,10 @@ export default function AnimationSampler() {
       if (lastPausedApplied.current !== playhead) {
         applySampleAt(playhead);
         lastPausedApplied.current = playhead;
-    // keep shader anim time in sync while scrubbing/paused
-    setAnimTime(playhead);
-        updateAnimUniforms(playhead, fps);
+        // keep shader anim time in sync while scrubbing/paused
+        setAnimTime(playhead);
+        (animationTimer as any).value = playhead;
+        (animationFps as any).value = fps;
       }
       return;
     }
@@ -195,9 +196,10 @@ export default function AnimationSampler() {
       seekSeconds(t);
     }
 
-  // Update shader animation time uniform every frame
+  // Update shader animation time uniforms every frame
   setAnimTime(t);
-  updateAnimUniforms(t, fps);
+  (animationTimer as any).value = t;
+  (animationFps as any).value = fps;
   });
 
   return null;
