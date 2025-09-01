@@ -49,6 +49,7 @@ export default function AnimationSampler() {
   const pause = useAnimationStore((s) => s.pause);
   const seekSeconds = useAnimationStore((s) => s.seekSeconds);
   const applySampleAt = useAnimationStore((s) => s.applySampleAt);
+  const exportGuard = useAnimationStore((s) => (s as any)._exportGuard as boolean | undefined);
   const soloTrackIds = useAnimationStore((s) => s.soloTrackIds);
   const getState = useAnimationStore;
   const clipRef = useRef<ReturnType<typeof getState.getState>['clips'][string] | null>(null);
@@ -114,6 +115,7 @@ export default function AnimationSampler() {
   const clip = clipRef.current;
   if (!clip) return;
     // When not playing, only apply sampling when the playhead changes (scrubbing)
+  if (exportGuard) return; // exporter is driving state
   if (!playing) {
       if (lastPausedApplied.current !== playhead) {
         applySampleAt(playhead);
