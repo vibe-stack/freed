@@ -147,6 +147,9 @@ interface AnimationActions {
   moveMarker: (id: string, t: number) => void;
   removeMarker: (id: string) => void;
   setMarkerLabel: (id: string, label: string) => void;
+
+  // cleanup
+  removeTracksForTarget: (targetId: string) => void;
 }
 
 type AnimationStore = AnimationState & AnimationActions & { autoKey: boolean };
@@ -541,6 +544,30 @@ export const useAnimationStore = create<AnimationStore>()(
       moveMarker: (id: string, t: number) => set((s) => { const m = s.markers.find(mm => mm.id === id); if (m) m.t = Math.max(0, t); }),
       removeMarker: (id: string) => set((s) => { s.markers = s.markers.filter(m => m.id !== id); }),
       setMarkerLabel: (id: string, label: string) => set((s) => { const m = s.markers.find(mm => mm.id === id); if (m) m.label = label; }),
+
+      // cleanup
+      removeTracksForTarget: (targetId: string) => set((s) => {
+        // Find tracks that point to this target
+        const toRemove = Object.values(s.tracks)
+          .filter((tr) => tr.targetType === 'sceneObject' && tr.targetId === targetId)
+          .map((tr) => tr.id);
+        if (toRemove.length === 0) return;
+        // Remove from tracks map and caches
+        toRemove.forEach((tid) => {
+          delete s.tracks[tid];
+          if (s._sortedCache) delete (s._sortedCache as any)[tid];
+          // Selection cleanup
+          s.selection.trackIds = s.selection.trackIds.filter((id) => id !== tid);
+          delete s.selection.keys[tid];
+          // Solo set cleanup
+          if (s.soloTrackIds.has(tid)) s.soloTrackIds.delete(tid);
+        });
+        s.soloTrackIds = new Set<string>(Array.from(s.soloTrackIds));
+        // Remove from all clips
+        Object.values(s.clips).forEach((clip) => {
+          clip.trackIds = clip.trackIds.filter((id) => !toRemove.includes(id));
+        });
+      }),
     }))
   )
 );

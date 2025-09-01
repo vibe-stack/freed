@@ -109,6 +109,11 @@ export const useSceneStore = create<SceneStore>()(
           const removeRecursive = (id: string) => {
             const obj = state.objects[id];
             if (obj) {
+              // Remove animation tracks for this object
+              try {
+                const { useAnimationStore } = require('./animation-store');
+                useAnimationStore.getState().removeTracksForTarget(id);
+              } catch {}
               // Clean up component references
               if (obj.lightId) delete state.lights[obj.lightId];
               if (obj.cameraId) {
