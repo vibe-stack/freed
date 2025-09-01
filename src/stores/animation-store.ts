@@ -197,7 +197,7 @@ export const useAnimationStore = create<AnimationStore>()(
   subscribeWithSelector(
     immer((set, get) => ({
       // initial state
-      fps: 24,
+      fps: 30,
       playing: false,
       playhead: 0,
   autoKey: false,
@@ -211,7 +211,7 @@ export const useAnimationStore = create<AnimationStore>()(
       // UI
       timelinePanelOpen: false,
       barVisible: true,
-      lastUsedFps: 24,
+      lastUsedFps: 30,
       lastUsedClipId: null,
       zoom: 100, // px/sec
   pan: 0,
@@ -239,7 +239,7 @@ export const useAnimationStore = create<AnimationStore>()(
         s.playhead = clamp(t, inT, outT);
       }),
       seekFrame: (frame: number) => {
-        const fps = get().fps || 24;
+        const fps = get().fps || 30;
         get().seekSeconds(frame / fps);
       },
       prevKey: () => set((s) => {
@@ -312,7 +312,7 @@ export const useAnimationStore = create<AnimationStore>()(
           const tr = s.tracks[trackId];
           if (!tr) return;
           // Snap to frame to keep consistent
-          const fps = s.fps || 24;
+          const fps = s.fps || 30;
           const frame = Math.round(t * fps);
           const T = frame / fps;
           const existing = tr.channel.keys.find((k) => Math.abs(k.t - T) < 1e-6);
@@ -330,7 +330,7 @@ export const useAnimationStore = create<AnimationStore>()(
         const s = get();
         const tr = s.tracks[trackId];
         if (!tr) return undefined;
-        const fps = s.fps || 24;
+        const fps = s.fps || 30;
         const frame = Math.round(t * fps);
         const T = frame / fps;
         const k = tr.channel.keys.find((kk) => Math.abs(kk.t - T) < 1e-6);
@@ -475,7 +475,7 @@ export const useAnimationStore = create<AnimationStore>()(
         s.selection.keys = {};
       }),
       nudgeSelectedKeys: (dt: number, dv?: number, snapToFps: boolean = true) => set((s) => {
-        const fps = s.fps || 24;
+        const fps = s.fps || 30;
         const snap = (x: number) => snapToFps ? Math.round(x * fps) / fps : x;
         Object.entries(s.selection.keys).forEach(([tid, keySet]) => {
           const tr = s.tracks[tid]; if (!tr || tr.locked) return;
@@ -489,7 +489,7 @@ export const useAnimationStore = create<AnimationStore>()(
       }),
       nudgeKeysForTracks: (trackIds: string[], dt: number, snapToFps: boolean = false) => set((s) => {
         if (!trackIds?.length || !isFinite(dt)) return;
-        const fps = s.fps || 24;
+        const fps = s.fps || 30;
         const snap = (x: number) => snapToFps ? Math.round(x * fps) / fps : x;
         trackIds.forEach((tid) => {
           const tr = s.tracks[tid]; if (!tr || tr.locked) return;

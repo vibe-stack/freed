@@ -291,7 +291,7 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
     useFrame((_, delta) => {
       if (!sys) return;
       if (!playing) return;
-      const stepFps = Math.max(1, fps || 24);
+      const stepFps = Math.max(1, fps || 30);
       accumRef.current += delta * stepFps;
       let steps = Math.floor(accumRef.current);
       if (steps <= 0) return;
@@ -453,7 +453,7 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
     useEffect(() => {
       if (!sys) return;
       if (playing) return; // runtime loop handles updates
-      const stepFps = Math.max(1, fps || 24);
+      const stepFps = Math.max(1, fps || 30);
       const frame = Math.max(0, Math.round(playhead * stepFps));
       if (lastSimFrameRef.current === frame) return;
       lastSimFrameRef.current = frame;

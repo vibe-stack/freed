@@ -273,7 +273,7 @@ export const useSceneStore = create<SceneStore>()(
           const clip = a.activeClipId ? a.clips[a.activeClipId] : null;
           if (!clip) return;
           const t = a.playhead;
-          const fps = a.fps || 24;
+          const fps = a.fps || 30;
           const frameT = Math.round(t * fps) / fps;
           const toKey: Array<{ prop: 'position'|'rotation'|'scale'; value: any }> = [];
           if (transform.position) toKey.push({ prop: 'position', value: transform.position });
@@ -305,7 +305,7 @@ export const useSceneStore = create<SceneStore>()(
           if (!a.autoKey || a._samplingGuard) return;
           const clip = a.activeClipId ? a.clips[a.activeClipId] : null;
           if (!clip) return;
-          const t = a.playhead; const fps = a.fps || 24; const frameT = Math.round(t * fps) / fps;
+          const t = a.playhead; const fps = a.fps || 30; const frameT = Math.round(t * fps) / fps;
           const obj = useSceneStore.getState().objects[objectId];
           if (!obj) return;
           (['x','y','z'] as const).forEach((axis, i) => {
@@ -330,7 +330,7 @@ export const useSceneStore = create<SceneStore>()(
           if (!a.autoKey || a._samplingGuard) return;
           const clip = a.activeClipId ? a.clips[a.activeClipId] : null;
           if (!clip) return;
-          const t = a.playhead; const fps = a.fps || 24; const frameT = Math.round(t * fps) / fps;
+          const t = a.playhead; const fps = a.fps || 30; const frameT = Math.round(t * fps) / fps;
           const obj = useSceneStore.getState().objects[objectId];
           if (!obj) return;
           (['x','y','z'] as const).forEach((axis) => {
@@ -355,7 +355,7 @@ export const useSceneStore = create<SceneStore>()(
           if (!a.autoKey || a._samplingGuard) return;
           const clip = a.activeClipId ? a.clips[a.activeClipId] : null;
           if (!clip) return;
-          const t = a.playhead; const fps = a.fps || 24; const frameT = Math.round(t * fps) / fps;
+          const t = a.playhead; const fps = a.fps || 30; const frameT = Math.round(t * fps) / fps;
           const obj = useSceneStore.getState().objects[objectId];
           if (!obj) return;
           (['x','y','z'] as const).forEach((axis) => {

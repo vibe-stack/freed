@@ -45,7 +45,7 @@ const ExportVideoDialog: React.FC<ExportVideoDialogProps> = ({ open, onOpenChang
 
   const [container, setContainer] = useState<Container>('mp4');
   const [codec, setCodec] = useState<VideoCodec>('avc');
-  const [fps, setFps] = useState<number>(() => useAnimationStore.getState().fps || 24);
+  const [fps, setFps] = useState<number>(() => useAnimationStore.getState().fps || 30);
   const [quality, setQuality] = useState<QualityPreset>('high');
   const [cameraObjectId, setCameraObjectId] = useState<string | 'default'>('default');
   const [keyframeInterval, setKeyframeInterval] = useState<number>(5);
@@ -91,7 +91,7 @@ const ExportVideoDialog: React.FC<ExportVideoDialogProps> = ({ open, onOpenChang
     const start = active ? active.start : 0;
     const end = active ? active.end : Math.max(0, 5);
   const duration = Math.max(0, end - start);
-  const FPS = Math.max(1, Math.min(240, Math.round(fps || s.fps || 24)));
+  const FPS = Math.max(1, Math.min(240, Math.round(fps || s.fps || 30)));
   // Ensure at least 1 frame to avoid a stuck UI
   const totalFrames = Math.max(1, Math.round(Math.max(duration, 1 / FPS) * FPS));
 
@@ -249,7 +249,7 @@ const ExportVideoDialog: React.FC<ExportVideoDialogProps> = ({ open, onOpenChang
                   FPS
                   <input type="number" min={1} max={240} value={fps}
                     className="ml-2 w-20 rounded border border-white/10 bg-transparent px-2 py-1 outline-none"
-                    onChange={(e) => setFps(parseInt(e.target.value || '24', 10))}
+                    onChange={(e) => setFps(parseInt(e.target.value || '30', 10))}
                     disabled={busy}
                   />
                   <span className="ml-3">Keyframe interval (sec)</span>
