@@ -180,7 +180,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
           const ax = xform.axis === 'y' ? 0 : 1; const ay = xform.axis === 'x' ? 0 : 1;
           for (const v of m.vertices) {
             const o = xform.uv0.get(v.id);
-            if (o) v.uv = { x: o.x + du * ax, y: o.y + dv * ay };
+            if (o) v.uv = { x: o.x + du * ax, y: o.y - dv * ay };
           }
         } else if (xform.mode === 'rotate') {
           // Angle from origin based on mouse movement relative to origin
@@ -234,12 +234,18 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
     if (xform && e.button === 0) setXform(null);
     if (marquee && canvasRef.current && mesh) {
       const { start, current, additive } = marquee;
-      // Convert local px back to client for screenToUV (CSS px)
-      const rect = canvasRef.current.getBoundingClientRect();
-      const a = screenToUV(canvasRef.current, start.x + rect.left, start.y + rect.top);
-      const b = screenToUV(canvasRef.current, current.x + rect.left, current.y + rect.top);
-      const minU = Math.min(a.x, b.x), maxU = Math.max(a.x, b.x);
-      const minV = Math.min(a.y, b.y), maxV = Math.max(a.y, b.y);
+      // Convert local px directly to UV space without double conversion
+      const el = canvasRef.current;
+      const w = el.clientWidth; const h = el.clientHeight;
+      
+      // Convert local coordinates to UV space directly
+      const startU = (start.x - (w / 2 + pan.x)) / zoom;
+      const startV = -(start.y - (h / 2 + pan.y)) / zoom;
+      const currentU = (current.x - (w / 2 + pan.x)) / zoom;
+      const currentV = -(current.y - (h / 2 + pan.y)) / zoom;
+      
+      const minU = Math.min(startU, currentU), maxU = Math.max(startU, currentU);
+      const minV = Math.min(startV, currentV), maxV = Math.max(startV, currentV);
       
       const picked: string[] = [];
       for (const v of mesh.vertices) {
@@ -259,7 +265,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         const isClick = Math.abs(current.x - start.x) < 2 && Math.abs(current.y - start.y) < 2;
         if (isClick) {
           // Find nearest vertex to the click position
-          const uvClick = a; // a corresponds to start
+          const uvClick = { x: startU, y: startV }; // start position in UV space
           let closest: { id: string; d: number } | null = null;
           for (const v of mesh.vertices) {
             const d = Math.hypot(v.uv.x - uvClick.x, v.uv.y - uvClick.y);

@@ -47,7 +47,6 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
   // Keep stable mapping from instance index -> vertex id for picking
   const indexToUnselectedId = useRef<string[]>([]);
   const indexToSelectedId = useRef<string[]>([]);
-  const tmp = useMemo(() => new Object3D(), []);
   const boxGeo = useMemo(() => new BoxGeometry(0.5, 0.5, 0.5), []);
   const blackMat = useMemo(() => new MeshBasicMaterial({ color: BLACK, depthTest: false, depthWrite: false }), []);
   const orangeMat = useMemo(() => new MeshBasicMaterial({ color: ORANGE, depthTest: false, depthWrite: false }), []);
@@ -98,10 +97,15 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
       const count = Math.max(0, arr.length);
       // Render exactly 'count' instances; allow 0 to avoid ghost instance
       ref.count = count;
+      
+      // Create a new temp object for each update to avoid interference
+      const localTmp = new Object3D();
+      
+      // Update valid instances
       for (let i = 0; i < count; i++) {
         const v = arr[i];
         // local position inside the object's transform group
-        tmp.position.copy(v.position);
+        localTmp.position.copy(v.position);
         // compute world position for distance-based scaling
         const wp = v.position.clone();
         if (objectScale) {
@@ -118,17 +122,21 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
         const sx = pxScale / Math.max(1e-6, Math.abs(objectScale?.x ?? 1));
         const sy = pxScale / Math.max(1e-6, Math.abs(objectScale?.y ?? 1));
         const sz = pxScale / Math.max(1e-6, Math.abs(objectScale?.z ?? 1));
-        tmp.scale.set(sx, sy, sz);
-        tmp.updateMatrix();
-        ref.setMatrixAt(i, tmp.matrix);
+        localTmp.scale.set(sx, sy, sz);
+        localTmp.updateMatrix();
+        ref.setMatrixAt(i, localTmp.matrix);
       }
-      // Zero out any leftover range from previous frame to avoid stale instances
+      
+      // Zero out any leftover instances from previous frame to avoid stale instances
+      // Use a separate temp object to avoid affecting the main tmp object
+      const cleanupTmp = new Object3D();
+      cleanupTmp.position.set(0, 0, 0);
+      cleanupTmp.scale.set(0, 0, 0);
+      cleanupTmp.updateMatrix();
       for (let i = count; i < prevRef.current; i++) {
-        tmp.position.set(0, 0, 0);
-        tmp.scale.set(0, 0, 0);
-        tmp.updateMatrix();
-        ref.setMatrixAt(i, tmp.matrix);
+        ref.setMatrixAt(i, cleanupTmp.matrix);
       }
+      
       ref.instanceMatrix.needsUpdate = true;
       prevRef.current = count;
     };
