@@ -161,7 +161,7 @@ export const Timeline: React.FC = () => {
     <div className="absolute left-0 right-0 bottom-0 z-20" style={{ pointerEvents: 'none' }}>
       <div className="mx-2 rounded-md border border-white/10 bg-black/70 backdrop-blur pointer-events-auto overflow-hidden">
         <div className="grid" style={{ gridTemplateColumns: '260px 1fr' }}>
-          <div className="border-r border-white/10 flex items-center px-2 text-xs opacity-70" style={{ height: RULER_HEIGHT }}>
+          <div className="border-r bg-black border-white/10 flex items-center px-2 text-xs opacity-70" style={{ height: RULER_HEIGHT }}>
             Tracks
           </div>
           <Ruler
@@ -215,6 +215,7 @@ export const Timeline: React.FC = () => {
             onScrollSync={onSyncScroll}
             listRef={listRef}
           />
+          
 
           <TrackLanes
             rows={rows}

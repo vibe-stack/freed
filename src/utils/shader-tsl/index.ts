@@ -32,7 +32,7 @@ import { commonResolvers } from './nodes/common-nodes';
 import { trigResolvers } from './nodes/trig-nodes';
 import { vectorResolvers } from './nodes/vector-nodes';
 import { attrResolvers } from './nodes/attr-nodes';
-import { timeResolvers } from './nodes/time-nodes';
+import { timeResolvers, setActiveMaterialId } from './nodes/time-nodes';
 import { conditionalResolvers } from './nodes/conditional-nodes';
 import { cameraResolvers } from './nodes/camera-nodes';
 import { screenResolvers } from './nodes/screen-nodes';
@@ -101,6 +101,7 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
   const buildNodeExpr = (node: ShaderNode, outHandle: string): any => resolveNode(node, outHandle, ctx, buildNodeExpr);
 
   function createStandardNodeMaterial(): import('three').Material {
+  setActiveMaterialId(graph.materialId || null);
     const out = graph.nodes.find((n) => n.type === 'output' || n.type === 'output-standard');
     if (!out) return new MeshStandardNodeMaterial();
 
@@ -141,10 +142,13 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
   // Always render both sides for editor consistency
   (mat as any).side = DoubleSide;
   (mat as any).shadowSide = BackSide;
-    return mat as import('three').Material;
+  const built = mat as import('three').Material;
+  setActiveMaterialId(null);
+  return built;
   }
 
   function createPhysicalNodeMaterial(): import('three').Material {
+  setActiveMaterialId(graph.materialId || null);
     const out = graph.nodes.find((n) => n.type === 'output-physical');
     if (!out) return new MeshPhysicalNodeMaterial();
 
@@ -220,10 +224,13 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
   // Always render both sides for editor consistency
   (mat as any).side = DoubleSide;
   (mat as any).shadowSide = BackSide;
-    return mat as import('three').Material;
+  const built = mat as import('three').Material;
+  setActiveMaterialId(null);
+  return built;
   }
 
   function createPhongNodeMaterial(): import('three').Material {
+  setActiveMaterialId(graph.materialId || null);
     const out = graph.nodes.find((n) => n.type === 'output-phong');
     if (!out) return new MeshPhongNodeMaterial();
 
@@ -264,10 +271,13 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
   // Always render both sides for editor consistency
   (mat as any).side = DoubleSide;
   (mat as any).shadowSide = BackSide;
-    return mat as import('three').Material;
+  const built = mat as import('three').Material;
+  setActiveMaterialId(null);
+  return built;
   }
 
   function createToonNodeMaterial(): import('three').Material {
+  setActiveMaterialId(graph.materialId || null);
     const out = graph.nodes.find((n) => n.type === 'output-toon');
     if (!out) return new MeshToonNodeMaterial();
 
@@ -303,7 +313,9 @@ export function buildTSLMaterialFactory(graph: ShaderGraph): TSLBuildResult {
   // Always render both sides for editor consistency
   (mat as any).side = DoubleSide;
   (mat as any).shadowSide = BackSide;
-    return mat as import('three').Material;
+  const built = mat as import('three').Material;
+  setActiveMaterialId(null);
+  return built;
   }
 
   function createAuto(): import('three').Material {

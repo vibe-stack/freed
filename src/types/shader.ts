@@ -53,7 +53,7 @@ export type ShaderNodeType =
   // Attributes / camera / world
   | 'positionAttr' | 'normalAttr' | 'uvAttr' | 'viewPosition' | 'worldPosition' | 'cameraPosition'
   // Time
-  | 'time' | 'timeSine' | 'timeCos'
+  | 'time' | 'timeSine' | 'timeCos' | 'animTime' | 'animFrame'
   // Model builtins
   | 'modelDirection'
   | 'modelViewMatrix'
@@ -313,6 +313,8 @@ export const NodeInputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'time': {},
   'timeSine': {},
   'timeCos': {},
+  'animTime': {},
+  'animFrame': {},
   // model providers have no inputs
   'modelDirection': {},
   'modelViewMatrix': {},
@@ -471,6 +473,8 @@ export const NodeOutputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'time': { out: 'float' },
   'timeSine': { out: 'float' },
   'timeCos': { out: 'float' },
+  'animTime': { out: 'float' },
+  'animFrame': { out: 'float' },
   // model
   'modelDirection': { out: 'vec3' },
   'modelViewMatrix': { out: 'mat4' },

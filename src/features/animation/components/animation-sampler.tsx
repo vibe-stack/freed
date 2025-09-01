@@ -5,6 +5,8 @@ import { useAnimationStore, type Track, type Channel, type PropertyPath } from '
 import { useFrame } from '@react-three/fiber';
 import { useViewportStore } from '@/stores/viewport-store';
 import { getObject3D } from '@/features/viewport/hooks/object3d-registry';
+import { useShaderTimeStore } from '@/stores/shader-time-store';
+import { updateAnimUniforms } from '@/utils/shader-tsl/nodes/time-nodes';
 
 type SampleUpdate = { targetId: string; property: PropertyPath; value: number };
 
@@ -52,6 +54,7 @@ export default function AnimationSampler() {
   const clipRef = useRef<ReturnType<typeof getState.getState>['clips'][string] | null>(null);
   const tracksRef = useRef<Record<string, Track>>({});
   const lastPausedApplied = useRef<number | null>(null);
+  const setAnimTime = useShaderTimeStore((s) => s.setAnimTime);
 
   const autoOrbit = useViewportStore((s) => s.autoOrbitIntervalSec ?? 0);
   const setAutoOrbit = useViewportStore((s) => s.setAutoOrbitInterval);
@@ -111,10 +114,13 @@ export default function AnimationSampler() {
   const clip = clipRef.current;
   if (!clip) return;
     // When not playing, only apply sampling when the playhead changes (scrubbing)
-    if (!playing) {
+  if (!playing) {
       if (lastPausedApplied.current !== playhead) {
         applySampleAt(playhead);
         lastPausedApplied.current = playhead;
+    // keep shader anim time in sync while scrubbing/paused
+    setAnimTime(playhead);
+        updateAnimUniforms(playhead, fps);
       }
       return;
     }
@@ -135,7 +141,7 @@ export default function AnimationSampler() {
     t = Math.round(t * fps) / fps;
     localTime.current = t;
 
-    // Sample values from snapshot and apply directly to Three objects
+  // Sample values from snapshot and apply directly to Three objects
     const updates: SampleUpdate[] = [];
   if (clip.trackIds.length) {
       const solo = soloTrackIds;
@@ -188,6 +194,10 @@ export default function AnimationSampler() {
       uiSyncAccum.current = 0;
       seekSeconds(t);
     }
+
+  // Update shader animation time uniform every frame
+  setAnimTime(t);
+  updateAnimUniforms(t, fps);
   });
 
   return null;

@@ -226,6 +226,9 @@ export const ShaderContextMenuContent: React.FC<Props> = ({ onAdd }) => {
           <Item onSelect={() => onAdd('time')}>Time</Item>
           <Item onSelect={() => onAdd('timeSine')}>Time Sine</Item>
           <Item onSelect={() => onAdd('timeCos')}>Time Cos</Item>
+          <div className="px-2 pt-1 text-[10px] uppercase tracking-wide text-gray-500">Animation</div>
+          <Item onSelect={() => onAdd('animTime')}>Animation Time</Item>
+          <Item onSelect={() => onAdd('animFrame')}>Animation Frame</Item>
         </SubMenu>
       </div>
 

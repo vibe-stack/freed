@@ -425,11 +425,11 @@ export const useAnimationStore = create<AnimationStore>()(
         const { useSceneStore } = require('./scene-store');
         const scene = useSceneStore.getState();
         // Batch per object
-        const byObj: Record<string, Partial<{ position: any; rotation: any; scale: any }>> = {};
+        const byObj: Record<string, Partial<{ position: Record<string, number>; rotation: Record<string, number>; scale: Record<string, number> }>> = {};
         updates.forEach((u) => {
           const bucket = byObj[u.targetId] || (byObj[u.targetId] = {});
           const [prop, axis] = u.property.split('.') as [keyof typeof bucket, 'x'|'y'|'z'];
-          const vec = bucket[prop] || { x: undefined, y: undefined, z: undefined };
+          const vec = (bucket as any)[prop] || {};
           (vec as any)[axis] = u.value;
           (bucket as any)[prop] = vec;
         });
@@ -437,9 +437,18 @@ export const useAnimationStore = create<AnimationStore>()(
         useAnimationStore.setState((s) => { s._samplingGuard = true; });
         Object.entries(byObj).forEach(([objId, partial]) => {
           const transform: any = {};
-          if (partial.position) transform.position = { ...(scene.objects[objId]?.transform.position), ...partial.position };
-          if (partial.rotation) transform.rotation = { ...(scene.objects[objId]?.transform.rotation), ...partial.rotation };
-          if (partial.scale) transform.scale = { ...(scene.objects[objId]?.transform.scale), ...partial.scale };
+          if (partial.position) {
+            const prev = scene.objects[objId]?.transform.position;
+            transform.position = { ...(prev || {}), ...partial.position };
+          }
+          if (partial.rotation) {
+            const prev = scene.objects[objId]?.transform.rotation;
+            transform.rotation = { ...(prev || {}), ...partial.rotation };
+          }
+          if (partial.scale) {
+            const prev = scene.objects[objId]?.transform.scale;
+            transform.scale = { ...(prev || {}), ...partial.scale };
+          }
           scene.setTransform(objId, transform);
         });
         useAnimationStore.setState((s) => { s._samplingGuard = false; });
