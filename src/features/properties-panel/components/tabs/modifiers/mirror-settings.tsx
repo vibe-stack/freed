@@ -2,6 +2,8 @@
 import React from 'react';
 import { DragInput } from '@/components/drag-input';
 import { useModifiersStore, useObjectModifiers } from '@/stores/modifier-store';
+import { useAnimationStore } from '@/stores/animation-store';
+import { Diamond as DiamondIcon } from 'lucide-react';
 
 export const MirrorSettings: React.FC<{ objectId: string; id: string }> = ({ objectId, id }) => {
   const actions = useModifiersStore();
@@ -9,6 +11,35 @@ export const MirrorSettings: React.FC<{ objectId: string; id: string }> = ({ obj
   const mod = mods.find((m) => m.id === id);
   if (!mod) return null;
   const s = mod.settings as { axis: 'x'|'y'|'z'; merge?: boolean; mergeThreshold?: number };
+  const targetId = objectId as string;
+  const clipId = useAnimationStore((st) => st.activeClipId);
+  const KeyBtn: React.FC<{ path: string; value: number; title?: string }> = ({ path, value, title }) => {
+    const property = `mod.${id}.${path}`;
+    const has = useAnimationStore((st) => {
+      const f = Math.round(st.playhead * (st.fps || 30));
+      const T = f / (st.fps || 30);
+      const tid = Object.values(st.tracks).find((tr) => tr.targetId === targetId && tr.property === property)?.id;
+      if (!tid) return false;
+      const tr = st.tracks[tid];
+      return tr.channel.keys.some((k) => Math.abs(k.t - T) < 1e-6);
+    });
+    return (
+      <button
+        className="-ml-0.5 mr-1 p-0.5 rounded hover:bg-white/10"
+        title={title || 'Toggle keyframe'}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!clipId) return;
+          const st = useAnimationStore.getState();
+          const f = Math.round(st.playhead * (st.fps || 30));
+          const T = f / (st.fps || 30);
+          st.toggleKeyAt(targetId, property, T, value, 'linear');
+        }}
+      >
+        <DiamondIcon className={`w-3 h-3 ${has ? 'text-amber-400' : 'text-gray-400/70 hover:text-white'}`} strokeWidth={2} />
+      </button>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-2 text-xs">
@@ -30,13 +61,16 @@ export const MirrorSettings: React.FC<{ objectId: string; id: string }> = ({ obj
       </div>
       <div className="flex items-center justify-between">
         <label className="text-gray-400">Threshold</label>
-        <DragInput
-          compact
-          value={s.mergeThreshold ?? 0.0001}
-          precision={4}
-          step={0.0001}
-          onChange={(v) => actions.updateModifierSettings(objectId, id, (st) => { st.mergeThreshold = v; })}
-        />
+        <div className="flex items-center">
+          <KeyBtn path="mergeThreshold" value={s.mergeThreshold ?? 0.0001} title="Key Threshold" />
+          <DragInput
+            compact
+            value={s.mergeThreshold ?? 0.0001}
+            precision={4}
+            step={0.0001}
+            onChange={(v) => actions.updateModifierSettings(objectId, id, (st) => { st.mergeThreshold = v; })}
+          />
+        </div>
       </div>
     </div>
   );

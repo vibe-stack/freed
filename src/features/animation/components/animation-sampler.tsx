@@ -6,6 +6,7 @@ import { useFrame } from '@react-three/fiber';
 import { useViewportStore } from '@/stores/viewport-store';
 import { getObject3D } from '@/features/viewport/hooks/object3d-registry';
 import { useShaderTimeStore } from '@/stores/shader-time-store';
+import { useGeometryStore } from '@/stores/geometry-store';
 import { animationTimer, animationFps } from '@/utils/shader-tsl/animation-timer';
 
 type SampleUpdate = { targetId: string; property: PropertyPath; value: number };
@@ -56,6 +57,7 @@ export default function AnimationSampler() {
   const tracksRef = useRef<Record<string, Track>>({});
   const lastPausedApplied = useRef<number | null>(null);
   const setAnimTime = useShaderTimeStore((s) => s.setAnimTime);
+  const geoStore = useGeometryStore();
 
   const autoOrbit = useViewportStore((s) => s.autoOrbitIntervalSec ?? 0);
   const setAutoOrbit = useViewportStore((s) => s.setAutoOrbitInterval);
@@ -161,12 +163,22 @@ export default function AnimationSampler() {
     if (updates.length) {
       // Batch to object vectors
       const byObj: Record<string, Partial<{ position: any; rotation: any; scale: any }>> = {};
+      const byObjMods: Record<string, Record<string, Record<string, number>>> = {};
       for (const u of updates) {
-        const bucket = byObj[u.targetId] || (byObj[u.targetId] = {});
-        const [prop, axis] = u.property.split('.') as [keyof typeof bucket, 'x' | 'y' | 'z'];
-        const vec = (bucket as any)[prop] || { x: undefined, y: undefined, z: undefined };
-        vec[axis] = u.value;
-        (bucket as any)[prop] = vec;
+        if (u.property.startsWith('position.') || u.property.startsWith('rotation.') || u.property.startsWith('scale.')) {
+          const bucket = byObj[u.targetId] || (byObj[u.targetId] = {});
+          const [prop, axis] = u.property.split('.') as [keyof typeof bucket, 'x' | 'y' | 'z'];
+          const vec = (bucket as any)[prop] || { x: undefined, y: undefined, z: undefined };
+          vec[axis] = u.value;
+          (bucket as any)[prop] = vec;
+        } else if (u.property.startsWith('mod.')) {
+          const parts = u.property.split('.');
+          const modId = parts[1];
+          const settingPath = parts.slice(2).join('.');
+          const perObj = byObjMods[u.targetId] || (byObjMods[u.targetId] = {});
+          const perMod = perObj[modId] || (perObj[modId] = {});
+          perMod[settingPath] = u.value;
+        }
       }
       // Apply directly to Three.js Object3D when possible
       for (const [objId, partial] of Object.entries(byObj)) {
@@ -189,6 +201,20 @@ export default function AnimationSampler() {
         }
         o.updateMatrix?.();
       }
+      // Apply modifier settings via geometry store (causes re-evaluation on next render)
+      const setPath = (obj: any, path: string, value: number) => {
+        const segs = path.split('.');
+        let cur: any = obj;
+        for (let i = 0; i < segs.length - 1; i++) { const k = segs[i]; cur[k] = cur[k] ?? {}; cur = cur[k]; }
+        cur[segs[segs.length - 1]] = value;
+      };
+      Object.entries(byObjMods).forEach(([objId, mods]) => {
+        Object.entries(mods).forEach(([modId, settings]) => {
+          geoStore.updateModifierSettings(objId, modId, (st: any) => {
+            Object.entries(settings).forEach(([path, val]) => setPath(st, path, val as number));
+          });
+        });
+      });
     }
 
     // Sync UI playhead at ~10 Hz while running to reduce global re-renders

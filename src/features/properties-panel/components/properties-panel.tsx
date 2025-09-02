@@ -4,6 +4,7 @@ import React from 'react';
 import { useActivePropertiesTab, usePropertiesPanelStore, PropertiesTab } from '@/stores/properties-panel-store';
 import { InspectorPanel } from './tabs/inspector-panel';
 import { WorldPanel } from './tabs/world-panel';
+import OutputPanel from './tabs/output-panel';
 import type { LucideIcon } from 'lucide-react';
 import { Wrench, Box, Layers, Globe, Sliders, Camera, HardDrive } from 'lucide-react';
 import ModifiersPanel from '@/features/properties-panel/components/tabs/modifiers-panel';
@@ -46,7 +47,8 @@ export const PropertiesPanel: React.FC = () => {
         {active === 'inspector' && <InspectorPanel />}
         {active === 'world' && <WorldPanel />}
         {active === 'modifiers' && <ModifiersPanel />}
-        {active !== 'inspector' && active !== 'world' && active !== 'modifiers' && (
+  {active === 'output' && <OutputPanel />}
+  {active !== 'inspector' && active !== 'world' && active !== 'modifiers' && active !== 'output' && (
           <div className="p-2 text-[11px] text-gray-500">
             {tabs.find((t) => t.key === active)?.label} panel coming soon.
           </div>

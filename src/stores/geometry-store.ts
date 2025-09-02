@@ -351,6 +351,32 @@ export const useGeometryStore = create<GeometryStore>()(
               state.modifierStacks[objectId] = next;
             }
           });
+          // Also remove any animation tracks that reference this modifier's settings
+          try {
+            // Dynamic require to avoid circular imports
+            const { useAnimationStore } = require('./animation-store');
+            const anim = useAnimationStore.getState();
+            const toRemove: string[] = Object.values(anim.tracks)
+              .filter((tr: any) => tr.targetId === objectId && typeof tr.property === 'string' && tr.property.startsWith(`mod.${modifierId}.`))
+              .map((tr: any) => tr.id);
+            if (toRemove.length) {
+              useAnimationStore.setState((s: any) => {
+                toRemove.forEach((tid) => {
+                  if (s.tracks[tid]) delete s.tracks[tid];
+                  if (s._sortedCache) delete s._sortedCache[tid];
+                  s.selection.trackIds = s.selection.trackIds.filter((id: string) => id !== tid);
+                  delete s.selection.keys[tid];
+                  if (s.soloTrackIds?.has && s.soloTrackIds.has(tid)) s.soloTrackIds.delete(tid);
+                });
+                s.soloTrackIds = new Set<string>(Array.from(s.soloTrackIds || []));
+                Object.values(s.clips || {}).forEach((clip: any) => {
+                  clip.trackIds = clip.trackIds.filter((id: string) => !toRemove.includes(id));
+                });
+              });
+            }
+          } catch (e) {
+            // Non-fatal: if animation store isn't available, skip cleanup
+          }
         },
 
         moveModifier: (objectId, fromIndex, toIndex) => {

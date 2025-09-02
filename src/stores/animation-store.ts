@@ -22,10 +22,9 @@ export interface Channel {
   keys: Key[]; // sorted ascending by t
 }
 
-export type PropertyPath =
-  | 'position.x' | 'position.y' | 'position.z'
-  | 'rotation.x' | 'rotation.y' | 'rotation.z'
-  | 'scale.x' | 'scale.y' | 'scale.z';
+// Animatable property identifier. For transforms we use e.g. "position.x".
+// For modifier settings we use: "mod.<modifierId>.<settingPath>" (e.g. mod:123.angle, mod:abc.offset.x)
+export type PropertyPath = string;
 
 export interface Track {
   id: string;
@@ -424,20 +423,45 @@ export const useAnimationStore = create<AnimationStore>()(
         const { sampleAt } = get();
         const updates = sampleAt(t);
         if (updates.length === 0) return;
-        // Apply using scene store actions only (dynamic import to avoid cycle)
+        // Apply using scene and geometry store actions only (dynamic import to avoid cycle)
         const { useSceneStore } = require('./scene-store');
+        const { useGeometryStore } = require('./geometry-store');
         const scene = useSceneStore.getState();
-        // Batch per object
+        const geo = useGeometryStore.getState();
+        // Batch per object for transforms and per-modifier for modifier settings
         const byObj: Record<string, Partial<{ position: Record<string, number>; rotation: Record<string, number>; scale: Record<string, number> }>> = {};
+        const byObjMods: Record<string, Record<string, Record<string, number>>> = {};
         updates.forEach((u) => {
-          const bucket = byObj[u.targetId] || (byObj[u.targetId] = {});
-          const [prop, axis] = u.property.split('.') as [keyof typeof bucket, 'x'|'y'|'z'];
-          const vec = (bucket as any)[prop] || {};
-          (vec as any)[axis] = u.value;
-          (bucket as any)[prop] = vec;
+          if (u.property.startsWith('position.') || u.property.startsWith('rotation.') || u.property.startsWith('scale.')) {
+            const bucket = byObj[u.targetId] || (byObj[u.targetId] = {});
+            const [prop, axis] = u.property.split('.') as [keyof typeof bucket, 'x'|'y'|'z'];
+            const vec = (bucket as any)[prop] || {};
+            (vec as any)[axis] = u.value;
+            (bucket as any)[prop] = vec;
+          } else if (u.property.startsWith('mod.')) {
+            // Format: mod.<modifierId>.<path>
+            const parts = u.property.split('.');
+            const modId = parts[1];
+            const settingPath = parts.slice(2).join('.');
+            const perObj = byObjMods[u.targetId] || (byObjMods[u.targetId] = {});
+            const perMod = perObj[modId] || (perObj[modId] = {});
+            perMod[settingPath] = u.value;
+          }
         });
+        // Helper to set nested path like "offset.x"
+        const setPath = (obj: any, path: string, value: number) => {
+          const segs = path.split('.');
+          let cur: any = obj;
+          for (let i = 0; i < segs.length - 1; i++) {
+            const key = segs[i];
+            cur[key] = cur[key] ?? {};
+            cur = cur[key];
+          }
+          cur[segs[segs.length - 1]] = value;
+        };
         // Guard autokey while applying samples
         useAnimationStore.setState((s) => { s._samplingGuard = true; });
+        // Apply transforms
         Object.entries(byObj).forEach(([objId, partial]) => {
           const transform: any = {};
           if (partial.position) {
@@ -452,7 +476,15 @@ export const useAnimationStore = create<AnimationStore>()(
             const prev = scene.objects[objId]?.transform.scale;
             transform.scale = { ...(prev || {}), ...partial.scale };
           }
-          scene.setTransform(objId, transform);
+          if (Object.keys(transform).length) scene.setTransform(objId, transform);
+        });
+        // Apply modifier settings
+        Object.entries(byObjMods).forEach(([objId, mods]) => {
+          Object.entries(mods).forEach(([modId, settings]) => {
+            geo.updateModifierSettings(objId, modId, (st: any) => {
+              Object.entries(settings).forEach(([path, val]) => setPath(st, path, val as number));
+            });
+          });
         });
         useAnimationStore.setState((s) => { s._samplingGuard = false; });
       },

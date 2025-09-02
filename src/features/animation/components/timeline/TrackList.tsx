@@ -4,7 +4,7 @@ import React from 'react';
 import { ChevronDown, ChevronRight, Lock, Star, VolumeX } from 'lucide-react';
 
 export type ObjectRow = { kind: 'object'; id: string; label: string; depth: 0; childTrackIds: string[] };
-export type CategoryRow = { kind: 'category'; id: string; objectId: string; category: 'position'|'rotation'|'scale'; label: string; depth: 1; childTrackIds: string[] };
+export type CategoryRow = { kind: 'category'; id: string; objectId: string; category: string; label: string; depth: 1; childTrackIds: string[] };
 export type TrackRow = { kind: 'track'; id: string; objectId: string; property: string; axis?: 'x'|'y'|'z'; label: string; depth: 2 };
 export type Row = ObjectRow | CategoryRow | TrackRow;
 

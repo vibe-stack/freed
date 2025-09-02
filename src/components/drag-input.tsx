@@ -209,7 +209,7 @@ export function DragInput({
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
           disabled={disabled}
-          className={`flex-1 h-6 px-2 text-xs border rounded focus:outline-none min-w-0 w-0 ${
+          className={`flex-1 h-6 px-2 text-xs border rounded focus:outline-none min-w-0 w-24 ${
             disabled 
               ? 'bg-zinc-800/50 border-zinc-700/30 text-zinc-500 cursor-not-allowed'
               : 'bg-gray-500/10 border-gray-500/30 text-gray-300 focus:border-gray-500'
@@ -220,7 +220,7 @@ export function DragInput({
           ref={displayRef}
           tabIndex={disabled ? -1 : 0}
           className={cn(
-            "flex-1 h-6 px-2 text-xs border rounded flex items-center justify-between transition-colors select-none min-w-0",
+            "flex-1 h-6 px-2 text-xs border rounded w-24 flex items-center justify-between transition-colors select-none min-w-0",
             disabled 
               ? "bg-zinc-800/50 border-zinc-700/30 text-zinc-500 cursor-not-allowed"
               : "bg-black/20 border-zinc-700/50 text-zinc-300 cursor-ew-resize hover:border-gray-500/30 focus:border-gray-500/50 focus:outline-none",

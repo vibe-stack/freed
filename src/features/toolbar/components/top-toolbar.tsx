@@ -9,7 +9,6 @@ import { useGeometryStore } from '@/stores/geometry-store';
 import { useShapeCreationStore } from '@/stores/shape-creation-store';
 import { useClipboardStore } from '@/stores/clipboard-store';
 import { useToolStore } from '@/stores/tool-store';
-import ExportVideoDialog from '@/features/export/components/export-video-dialog';
 
 const Pill = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className = '', children, ...rest }, ref) => (
   <div
@@ -240,17 +239,6 @@ const TopToolbar: React.FC = () => {
           </Menu.Portal>
         </Menu.Root>
       </Pill>
-
-      <Pill className="px-2 py-1">
-        <button
-          className="px-3 py-1.5 text-xs rounded-md transition-colors text-gray-300 hover:text-white hover:bg-white/5"
-          onClick={() => setVideoOpen(true)}
-        >
-          Export to video
-        </button>
-      </Pill>
-
-      <ExportVideoDialog open={videoOpen} onOpenChange={setVideoOpen} />
     </div>
   );
 };

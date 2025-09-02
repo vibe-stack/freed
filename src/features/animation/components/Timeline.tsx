@@ -79,13 +79,14 @@ export const Timeline: React.FC = () => {
       const objectRow: Row = { kind: 'object', id: objId, label: info.name, depth: 0, childTrackIds: info.trackIds } as any;
       out.push(objectRow);
       if (!expandedObjects[objId]) return;
-      const cats: Record<'position'|'rotation'|'scale', string[]> = { position: [], rotation: [], scale: [] } as any;
+      const cats: Record<string, string[]> = { position: [], rotation: [], scale: [], modifiers: [] } as any;
       info.trackIds.forEach((tid) => {
         const tr = tracks[tid]; if (!tr) return;
-        const [cat] = tr.property.split('.') as [keyof typeof cats | string];
-        if (cat === 'position' || cat === 'rotation' || cat === 'scale') {
-          cats[cat].push(tid);
-        }
+        // Transforms are position/rotation/scale, modifiers are prefixed with "mod."
+        if (tr.property.startsWith('position.')) cats.position.push(tid);
+        else if (tr.property.startsWith('rotation.')) cats.rotation.push(tid);
+        else if (tr.property.startsWith('scale.')) cats.scale.push(tid);
+        else if (tr.property.startsWith('mod.')) cats.modifiers.push(tid);
       });
       (['position','rotation','scale'] as const).forEach((cat) => {
         const tids = cats[cat];
@@ -106,6 +107,32 @@ export const Timeline: React.FC = () => {
           out.push({ kind: 'track', id: tid, objectId: objId, property: `${cat}.${axis}`, axis, label: axis.toUpperCase(), depth: 2 } as any);
         });
       });
+
+      // Modifiers category: group by modifier and setting path
+      const modTids = cats['modifiers'];
+      if (modTids && modTids.length) {
+        const catId = `${objId}:modifiers`;
+        out.push({ kind: 'category', id: catId, objectId: objId, category: 'modifiers', label: 'Modifiers', depth: 1, childTrackIds: modTids } as any);
+        if (expandedTransforms[catId]) {
+          // Group tracks by modifier id and then emit a row per tracked property
+          const byMod: Record<string, string[]> = {};
+          modTids.forEach((tid) => {
+            const tr = tracks[tid]; if (!tr) return;
+            const parts = tr.property.split('.'); // [ 'mod', modId, ...path ]
+            const modId = parts[1];
+            (byMod[modId] ||= []).push(tid);
+          });
+          Object.entries(byMod).forEach(([modId, tids]) => {
+            // Emit a simple track row per property under this modifier
+            tids.forEach((tid) => {
+              const tr = tracks[tid]; if (!tr) return;
+              const parts = tr.property.split('.');
+              const label = parts.slice(2).join('.');
+              out.push({ kind: 'track', id: tid, objectId: objId, property: tr.property, label, depth: 2 } as any);
+            });
+          });
+        }
+      }
     });
     return out;
   }, [clip, tracks, objects, expandedObjects, expandedTransforms]);
