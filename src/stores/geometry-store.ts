@@ -354,6 +354,7 @@ export const useGeometryStore = create<GeometryStore>()(
           // Also remove any animation tracks that reference this modifier's settings
           try {
             // Dynamic require to avoid circular imports
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
             const { useAnimationStore } = require('./animation-store');
             const anim = useAnimationStore.getState();
             const toRemove: string[] = Object.values(anim.tracks)

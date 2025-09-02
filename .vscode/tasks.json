@@ -1,0 +1,32 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build:ts",
+			"type": "shell",
+			"command": "npm run -s build",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "lint:build",
+			"type": "shell",
+			"command": "npm run -s build",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "build:ts",
+			"type": "shell",
+			"command": "npm run -s build",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		}
+	]
+}

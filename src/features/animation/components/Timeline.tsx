@@ -6,6 +6,7 @@ import { useSceneStore } from '@/stores/scene-store';
 import Ruler from './timeline/Ruler';
 import TrackList, { Row as ListRow } from './timeline/TrackList';
 import TrackLanes from './timeline/TrackLanes';
+import InterpolationPanel from './timeline/InterpolationPanel';
 
 const RULER_HEIGHT = 24;
 
@@ -24,6 +25,7 @@ export const Timeline: React.FC = () => {
   const selectTrack = useAnimationStore((s) => s.selectTrack);
   const selectKey = useAnimationStore((s) => s.selectKey);
   const moveKey = useAnimationStore((s) => s.moveKey);
+  // Interpolation setters handled inside InterpolationPanel
   const nudgeSelectedKeys = useAnimationStore((s) => s.nudgeSelectedKeys);
   const clearSelection = useAnimationStore((s) => s.clearSelection);
   const setTrackMuted = useAnimationStore((s) => s.setTrackMuted);
@@ -37,6 +39,10 @@ export const Timeline: React.FC = () => {
   const [draggingKey, setDraggingKey] = useState<{ trackId: string; keyId: string }|null>(null);
   const [draggingMarker, setDraggingMarker] = useState<string|null>(null);
   const [draggingGroup, setDraggingGroup] = useState<{ trackIds: string[]; startX: number; startT: number; lastDt: number }|null>(null);
+  const snapEnabled = useAnimationStore((s) => s.snapEnabled);
+  const snapToFrames = useAnimationStore((s) => s.snapToFrames);
+  const snapToKeys = useAnimationStore((s) => s.snapToKeys);
+  const snapThresholdPx = useAnimationStore((s) => s.snapThresholdPx) ?? 8;
 
   const objects = useSceneStore((s) => s.objects);
   const listRef = useRef<HTMLDivElement>(null);
@@ -158,6 +164,22 @@ export const Timeline: React.FC = () => {
     const t = (x / Math.max(zoom, 1)) + clipStart + pan;
     return Math.max(clipStart, Math.min(t, clipEnd));
   };
+  const snapTime = (t: number): number => {
+    let T = t;
+    if (snapEnabled && snapToFrames) {
+      T = Math.round(T * fps) / fps;
+    }
+    if (snapEnabled && snapToKeys && allKeyTimes.length) {
+      const threshS = (snapThresholdPx) / Math.max(zoom, 1);
+      let best = T; let bestD = threshS + 1e-6;
+      for (let i = 0; i < allKeyTimes.length; i++) {
+        const d = Math.abs(allKeyTimes[i] - T);
+        if (d <= bestD) { bestD = d; best = allKeyTimes[i]; }
+      }
+      T = best;
+    }
+    return Math.max(clipStart, Math.min(T, clipEnd));
+  };
 
   // Group drag handlers: dragging object or category rows moves all their child keys in time
   const onMouseDownGroup = (trackIds: string[], e: React.MouseEvent<HTMLDivElement>) => {
@@ -172,12 +194,15 @@ export const Timeline: React.FC = () => {
   const onMouseMoveGroup = (trackIds: string[], clientX: number) => {
     if (!draggingGroup) return;
     // compute delta time based on mouse motion
-  const total = (clientX - draggingGroup.startX) / Math.max(zoom, 1);
-  if (!isFinite(total)) return;
-  const delta = total - draggingGroup.lastDt;
-  if (Math.abs(delta) < 1e-6) return;
-  useAnimationStore.getState().nudgeKeysForTracks(trackIds, delta, false);
-  setDraggingGroup({ ...draggingGroup, lastDt: draggingGroup.lastDt + delta });
+    const total = (clientX - draggingGroup.startX) / Math.max(zoom, 1);
+    if (!isFinite(total)) return;
+    let delta = total - draggingGroup.lastDt;
+    if (Math.abs(delta) < 1e-6) return;
+    // snapping: respect frame grid when enabled
+    const snapFrame = (d: number) => snapToFrames ? Math.round(d * fps) / fps : d;
+    delta = snapEnabled ? snapFrame(delta) : delta;
+    useAnimationStore.getState().nudgeKeysForTracks(trackIds, delta, false);
+    setDraggingGroup({ ...draggingGroup, lastDt: draggingGroup.lastDt + delta });
   };
   const onMouseUpGroup: React.MouseEventHandler<HTMLDivElement> = () => {
     if (!draggingGroup) return;
@@ -187,7 +212,7 @@ export const Timeline: React.FC = () => {
   return (
     <div className="absolute left-0 right-0 bottom-0 z-20" style={{ pointerEvents: 'none' }}>
       <div className="mx-2 rounded-md border border-white/10 bg-black/70 backdrop-blur pointer-events-auto overflow-hidden">
-        <div className="grid" style={{ gridTemplateColumns: '260px 1fr' }}>
+        <div className="grid" style={{ gridTemplateColumns: '260px 1fr 220px' }}>
           <div className="border-r bg-black border-white/10 flex items-center px-2 text-xs opacity-70" style={{ height: RULER_HEIGHT }}>
             Tracks
           </div>
@@ -221,9 +246,12 @@ export const Timeline: React.FC = () => {
             onDoubleClickMarker={(id) => removeMarker(id)}
             draggingMarkerId={draggingMarker}
           />
+          <div className="border-l bg-black border-white/10 flex items-center px-2 text-xs opacity-70" style={{ height: RULER_HEIGHT }}>
+            Interpolation
+          </div>
         </div>
 
-        <div className="h-64 border-t border-white/10 grid" style={{ gridTemplateColumns: '260px 1fr' }} onMouseUp={onMouseUpGroup}>
+        <div className="h-64 border-t border-white/10 grid" style={{ gridTemplateColumns: '260px 1fr 220px' }} onMouseUp={onMouseUpGroup}>
           <TrackList
             rows={rows}
             objects={objects}
@@ -258,11 +286,20 @@ export const Timeline: React.FC = () => {
             onScrollSync={onSyncScroll}
             unionKeyTimes={unionKeyTimes}
             onMouseDownKey={(tid, keyId, e) => { e.stopPropagation(); setDraggingKey({ trackId: tid, keyId }); selectKey(tid, keyId, e.shiftKey || e.metaKey || e.ctrlKey); }}
-            onMouseMoveKey={(tid, keyId, clientX) => { if (draggingKey && draggingKey.keyId === keyId && draggingKey.trackId === tid) moveKey(tid, keyId, posToTimeFromCurves(clientX)); }}
+            onMouseMoveKey={(tid, keyId, clientX) => {
+              if (draggingKey && draggingKey.keyId === keyId && draggingKey.trackId === tid) {
+                const tRaw = posToTimeFromCurves(clientX);
+                moveKey(tid, keyId, snapTime(tRaw));
+              }
+            }}
             onMouseDownGroup={onMouseDownGroup}
             onMouseMoveGroup={onMouseMoveGroup}
             onSetPan={(p) => setPan(clampPan(p))}
           />
+
+          <div className="border-l border-white/10 bg-black/60 px-2 py-2 text-xs overflow-auto">
+            <InterpolationPanel />
+          </div>
         </div>
       </div>
     </div>

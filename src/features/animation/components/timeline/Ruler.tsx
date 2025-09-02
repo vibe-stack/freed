@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { makeTicks, timeToX, xToTime } from './math';
+import { useAnimationStore } from '@/stores/animation-store';
 
 type Marker = { id: string; t: number; label?: string };
 
@@ -48,6 +49,10 @@ export const Ruler: React.FC<RulerProps> = (props) => {
 
   const ref = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
+  const snapEnabled = useAnimationStore((s) => s.snapEnabled);
+  const snapToFrames = useAnimationStore((s) => s.snapToFrames);
+  const snapToKeys = useAnimationStore((s) => s.snapToKeys);
+  const snapThresholdPx = useAnimationStore((s) => s.snapThresholdPx) ?? 8;
 
   // Observe size so initial ticks render even before any user interaction
   useEffect(() => {
@@ -63,7 +68,7 @@ export const Ruler: React.FC<RulerProps> = (props) => {
       // Fallback: set once on mount
       setContainerWidth(el.clientWidth);
     }
-    return () => { try { obs && obs.unobserve(el); } catch {} };
+  return () => { try { if (obs) obs.unobserve(el); } catch { /* noop */ } };
   }, []);
 
   const ticks = useMemo(() => {
@@ -80,6 +85,23 @@ export const Ruler: React.FC<RulerProps> = (props) => {
     const t = xToTime(x, clipStart, pan, zoom);
     return Math.max(clipStart, Math.min(t, clipEnd));
   };
+  const snapTime = (t: number): number => {
+    let T = t;
+    if (snapEnabled && snapToFrames) {
+      T = Math.round(T * fps) / fps;
+    }
+    if (snapEnabled && snapToKeys && keyTimes?.length) {
+      const pxPerS = Math.max(zoom, 1);
+      const threshS = (snapThresholdPx) / pxPerS;
+      let best = T; let bestD = threshS + 1e-6;
+      for (let i = 0; i < keyTimes.length; i++) {
+        const d = Math.abs(keyTimes[i] - T);
+        if (d <= bestD) { bestD = d; best = keyTimes[i]; }
+      }
+      T = best;
+    }
+    return Math.max(clipStart, Math.min(T, clipEnd));
+  };
   const clientToLocalX = (clientX: number): number => {
     const rect = ref.current?.getBoundingClientRect();
     return rect ? (clientX - rect.left) : 0;
@@ -92,7 +114,9 @@ export const Ruler: React.FC<RulerProps> = (props) => {
       const factor = e.deltaY > 0 ? 0.9 : 1.1;
       onWheelZoom(factor, clientToLocalX(e.clientX));
     } else {
-      onWheelPan(e.deltaY * 0.001 * Math.max(clipEnd - clipStart, 1));
+      // Pan proportional to pixel scroll and current seconds-per-pixel
+      const secondsPerPx = 1 / Math.max(zoom, 1);
+      onWheelPan(e.deltaY * secondsPerPx * 20);
     }
   };
 
@@ -127,22 +151,13 @@ export const Ruler: React.FC<RulerProps> = (props) => {
         if (!hasClip) return;
         if ((e.buttons & 1) === 1) {
           const t = posToTime(e.clientX);
-          // Hold Shift to snap to frames for easier precise scrubbing over keys
-          if (e.shiftKey) {
-            const frame = Math.round(t * fps);
-            onSeek(frame / fps);
-          } else if (e.altKey && keyTimes?.length) {
-            // Snap to nearest existing keyframe for easy precise seeking
-            let best = keyTimes[0];
-            let bestD = Math.abs(best - t);
-            for (let i = 1; i < keyTimes.length; i++) {
-              const d = Math.abs(keyTimes[i] - t);
-              if (d < bestD) { bestD = d; best = keyTimes[i]; }
-            }
+          // Modifiers override: Shift -> frame, Alt -> nearest key
+          if (e.shiftKey) onSeek(Math.round(t * fps) / fps);
+          else if (e.altKey && keyTimes?.length) {
+            let best = keyTimes[0]; let bestD = Math.abs(best - t);
+            for (let i = 1; i < keyTimes.length; i++) { const d = Math.abs(keyTimes[i] - t); if (d < bestD) { bestD = d; best = keyTimes[i]; } }
             onSeek(best);
-          } else {
-            onSeek(t);
-          }
+          } else onSeek(snapTime(t));
         }
       }}
       ref={ref}

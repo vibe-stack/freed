@@ -4,7 +4,7 @@ import React from 'react';
 import { useAnimationStore, secondsToTimecode } from '@/stores/animation-store';
 import { ChevronsLeft, SkipBack, Play, Pause, Square, SkipForward, ChevronsRight, PanelBottom, CornerDownLeft, CornerDownRight } from 'lucide-react';
 import { DragInput } from '@/components/drag-input';
-import Switch from '@/components/switch';
+// Switch removed from UI for clarity
 
 const IconButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { title: string }>
   = ({ title, children, ...props }) => (
@@ -22,7 +22,7 @@ export const BottomBar: React.FC = () => {
   const play = useAnimationStore((s) => s.play);
   const pause = useAnimationStore((s) => s.pause);
   const stop = useAnimationStore((s) => s.stop);
-  const togglePlay = useAnimationStore((s) => s.togglePlay);
+  // const togglePlay = useAnimationStore((s) => s.togglePlay);
   const fps = useAnimationStore((s) => s.fps);
   const setFps = useAnimationStore((s) => s.setFps);
   const toggleLoop = useAnimationStore((s) => s.toggleLoop);
@@ -37,6 +37,11 @@ export const BottomBar: React.FC = () => {
   const prevKey = useAnimationStore((s) => s.prevKey);
   const nextKey = useAnimationStore((s) => s.nextKey);
   const setClipRange = useAnimationStore((s) => s.setClipRange);
+  // snapping controls
+  const snapEnabled = useAnimationStore((s) => s.snapEnabled);
+  const setSnapping = useAnimationStore((s) => s.setSnapping);
+  const snapThresholdPx = useAnimationStore((s) => s.snapThresholdPx) ?? 8;
+  const setSnapThresholdPx = useAnimationStore((s) => s.setSnapThresholdPx);
 
   const hasClip = !!activeClipId;
   const loop = clip?.loop ?? false;
@@ -69,14 +74,14 @@ export const BottomBar: React.FC = () => {
             </IconButton>
           </div>
 
-          {/* Loop */}
-          <div className="flex items-center gap-2 ml-2">
-            <Switch checked={!!loop} onCheckedChange={() => toggleLoop()} disabled={!hasClip} label="Loop" />
-          </div>
-
-          {/* Auto-key */}
-          <div className="flex items-center gap-2 ml-2">
-            <Switch checked={autoKey} onCheckedChange={(v) => setAutoKey(v)} label="Auto-key" />
+          {/* Loop & Auto-key toggles as buttons */}
+          <div className="flex items-center gap-1 ml-2">
+            <IconButton title={`Loop ${loop ? 'On' : 'Off'}`} onClick={() => toggleLoop()} disabled={!hasClip}>
+              <span className={`text-[10px] font-semibold ${loop ? 'text-green-300' : 'text-white/70'}`}>Loop</span>
+            </IconButton>
+            <IconButton title={`Auto-key ${autoKey ? 'On' : 'Off'}`} onClick={() => setAutoKey(!autoKey)}>
+              <span className={`text-[10px] font-semibold ${autoKey ? 'text-green-300' : 'text-white/70'}`}>Auto</span>
+            </IconButton>
           </div>
 
           {/* FPS */}
@@ -91,6 +96,24 @@ export const BottomBar: React.FC = () => {
                 <option key={f} value={f}>{f}</option>
               ))}
             </select>
+          </div>
+
+          {/* Snapping */}
+          <div className="flex items-center gap-2 ml-2">
+            <IconButton title={`Snap ${snapEnabled ? 'On' : 'Off'}`} onClick={() => setSnapping(!snapEnabled)}>
+              <span className={`text-[10px] font-semibold ${snapEnabled ? 'text-green-300' : 'text-white/70'}`}>Snap</span>
+            </IconButton>
+            <div className="flex items-center gap-1" title="Snap threshold in pixels">
+              <span className="opacity-70">±px</span>
+              <DragInput
+                label=""
+                value={snapThresholdPx}
+                step={1}
+                precision={0}
+                min={0}
+                onChange={(v) => setSnapThresholdPx(Math.max(0, Math.min(64, Math.round(v))))}
+              />
+            </div>
           </div>
 
           {/* Timecode and range (Draggable inputs) */}

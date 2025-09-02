@@ -6,6 +6,7 @@ import { nanoid } from 'nanoid';
 
 // Animation data types (MVP)
 export type Interpolation = 'step' | 'linear' | 'bezier';
+export type EasingPreset = 'easeIn' | 'easeOut' | 'easeInOut' | 'backIn' | 'backOut' | 'backInOut' | 'bounce' | 'elastic';
 
 export interface Key {
   id: string;
@@ -53,6 +54,11 @@ export interface AnimationUIState {
   lastUsedClipId: string | null;
   zoom: number; // pixels-per-second in timeline
   pan: number; // seconds offset of timeline view
+  // snapping config
+  snapEnabled?: boolean; // global toggle for snapping interactions
+  snapToFrames?: boolean; // quantize to frames for playhead/keys
+  snapToKeys?: boolean; // attract to nearby keys within threshold
+  snapThresholdPx?: number; // pixels threshold for key snap
 }
 
 interface AnimationState extends AnimationUIState {
@@ -114,6 +120,9 @@ interface AnimationActions {
   toggleAutoKey: () => void;
   setAutoKey: (enabled: boolean) => void;
   setSnapping: (enabled: boolean) => void;
+  setSnapToFrames: (enabled: boolean) => void;
+  setSnapToKeys: (enabled: boolean) => void;
+  setSnapThresholdPx: (px: number) => void;
 
   // sampling
   sampleAt: (t: number) => Array<{ targetId: string; property: PropertyPath; value: number }>; // independent sampling
@@ -126,9 +135,11 @@ interface AnimationActions {
   deleteSelectedKeys: () => void;
   nudgeSelectedKeys: (dt: number, dv?: number, snapToFps?: boolean) => void;
   nudgeKeysForTracks: (trackIds: string[], dt: number, snapToFps?: boolean) => void;
+  nudgeKeysSubset: (pairs: Array<{ trackId: string; keyId: string }>, dt: number, dv?: number, snapToFps?: boolean) => void;
   copySelectedKeys: () => void;
   cutSelectedKeys: () => void;
   pasteKeysAtPlayhead: () => void;
+  applyEasingPreset: (pairs: Array<{ trackId: string; keyId: string }>, preset: EasingPreset, strength?: number) => void;
 
   // queries/helpers
   getTrackId: (targetId: string, property: PropertyPath) => string | undefined;
@@ -216,6 +227,11 @@ export const useAnimationStore = create<AnimationStore>()(
   pan: 0,
   markers: [],
   soloTrackIds: new Set<string>(),
+  // snapping defaults
+  snapEnabled: true,
+  snapToFrames: true,
+  snapToKeys: true,
+  snapThresholdPx: 8,
 
       // actions
       play: () => set((s) => { s.playing = true; }),
@@ -235,7 +251,13 @@ export const useAnimationStore = create<AnimationStore>()(
         const clip = s.activeClipId ? s.clips[s.activeClipId] : null;
         const inT = clip ? clip.start : 0;
         const outT = clip ? clip.end : Math.max(inT, t);
-        s.playhead = clamp(t, inT, outT);
+        let T = clamp(t, inT, outT);
+        // Quantize to frame when enabled
+        const fps = s.fps || 30;
+        if (s.snapEnabled && s.snapToFrames) {
+          T = Math.round(T * fps) / fps;
+        }
+        s.playhead = T;
       }),
       seekFrame: (frame: number) => {
         const fps = get().fps || 30;
@@ -322,6 +344,8 @@ export const useAnimationStore = create<AnimationStore>()(
             tr.channel.keys.push({ id: keyId, t: T, v, interp });
             sortKeys(tr.channel.keys);
           }
+          // Force subscribers relying on s.tracks identity to update
+          s.tracks = { ...s.tracks };
         });
         return keyId;
       },
@@ -358,6 +382,7 @@ export const useAnimationStore = create<AnimationStore>()(
         const tr = s.tracks[trackId];
         if (!tr) return;
         tr.channel.keys = tr.channel.keys.filter((k) => k.id !== keyId);
+  s.tracks = { ...s.tracks };
       }),
       moveKey: (trackId: string, keyId: string, t: number) => set((s) => {
         const tr = s.tracks[trackId];
@@ -366,6 +391,7 @@ export const useAnimationStore = create<AnimationStore>()(
         if (!k) return;
         k.t = Math.max(0, t);
         sortKeys(tr.channel.keys);
+  s.tracks = { ...s.tracks };
       }),
       setKeyValue: (trackId: string, keyId: string, v: number) => set((s) => {
         const tr = s.tracks[trackId];
@@ -398,7 +424,10 @@ export const useAnimationStore = create<AnimationStore>()(
       setPan: (pan: number) => set((s) => { s.pan = pan; }),
       toggleAutoKey: () => set((s) => { s.autoKey = !s.autoKey; }),
   setAutoKey: (enabled: boolean) => set((s) => { s.autoKey = !!enabled; }),
-  setSnapping: (enabled: boolean) => set((s) => { (s as any).snapping = !!enabled; }),
+  setSnapping: (enabled: boolean) => set((s) => { s.snapEnabled = !!enabled; }),
+  setSnapToFrames: (enabled: boolean) => set((s) => { s.snapToFrames = !!enabled; }),
+  setSnapToKeys: (enabled: boolean) => set((s) => { s.snapToKeys = !!enabled; }),
+  setSnapThresholdPx: (px: number) => set((s) => { s.snapThresholdPx = Math.max(0, Math.min(64, Math.round(px))); }),
 
       sampleAt: (t: number) => {
         const s = get();
@@ -518,6 +547,7 @@ export const useAnimationStore = create<AnimationStore>()(
           });
           sortKeys(tr.channel.keys);
         });
+  s.tracks = { ...s.tracks };
       }),
       nudgeKeysForTracks: (trackIds: string[], dt: number, snapToFps: boolean = false) => set((s) => {
         if (!trackIds?.length || !isFinite(dt)) return;
@@ -528,6 +558,26 @@ export const useAnimationStore = create<AnimationStore>()(
           tr.channel.keys.forEach((k) => { k.t = snap(Math.max(0, k.t + dt)); });
           sortKeys(tr.channel.keys);
         });
+  s.tracks = { ...s.tracks };
+      }),
+      nudgeKeysSubset: (pairs: Array<{ trackId: string; keyId: string }>, dt: number, dv?: number, snapToFps: boolean = false) => set((s) => {
+        if (!pairs?.length || !isFinite(dt)) return;
+        const fps = s.fps || 30;
+        const snap = (x: number) => snapToFps ? Math.round(x * fps) / fps : x;
+        const byTrack: Record<string, Set<string>> = {};
+        pairs.forEach(({ trackId, keyId }) => {
+          (byTrack[trackId] ||= new Set()).add(keyId);
+        });
+        Object.entries(byTrack).forEach(([tid, set]) => {
+          const tr = s.tracks[tid]; if (!tr || tr.locked) return;
+          tr.channel.keys.forEach((k) => {
+            if (!set.has(k.id)) return;
+            k.t = Math.max(0, snap(k.t + dt));
+            if (typeof dv === 'number') k.v = k.v + dv;
+          });
+          sortKeys(tr.channel.keys);
+        });
+        s.tracks = { ...s.tracks };
       }),
       copySelectedKeys: () => set((s) => {
         const payload: any[] = [];
@@ -557,6 +607,83 @@ export const useAnimationStore = create<AnimationStore>()(
           tr.channel.keys.push({ ...key, id: newId, t: Math.max(0, key.t + base) });
           sortKeys(tr.channel.keys);
         });
+      }),
+      applyEasingPreset: (pairs, preset, strength = 1) => set((s) => {
+        if (!pairs?.length) return;
+        const clampV = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+        const ensureBezier = (k: Key) => { if (k.interp !== 'bezier') k.interp = 'bezier'; };
+        const slope = (a: Key, b: Key) => {
+          const dt = Math.max(1e-6, b.t - a.t);
+          return (b.v - a.v) / dt;
+        };
+        const insertSampled = (tr: Track, t0: number, v0: number, t1: number, v1: number, sampler: (u: number) => number, samples = 10) => {
+          for (let i = 1; i < samples; i++) {
+            const u = i / samples;
+            const t = t0 + (t1 - t0) * u;
+            const v = v0 + (v1 - v0) * sampler(u);
+            const keyId = nanoid();
+            tr.channel.keys.push({ id: keyId, t, v, interp: 'linear' });
+          }
+          sortKeys(tr.channel.keys);
+        };
+        // Penner-like sit-in-place easing on [0,1]
+        const easeOutBounce = (x: number) => {
+          const n1 = 7.5625; const d1 = 2.75;
+          if (x < 1 / d1) return n1 * x * x;
+          if (x < 2 / d1) return n1 * (x -= 1.5 / d1) * x + 0.75;
+          if (x < 2.5 / d1) return n1 * (x -= 2.25 / d1) * x + 0.9375;
+          return n1 * (x -= 2.625 / d1) * x + 0.984375;
+        };
+        const easeInBounce = (x: number) => 1 - easeOutBounce(1 - x);
+        const easeInOutBounce = (x: number) => x < 0.5 ? (1 - easeOutBounce(1 - 2 * x)) / 2 : (1 + easeOutBounce(2 * x - 1)) / 2;
+        const easeOutElastic = (x: number) => {
+          const c4 = (2 * Math.PI) / (0.3 + 0.2 * (1 - clampV(strength, 0, 3)));
+          return x === 0 ? 0 : x === 1 ? 1 : Math.pow(2, -10 * x) * Math.sin((x - 0.075) * c4) + 1;
+        };
+        const easeInElastic = (x: number) => (x === 0 ? 0 : x === 1 ? 1 : -Math.pow(2, 10 * x - 10) * Math.sin((x - 0.075) * (2 * Math.PI) / (0.3 + 0.2 * (1 - clampV(strength, 0, 3)))));
+        const easeInOutElastic = (x: number) => {
+          if (x === 0 || x === 1) return x;
+          const c5 = (2 * Math.PI) / (0.45 + 0.2 * (1 - clampV(strength, 0, 3)));
+          return x < 0.5
+            ? -(Math.pow(2, 20 * x - 10) * Math.sin((20 * x - 11.125) * c5)) / 2
+            : (Math.pow(2, -20 * x + 10) * Math.sin((20 * x - 11.125) * c5)) / 2 + 1;
+        };
+        pairs.forEach(({ trackId, keyId }) => {
+          const tr = s.tracks[trackId]; if (!tr) return;
+          const keys = tr.channel.keys; const idx = keys.findIndex((kk) => kk.id === keyId);
+          if (idx === -1) return;
+          const cur = keys[idx]; const prev = keys[idx - 1]; const next = keys[idx + 1];
+          if (!prev && !next) return;
+          const k = 1 + 1.5 * clampV(strength, 0, 3);
+          if (preset === 'easeIn' && prev) {
+            ensureBezier(cur); ensureBezier(prev);
+            const m = slope(prev, cur); cur.tanIn = 0; prev.tanOut = m * k;
+          } else if (preset === 'easeOut' && next) {
+            ensureBezier(cur); ensureBezier(next);
+            const m = slope(cur, next); cur.tanOut = 0; next.tanIn = m * 0.75 * k;
+          } else if (preset === 'easeInOut') {
+            if (prev) { ensureBezier(cur); ensureBezier(prev); const m = slope(prev, cur); cur.tanIn = 0; prev.tanOut = m * 0.75 * k; }
+            if (next) { ensureBezier(cur); ensureBezier(next); const m = slope(cur, next); cur.tanOut = 0; next.tanIn = m * 0.75 * k; }
+          } else if (preset === 'backIn' && prev) {
+            ensureBezier(cur); ensureBezier(prev);
+            const m = slope(prev, cur); cur.tanIn = m * k; prev.tanOut = m * k;
+          } else if (preset === 'backOut' && next) {
+            ensureBezier(cur); ensureBezier(next);
+            const m = slope(cur, next); cur.tanOut = m * k; next.tanIn = m * k;
+          } else if (preset === 'backInOut') {
+            if (prev) { ensureBezier(cur); ensureBezier(prev); const m = slope(prev, cur); cur.tanIn = m * k; prev.tanOut = m * k; }
+            if (next) { ensureBezier(cur); ensureBezier(next); const m = slope(cur, next); cur.tanOut = m * k; next.tanIn = m * k; }
+          } else if (preset === 'bounce' && next) {
+            insertSampled(tr, cur.t, cur.v, next.t, next.v, (u) => easeOutBounce(u) - u, 12);
+            ensureBezier(cur); ensureBezier(next);
+            cur.tanOut = undefined; next.tanIn = undefined;
+          } else if (preset === 'elastic' && next) {
+            insertSampled(tr, cur.t, cur.v, next.t, next.v, (u) => easeOutElastic(u) - u, 16);
+            ensureBezier(cur); ensureBezier(next);
+            cur.tanOut = undefined; next.tanIn = undefined;
+          }
+        });
+        s.tracks = { ...s.tracks };
       }),
 
       // track toggles
