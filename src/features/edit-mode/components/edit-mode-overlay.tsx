@@ -385,6 +385,43 @@ const EditModeOverlay: React.FC = () => {
 											<ContextMenu.Item onClick={() => { unwrapBySeams(); setCmOpen(false); }}>
 												<div className="px-2 py-1.5 rounded hover:bg-white/10 cursor-default">Unwrap (Seams)</div>
 											</ContextMenu.Item>
+													<ContextMenu.Separator />
+													<div className="px-2 py-1.5 cursor-default select-none opacity-70">Edit</div>
+													<ContextMenu.Item onClick={() => {
+														if (!meshId) return; const sel = selection;
+														const geo = useGeometryStore.getState();
+														const { deleteVerticesInMesh, deleteEdgesInMesh, deleteFacesInMesh } = require('@/utils/edit-ops');
+														if (sel.selectionMode === 'vertex' && sel.vertexIds.length) {
+															geo.updateMesh(meshId, (m) => deleteVerticesInMesh(m, sel.vertexIds));
+															geo.recalculateNormals(meshId);
+															useSelectionStore.getState().selectVertices(meshId, []);
+														} else if (sel.selectionMode === 'edge' && sel.edgeIds.length) {
+															geo.updateMesh(meshId, (m) => deleteEdgesInMesh(m, sel.edgeIds));
+															geo.recalculateNormals(meshId);
+															useSelectionStore.getState().selectEdges(meshId, []);
+														} else if (sel.selectionMode === 'face' && sel.faceIds.length) {
+															geo.updateMesh(meshId, (m) => deleteFacesInMesh(m, sel.faceIds));
+															geo.recalculateNormals(meshId);
+															useSelectionStore.getState().selectFaces(meshId, []);
+														}
+														setCmOpen(false);
+													}} disabled={!meshId || (selection.selectionMode === 'vertex' ? selection.vertexIds.length === 0 : selection.selectionMode === 'edge' ? selection.edgeIds.length === 0 : selection.faceIds.length === 0)}>
+														<div className={`px-2 py-1.5 rounded ${!meshId ? 'text-gray-500' : 'hover:bg-white/10 cursor-default'}`}>Delete Selected</div>
+													</ContextMenu.Item>
+													<ContextMenu.Item onClick={() => {
+														if (!meshId) return; const sel = selection; if (sel.selectionMode !== 'vertex' || sel.vertexIds.length < 2) return;
+														const geo = useGeometryStore.getState();
+														const { mergeVerticesInMesh } = require('@/utils/edit-ops');
+														geo.updateMesh(meshId, (m) => mergeVerticesInMesh(m, sel.vertexIds, 'center'));
+														geo.recalculateNormals(meshId);
+														const kept = sel.vertexIds[0];
+														const m = useGeometryStore.getState().meshes.get(meshId);
+														const still = m?.vertices.some(v => v.id === kept) ? [kept] : [];
+														useSelectionStore.getState().selectVertices(meshId, still);
+														setCmOpen(false);
+													}} disabled={!meshId || selection.selectionMode !== 'vertex' || selection.vertexIds.length < 2}>
+														<div className={`px-2 py-1.5 rounded ${!meshId || selection.selectionMode !== 'vertex' || selection.vertexIds.length < 2 ? 'text-gray-500' : 'hover:bg-white/10 cursor-default'}`}>Merge Vertices (Center)</div>
+													</ContextMenu.Item>
 										</div>
 									</ContextMenu.Popup>
 								</ContextMenu.Positioner>

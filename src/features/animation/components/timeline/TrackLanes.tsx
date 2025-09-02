@@ -112,6 +112,23 @@ export const TrackLanes: React.FC<TrackLanesProps> = (props) => {
   const [cmPos, setCmPos] = useState<{ x: number; y: number } | null>(null);
   const [cmUp, setCmUp] = useState(false);
   const [cmKey, setCmKey] = useState<{ trackId: string; keyId: string } | null>(null);
+  // Mount context menu to a dedicated top-layer portal container to avoid any stacking/clipping
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const el = document.createElement('div');
+    // Make this a top-most isolated stacking context
+    el.style.position = 'fixed';
+    el.style.left = '0';
+    el.style.top = '0';
+    el.style.width = '0';
+    el.style.height = '0';
+    el.style.zIndex = String(2147483646); // just under the loader overlay
+    (el.style as any).isolation = 'isolate';
+    document.body.appendChild(el);
+    setPortalContainer(el);
+    return () => { try { document.body.removeChild(el); } catch {} };
+  }, []);
   const setInterpolation = useAnimationStore((s) => s.setInterpolation);
   const applyEasingPreset = useAnimationStore((s) => s.applyEasingPreset);
   const clearSelection = useAnimationStore((s) => s.clearSelection);
@@ -333,10 +350,10 @@ export const TrackLanes: React.FC<TrackLanesProps> = (props) => {
         )}
         {/* Keyframe context menu */}
         <ContextMenu.Root open={cmOpen} onOpenChange={setCmOpen}>
-          <ContextMenu.Portal>
-            <ContextMenu.Positioner>
+          <ContextMenu.Portal container={portalContainer}>
+      <ContextMenu.Positioner className="z-[2147483646] pointer-events-auto">
               <ContextMenu.Popup
-                className="z-[200000] min-w-48 rounded-md border border-white/10 bg-zinc-900/95 text-sm text-gray-200 shadow-lg shadow-black/60 relative overflow-hidden"
+        className="z-[2147483646] min-w-48 rounded-md border border-white/10 bg-zinc-900/95 text-sm text-gray-200 shadow-lg shadow-black/60 relative overflow-hidden"
                 style={{ position: 'fixed', left: (cmPos?.x ?? 0) + 8, top: (cmPos?.y ?? 0) + 8, transform: cmUp ? 'translateY(-100%)' : undefined }}
               >
                 <div className="p-1 max-h-72 overflow-y-auto overscroll-contain">

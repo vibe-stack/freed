@@ -266,10 +266,36 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
       key: 'Delete',
       action: () => {
         const sel = useSelectionStore.getState().selection;
-        if (sel.viewMode !== 'object' || sel.objectIds.length === 0) return;
-        const scene = useSceneStore.getState();
-        sel.objectIds.forEach((id) => scene.removeObject(id));
-        useSelectionStore.getState().clearSelection();
+        if (sel.viewMode === 'object') {
+          if (sel.objectIds.length === 0) return;
+          const scene = useSceneStore.getState();
+          sel.objectIds.forEach((id) => scene.removeObject(id));
+          useSelectionStore.getState().clearSelection();
+        } else if (sel.viewMode === 'edit' && sel.meshId) {
+          // Delete geometry components
+          const geo = useGeometryStore.getState();
+          const meshId = sel.meshId;
+          const { deleteVerticesInMesh, deleteEdgesInMesh, deleteFacesInMesh } = require('@/utils/edit-ops');
+          if (sel.selectionMode === 'vertex' && sel.vertexIds.length > 0) {
+            geo.updateMesh(meshId, (mesh) => {
+              deleteVerticesInMesh(mesh, sel.vertexIds);
+            });
+            geo.recalculateNormals(meshId);
+            useSelectionStore.getState().selectVertices(meshId, []);
+          } else if (sel.selectionMode === 'edge' && sel.edgeIds.length > 0) {
+            geo.updateMesh(meshId, (mesh) => {
+              deleteEdgesInMesh(mesh, sel.edgeIds);
+            });
+            geo.recalculateNormals(meshId);
+            useSelectionStore.getState().selectEdges(meshId, []);
+          } else if (sel.selectionMode === 'face' && sel.faceIds.length > 0) {
+            geo.updateMesh(meshId, (mesh) => {
+              deleteFacesInMesh(mesh, sel.faceIds);
+            });
+            geo.recalculateNormals(meshId);
+            useSelectionStore.getState().selectFaces(meshId, []);
+          }
+        }
       },
       description: 'Delete selected objects',
       preventDefault: true,
@@ -278,12 +304,60 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
       key: 'Backspace',
       action: () => {
         const sel = useSelectionStore.getState().selection;
-        if (sel.viewMode !== 'object' || sel.objectIds.length === 0) return;
-        const scene = useSceneStore.getState();
-        sel.objectIds.forEach((id) => scene.removeObject(id));
-        useSelectionStore.getState().clearSelection();
+        if (sel.viewMode === 'object') {
+          if (sel.objectIds.length === 0) return;
+          const scene = useSceneStore.getState();
+          sel.objectIds.forEach((id) => scene.removeObject(id));
+          useSelectionStore.getState().clearSelection();
+        } else if (sel.viewMode === 'edit' && sel.meshId) {
+          const geo = useGeometryStore.getState();
+          const meshId = sel.meshId;
+          const { deleteVerticesInMesh, deleteEdgesInMesh, deleteFacesInMesh } = require('@/utils/edit-ops');
+          if (sel.selectionMode === 'vertex' && sel.vertexIds.length > 0) {
+            geo.updateMesh(meshId, (mesh) => {
+              deleteVerticesInMesh(mesh, sel.vertexIds);
+            });
+            geo.recalculateNormals(meshId);
+            useSelectionStore.getState().selectVertices(meshId, []);
+          } else if (sel.selectionMode === 'edge' && sel.edgeIds.length > 0) {
+            geo.updateMesh(meshId, (mesh) => {
+              deleteEdgesInMesh(mesh, sel.edgeIds);
+            });
+            geo.recalculateNormals(meshId);
+            useSelectionStore.getState().selectEdges(meshId, []);
+          } else if (sel.selectionMode === 'face' && sel.faceIds.length > 0) {
+            geo.updateMesh(meshId, (mesh) => {
+              deleteFacesInMesh(mesh, sel.faceIds);
+            });
+            geo.recalculateNormals(meshId);
+            useSelectionStore.getState().selectFaces(meshId, []);
+          }
+        }
       },
       description: 'Delete selected objects (Backspace)',
+      preventDefault: true,
+    },
+    // Merge vertices (Edit Mode only)
+    {
+      key: 'm',
+      action: () => {
+        const sel = useSelectionStore.getState().selection;
+        if (sel.viewMode !== 'edit' || sel.selectionMode !== 'vertex' || !sel.meshId) return;
+        if (sel.vertexIds.length < 2) return;
+        const geo = useGeometryStore.getState();
+        const { mergeVerticesInMesh } = require('@/utils/edit-ops');
+        const meshId = sel.meshId;
+        geo.updateMesh(meshId, (mesh) => {
+          mergeVerticesInMesh(mesh, sel.vertexIds, 'center');
+        });
+        geo.recalculateNormals(meshId);
+        // After merge, keep the kept vertex selected if still exists
+        const kept = sel.vertexIds[0];
+        const m = geo.meshes.get(meshId);
+        const still = m?.vertices.some(v => v.id === kept) ? [kept] : [];
+        useSelectionStore.getState().selectVertices(meshId, still);
+      },
+      description: 'Merge vertices (M) — at center',
       preventDefault: true,
     },
     // Copy/Cut/Paste for Object Mode

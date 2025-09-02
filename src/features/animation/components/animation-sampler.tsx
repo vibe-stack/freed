@@ -23,7 +23,38 @@ function evalChannel(channel: Channel, t: number): number | undefined {
     const k1 = keys[i + 1];
     if (t >= k0.t && t <= k1.t) {
       if (k0.interp === 'step') return k0.v;
-      const u = (t - k0.t) / (k1.t - k0.t);
+      let u = (t - k0.t) / (k1.t - k0.t);
+      // Segment easing (bounce/elastic) applied from k0 -> k1 without extra keys
+      if (k0.segEase) {
+        const strength = Math.max(0, Math.min(3, k0.segEase.strength ?? 1));
+        const easeOutBounce = (x: number) => {
+          const n1 = 7.5625; const d1 = 2.75;
+          if (x < 1 / d1) return n1 * x * x;
+          if (x < 2 / d1) return n1 * (x -= 1.5 / d1) * x + 0.75;
+          if (x < 2.5 / d1) return n1 * (x -= 2.25 / d1) * x + 0.9375;
+          return n1 * (x -= 2.625 / d1) * x + 0.984375;
+        };
+        const easeInBounce = (x: number) => 1 - easeOutBounce(1 - x);
+        const easeInOutBounce = (x: number) => x < 0.5 ? (1 - easeOutBounce(1 - 2 * x)) / 2 : (1 + easeOutBounce(2 * x - 1)) / 2;
+        const easeOutElastic = (x: number) => {
+          const c4 = (2 * Math.PI) / (0.3 + 0.2 * (1 - strength));
+          return x === 0 ? 0 : x === 1 ? 1 : Math.pow(2, -10 * x) * Math.sin((x - 0.075) * c4) + 1;
+        };
+        const easeInElastic = (x: number) => (x === 0 ? 0 : x === 1 ? 1 : -Math.pow(2, 10 * x - 10) * Math.sin((x - 0.075) * (2 * Math.PI) / (0.3 + 0.2 * (1 - strength))));
+        const easeInOutElastic = (x: number) => {
+          if (x === 0 || x === 1) return x;
+          const c5 = (2 * Math.PI) / (0.45 + 0.2 * (1 - strength));
+          return x < 0.5
+            ? -(Math.pow(2, 20 * x - 10) * Math.sin((20 * x - 11.125) * c5)) / 2
+            : (Math.pow(2, -20 * x + 10) * Math.sin((20 * x - 11.125) * c5)) / 2 + 1;
+        };
+        const applyEase = (kind: 'bounce'|'elastic', mode: 'in'|'out'|'inOut', x: number) => {
+          if (kind === 'bounce') return mode === 'in' ? easeInBounce(x) : mode === 'inOut' ? easeInOutBounce(x) : easeOutBounce(x);
+          return mode === 'in' ? easeInElastic(x) : mode === 'inOut' ? easeInOutElastic(x) : easeOutElastic(x);
+        };
+        u = applyEase(k0.segEase.type, k0.segEase.mode, u);
+        return k0.v + (k1.v - k0.v) * u;
+      }
       if (k0.interp === 'bezier' || k1.interp === 'bezier') {
         const dt = Math.max(1e-6, k1.t - k0.t);
         const m0 = k0.tanOut !== undefined ? k0.tanOut : (k1.v - k0.v) / dt;

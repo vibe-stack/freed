@@ -15,7 +15,7 @@ type NodeData = { materialId?: string };
 export const ShaderFlowNode: React.FC<any> = ({ id, data, isConnectable, selected }) => {
     const materialId = (data as NodeData).materialId;
     const graph = useGeometryStore((s) => (materialId ? s.shaderGraphs.get(materialId) : undefined));
-    const n = (graph?.nodes.find((nn) => nn.id === id) ?? { id, type: 'input', position: { x: 0, y: 0 }, hidden: false }) as SNode;
+    const n = useMemo(() => (graph?.nodes.find((nn) => nn.id === id) ?? { id, type: 'input', position: { x: 0, y: 0 }, hidden: false }) as SNode, [graph, id]);
     const inputs = (ShaderTypes.NodeInputs as any)[n.type] ?? {} as Record<string, ShaderTypes.SocketType>;
     const baseOutputs = (ShaderTypes.NodeOutputs as any)[n.type] ?? {} as Record<string, ShaderTypes.SocketType>;
     const updateShaderGraph = useGeometryStore((s) => s.updateShaderGraph);

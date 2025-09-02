@@ -7,6 +7,8 @@ import { nanoid } from 'nanoid';
 // Animation data types (MVP)
 export type Interpolation = 'step' | 'linear' | 'bezier';
 export type EasingPreset = 'easeIn' | 'easeOut' | 'easeInOut' | 'backIn' | 'backOut' | 'backInOut' | 'bounce' | 'elastic';
+type SegmentEaseType = 'bounce' | 'elastic';
+type SegmentEaseMode = 'in' | 'out' | 'inOut';
 
 export interface Key {
   id: string;
@@ -16,6 +18,8 @@ export interface Key {
   // Bezier handles reserved for follow-up
   tanIn?: number;  // dv/dt entering this key
   tanOut?: number; // dv/dt leaving this key
+  // Optional per-segment easing applied from this key to the next (like Blender). No extra keys.
+  segEase?: { type: SegmentEaseType; mode: SegmentEaseMode; strength?: number };
 }
 
 export interface Channel {
@@ -185,7 +189,47 @@ function evalChannel(channel: Channel, t: number): number | undefined {
     const k1 = keys[i + 1];
     if (t >= k0.t && t <= k1.t) {
       if (k0.interp === 'step') return k0.v;
-      const u = (t - k0.t) / (k1.t - k0.t);
+      let u = (t - k0.t) / (k1.t - k0.t);
+      // Segment easing overrides interpolation shape (like Blender's Bounce/Elastic)
+      if (k0.segEase) {
+        const strength = Math.max(0, Math.min(3, k0.segEase.strength ?? 1));
+        // Bounce helpers
+        const easeOutBounce = (x: number) => {
+          const n1 = 7.5625; const d1 = 2.75;
+          if (x < 1 / d1) return n1 * x * x;
+          if (x < 2 / d1) return n1 * (x -= 1.5 / d1) * x + 0.75;
+          if (x < 2.5 / d1) return n1 * (x -= 2.25 / d1) * x + 0.9375;
+          return n1 * (x -= 2.625 / d1) * x + 0.984375;
+        };
+        const easeInBounce = (x: number) => 1 - easeOutBounce(1 - x);
+        const easeInOutBounce = (x: number) => x < 0.5 ? (1 - easeOutBounce(1 - 2 * x)) / 2 : (1 + easeOutBounce(2 * x - 1)) / 2;
+        // Elastic helpers (period scales with strength)
+        const easeOutElastic = (x: number) => {
+          const c4 = (2 * Math.PI) / (0.3 + 0.2 * (1 - strength));
+          return x === 0 ? 0 : x === 1 ? 1 : Math.pow(2, -10 * x) * Math.sin((x - 0.075) * c4) + 1;
+        };
+        const easeInElastic = (x: number) => (x === 0 ? 0 : x === 1 ? 1 : -Math.pow(2, 10 * x - 10) * Math.sin((x - 0.075) * (2 * Math.PI) / (0.3 + 0.2 * (1 - strength))))
+        const easeInOutElastic = (x: number) => {
+          if (x === 0 || x === 1) return x;
+          const c5 = (2 * Math.PI) / (0.45 + 0.2 * (1 - strength));
+          return x < 0.5
+            ? -(Math.pow(2, 20 * x - 10) * Math.sin((20 * x - 11.125) * c5)) / 2
+            : (Math.pow(2, -20 * x + 10) * Math.sin((20 * x - 11.125) * c5)) / 2 + 1;
+        };
+        const applyEase = (kind: SegmentEaseType, mode: SegmentEaseMode, x: number) => {
+          if (kind === 'bounce') {
+            if (mode === 'in') return easeInBounce(x);
+            if (mode === 'inOut') return easeInOutBounce(x);
+            return easeOutBounce(x);
+          } else {
+            if (mode === 'in') return easeInElastic(x);
+            if (mode === 'inOut') return easeInOutElastic(x);
+            return easeOutElastic(x);
+          }
+        };
+        u = applyEase(k0.segEase.type, k0.segEase.mode, u);
+        return k0.v + (k1.v - k0.v) * u;
+      }
       if (k0.interp === 'bezier' || k1.interp === 'bezier') {
         const dt = Math.max(1e-6, k1.t - k0.t);
         const m0 = (k0.tanOut !== undefined) ? k0.tanOut : (k1.v - k0.v) / dt;
@@ -406,6 +450,8 @@ export const useAnimationStore = create<AnimationStore>()(
         const k = tr.channel.keys.find((kk) => kk.id === keyId);
         if (!k) return;
         k.interp = interp;
+        // Changing interpolation clears segment easing for clarity
+        if (k.segEase) k.segEase = undefined;
       }),
       setKeyTangentIn: (trackId: string, keyId: string, tan?: number) => set((s) => {
         const tr = s.tracks[trackId]; if (!tr) return;
@@ -616,16 +662,7 @@ export const useAnimationStore = create<AnimationStore>()(
           const dt = Math.max(1e-6, b.t - a.t);
           return (b.v - a.v) / dt;
         };
-        const insertSampled = (tr: Track, t0: number, v0: number, t1: number, v1: number, sampler: (u: number) => number, samples = 10) => {
-          for (let i = 1; i < samples; i++) {
-            const u = i / samples;
-            const t = t0 + (t1 - t0) * u;
-            const v = v0 + (v1 - v0) * sampler(u);
-            const keyId = nanoid();
-            tr.channel.keys.push({ id: keyId, t, v, interp: 'linear' });
-          }
-          sortKeys(tr.channel.keys);
-        };
+        // No more key insertion for dynamic modes
         // Penner-like sit-in-place easing on [0,1]
         const easeOutBounce = (x: number) => {
           const n1 = 7.5625; const d1 = 2.75;
@@ -658,28 +695,34 @@ export const useAnimationStore = create<AnimationStore>()(
           if (preset === 'easeIn' && prev) {
             ensureBezier(cur); ensureBezier(prev);
             const m = slope(prev, cur); cur.tanIn = 0; prev.tanOut = m * k;
+            if (cur.segEase) cur.segEase = undefined;
           } else if (preset === 'easeOut' && next) {
             ensureBezier(cur); ensureBezier(next);
             const m = slope(cur, next); cur.tanOut = 0; next.tanIn = m * 0.75 * k;
+            if (cur.segEase) cur.segEase = undefined;
           } else if (preset === 'easeInOut') {
             if (prev) { ensureBezier(cur); ensureBezier(prev); const m = slope(prev, cur); cur.tanIn = 0; prev.tanOut = m * 0.75 * k; }
             if (next) { ensureBezier(cur); ensureBezier(next); const m = slope(cur, next); cur.tanOut = 0; next.tanIn = m * 0.75 * k; }
+            if (cur.segEase) cur.segEase = undefined;
           } else if (preset === 'backIn' && prev) {
             ensureBezier(cur); ensureBezier(prev);
             const m = slope(prev, cur); cur.tanIn = m * k; prev.tanOut = m * k;
+            if (cur.segEase) cur.segEase = undefined;
           } else if (preset === 'backOut' && next) {
             ensureBezier(cur); ensureBezier(next);
             const m = slope(cur, next); cur.tanOut = m * k; next.tanIn = m * k;
+            if (cur.segEase) cur.segEase = undefined;
           } else if (preset === 'backInOut') {
             if (prev) { ensureBezier(cur); ensureBezier(prev); const m = slope(prev, cur); cur.tanIn = m * k; prev.tanOut = m * k; }
             if (next) { ensureBezier(cur); ensureBezier(next); const m = slope(cur, next); cur.tanOut = m * k; next.tanIn = m * k; }
+            if (cur.segEase) cur.segEase = undefined;
           } else if (preset === 'bounce' && next) {
-            insertSampled(tr, cur.t, cur.v, next.t, next.v, (u) => easeOutBounce(u) - u, 12);
-            ensureBezier(cur); ensureBezier(next);
+            // Store per-segment easing starting at current key
+            cur.segEase = { type: 'bounce', mode: 'out', strength };
+            // Clear bezier influence to avoid double shaping
             cur.tanOut = undefined; next.tanIn = undefined;
           } else if (preset === 'elastic' && next) {
-            insertSampled(tr, cur.t, cur.v, next.t, next.v, (u) => easeOutElastic(u) - u, 16);
-            ensureBezier(cur); ensureBezier(next);
+            cur.segEase = { type: 'elastic', mode: 'out', strength };
             cur.tanOut = undefined; next.tanIn = undefined;
           }
         });
