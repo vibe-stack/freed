@@ -17,6 +17,8 @@ export interface Vertex {
   position: Vector3;
   normal: Vector3;
   uv: Vector2;
+  // Optional second UV channel (for AO/lightmaps)
+  uv2?: Vector2;
   selected: boolean;
 }
 

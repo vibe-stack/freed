@@ -44,6 +44,7 @@ import { blendResolvers } from './nodes/blend-nodes';
 import { packResolvers } from './nodes/pack-nodes';
 import { textureResolvers } from './nodes/texture-nodes';
 import { uvTransformResolvers } from './nodes/uv-transform-nodes';
+import { normalMapResolvers } from './nodes/normalmap-nodes';
 
 const resolvers: Record<string, NodeResolver> = {
   ...constResolvers,
@@ -66,6 +67,7 @@ const resolvers: Record<string, NodeResolver> = {
   ...packResolvers,
   ...textureResolvers,
   ...uvTransformResolvers,
+  ...normalMapResolvers,
 };
 
 function resolveNode(

@@ -35,6 +35,7 @@ function buildGeometryFromThreeGeometry(geo: any): { vertices: Vertex[]; faces: 
     if (!pos) throw new Error('Mesh has no position attribute');
     const nor = geo.getAttribute('normal');
     const uv = geo.getAttribute('uv');
+    const uv2 = geo.getAttribute('uv2');
 
     const vertices: Vertex[] = [];
     const vidMap: number[] = []; // three vertex index -> vertices index
@@ -44,6 +45,7 @@ function buildGeometryFromThreeGeometry(geo: any): { vertices: Vertex[]; faces: 
         const n = nor ? toVec3(nor.getX(i), nor.getY(i), nor.getZ(i)) : toVec3(0, 1, 0);
         const u = uv ? { x: uv.getX(i), y: uv.getY(i) } : { x: 0, y: 0 };
         const v = createVertex(p, n, u);
+        if (uv2) (v as any).uv2 = { x: uv2.getX(i), y: uv2.getY(i) };
         vidMap[i] = vertices.push(v) - 1;
     }
 
@@ -180,20 +182,25 @@ export async function importGLTFFile(file: File): Promise<ImportSummary> {
     }
 
     async function buildShaderGraphForThreeMaterial(mat: any, materialId: string) {
-        // Gather textures and factors
-        const baseMap = mat?.map;
-        const mrMap = mat?.metalnessMap || mat?.roughnessMap || mat?.metalnessRoughnessMap || mat?.metalRoughnessMap;
-        const emissiveMap = mat?.emissiveMap;
-        const aoMap = mat?.aoMap || mat?.occlusionMap;
-        // const normalMap = mat?.normalMap; // TODO: needs proper TBN support
+    // Gather textures and factors
+    const baseMap = mat?.map;
+    const metalMap = mat?.metalnessMap;
+    const roughMap = mat?.roughnessMap;
+    const mrCombMap = mat?.metalnessRoughnessMap || mat?.metalRoughnessMap; // glTF combined G=roughness, B=metalness
+    const emissiveMap = mat?.emissiveMap;
+    const aoMap = mat?.aoMap || mat?.occlusionMap;
+        const normalMap = mat?.normalMap;
 
-        const baseId = await getFileIdForThreeTexture(baseMap, 'BaseColor');
-        const mrId = await getFileIdForThreeTexture(mrMap, 'MetalRough');
-        const emiId = await getFileIdForThreeTexture(emissiveMap, 'Emissive');
-        const aoId = await getFileIdForThreeTexture(aoMap, 'Occlusion');
+    const baseId = await getFileIdForThreeTexture(baseMap, 'BaseColor');
+    const mrCombId = await getFileIdForThreeTexture(mrCombMap, 'MetalRough');
+    const roughId = await getFileIdForThreeTexture(roughMap, 'Roughness');
+    const metalId = await getFileIdForThreeTexture(metalMap, 'Metalness');
+    const emiId = await getFileIdForThreeTexture(emissiveMap, 'Emissive');
+    const aoId = await getFileIdForThreeTexture(aoMap, 'Occlusion');
+    const nrmId = await getFileIdForThreeTexture(normalMap, 'Normal');
 
         // If no textures, keep default auto graph; but still bake numeric factors
-        const hasAnyTex = !!(baseId || mrId || emiId || aoId);
+    const hasAnyTex = !!(baseId || mrCombId || roughId || metalId || emiId || aoId || nrmId);
         if (!hasAnyTex) {
             // Ensure default graph updated with numeric factors from material
             geom.updateShaderGraph(materialId, (g) => {
@@ -292,18 +299,18 @@ export async function importGLTFFile(file: File): Promise<ImportSummary> {
         }
 
         // Metallic-Roughness
-        if (mrId) {
-            const mrTex = addNode('texture', 520, 200, { fileId: mrId, colorSpace: 'linear' });
+        if (mrCombId) {
+            // Combined map: G=roughness, B=metalness (glTF convention)
+            const mrTex = addNode('texture', 520, 200, { fileId: mrCombId, colorSpace: 'linear' });
             nodes.push(mrTex);
-            const uvt = buildUVFor(mrMap, 200);
+            const uvt = buildUVFor(mrCombMap, 200);
             if (uvt) edges.push(addEdge(uvt, 'out', mrTex, 'uv'));
-            // Channels: G=roughness, B=metalness in glTF; swizzle directly from texture vec4
             const roughSrc = addNode('swizzle', 660, 200, { mask: 'y' });
             const metalSrc = addNode('swizzle', 660, 240, { mask: 'z' });
             nodes.push(roughSrc, metalSrc);
             edges.push(addEdge(mrTex, 'out', roughSrc, 'in'));
             edges.push(addEdge(mrTex, 'out', metalSrc, 'in'));
-            // Multiply by scalar factors if present
+            // Apply scalar factors when not 1
             if (typeof mat?.roughness === 'number' && mat.roughness !== 1) {
                 const rf = addNode('const-float', 760, 180, { value: mat.roughness });
                 const rm = addNode('mul', 820, 200, {});
@@ -321,11 +328,51 @@ export async function importGLTFFile(file: File): Promise<ImportSummary> {
                 edges.push(addEdge(metalSrc, 'out', idOut, 'metalness'));
             }
         } else {
-            // No MR texture: constants
-            const rough = addNode('const-float', 520, 200, { value: typeof mat?.roughness === 'number' ? mat.roughness : 0.8 });
-            const metal = addNode('const-float', 520, 240, { value: typeof mat?.metalness === 'number' ? mat.metalness : 0.05 });
-            nodes.push(rough, metal);
-            edges.push(addEdge(rough, 'out', idOut, 'roughness'), addEdge(metal, 'out', idOut, 'metalness'));
+            // Separate maps or constants
+            // Roughness
+            if (roughId) {
+                const rTex = addNode('texture', 520, 200, { fileId: roughId, colorSpace: 'linear' });
+                nodes.push(rTex);
+                const uvtR = buildUVFor(roughMap, 200);
+                if (uvtR) edges.push(addEdge(uvtR, 'out', rTex, 'uv'));
+                const rCh = addNode('swizzle', 660, 200, { mask: 'y' }); // glTF roughness in G
+                nodes.push(rCh);
+                edges.push(addEdge(rTex, 'out', rCh, 'in'));
+                if (typeof mat?.roughness === 'number' && mat.roughness !== 1) {
+                    const rf = addNode('const-float', 760, 180, { value: mat.roughness });
+                    const rm = addNode('mul', 820, 200, {});
+                    nodes.push(rf, rm);
+                    edges.push(addEdge(rCh, 'out', rm, 'a'), addEdge(rf, 'out', rm, 'b'), addEdge(rm, 'out', idOut, 'roughness'));
+                } else {
+                    edges.push(addEdge(rCh, 'out', idOut, 'roughness'));
+                }
+            } else {
+                const rough = addNode('const-float', 520, 200, { value: typeof mat?.roughness === 'number' ? mat.roughness : 0.8 });
+                nodes.push(rough);
+                edges.push(addEdge(rough, 'out', idOut, 'roughness'));
+            }
+            // Metalness
+            if (metalId) {
+                const mTex = addNode('texture', 520, 260, { fileId: metalId, colorSpace: 'linear' });
+                nodes.push(mTex);
+                const uvtM = buildUVFor(metalMap, 260);
+                if (uvtM) edges.push(addEdge(uvtM, 'out', mTex, 'uv'));
+                const mCh = addNode('swizzle', 660, 260, { mask: 'z' }); // glTF metalness in B
+                nodes.push(mCh);
+                edges.push(addEdge(mTex, 'out', mCh, 'in'));
+                if (typeof mat?.metalness === 'number' && mat.metalness !== 1) {
+                    const mf = addNode('const-float', 760, 280, { value: mat.metalness });
+                    const mm = addNode('mul', 820, 260, {});
+                    nodes.push(mf, mm);
+                    edges.push(addEdge(mCh, 'out', mm, 'a'), addEdge(mf, 'out', mm, 'b'), addEdge(mm, 'out', idOut, 'metalness'));
+                } else {
+                    edges.push(addEdge(mCh, 'out', idOut, 'metalness'));
+                }
+            } else {
+                const metal = addNode('const-float', 520, 240, { value: typeof mat?.metalness === 'number' ? mat.metalness : 0.05 });
+                nodes.push(metal);
+                edges.push(addEdge(metal, 'out', idOut, 'metalness'));
+            }
         }
 
         // Emissive
@@ -358,8 +405,17 @@ export async function importGLTFFile(file: File): Promise<ImportSummary> {
         if (aoId) {
             const aTex = addNode('texture', 520, 460, { fileId: aoId, colorSpace: 'linear' });
             nodes.push(aTex);
+            // Prefer AO sampling from UV2 when available in the mesh; fall back to UV
+            const uv2Node = addNode('uv2', 420, 460, {});
+            nodes.push(uv2Node);
             const uvt = buildUVFor(aoMap, 460);
-            if (uvt) edges.push(addEdge(uvt, 'out', aTex, 'uv'));
+            if (uvt) {
+                // Feed uv2 into the transform so AO samples use the secondary UV set
+                edges.push(addEdge(uv2Node, 'out', uvt, 'uv'));
+                edges.push(addEdge(uvt, 'out', aTex, 'uv'));
+            } else {
+                edges.push(addEdge(uv2Node, 'out', aTex, 'uv'));
+            }
             const ax = addNode('swizzle', 660, 460, { mask: 'x' });
             nodes.push(ax);
             edges.push(addEdge(aTex, 'out', ax, 'in'));
@@ -372,6 +428,30 @@ export async function importGLTFFile(file: File): Promise<ImportSummary> {
             } else {
                 edges.push(addEdge(ax, 'out', idOut, 'ao'));
             }
+        }
+
+        // Normal map (if present)
+        if (nrmId) {
+            // Normal textures are linear data
+            const nTex = addNode('texture', 520, 600, { fileId: nrmId, colorSpace: 'linear' });
+            nodes.push(nTex);
+            // Use primary UVs by default for normal maps
+            const nUvt = buildUVFor(normalMap, 600);
+            if (nUvt) edges.push(addEdge(nUvt, 'out', nTex, 'uv'));
+            // Intensity (scale) from material.normalScale if present
+            const scaleVal = (normalMap?.scale && (normalMap.scale.x !== 1 || normalMap.scale.y !== 1)) ? Math.max(normalMap.scale.x, normalMap.scale.y) : (typeof mat?.normalScale === 'number' ? mat.normalScale : 1);
+            const scaleNode = addNode('const-float', 660, 640, { value: scaleVal ?? 1 });
+            nodes.push(scaleNode);
+            // normalMap helper node expects uv and scale; connect texture via 'in'
+            const nMap = addNode('normalMap', 700, 600, {});
+            nodes.push(nMap);
+            edges.push(addEdge(nTex, 'out', nMap, 'in'));
+            const inUv = addNode('uv', 600, 560, {});
+            nodes.push(inUv);
+            edges.push(addEdge(inUv, 'out', nMap, 'uv'));
+            edges.push(addEdge(scaleNode, 'out', nMap, 'scale'));
+            // Route to output normal
+            edges.push(addEdge(nMap, 'out', idOut, 'normal'));
         }
 
         // Opacity / Alpha cutout from base color alpha
@@ -402,6 +482,16 @@ export async function importGLTFFile(file: File): Promise<ImportSummary> {
             }
         }
 
+        // Increase spacing of nodes for better readability in the editor
+        const SPX = 1.8, SPY = 1.4;
+        for (const n of nodes) {
+            if ((n as any).position) {
+                (n as any).position = {
+                    x: Math.round(((n as any).position.x ?? 0) * SPX),
+                    y: Math.round(((n as any).position.y ?? 0) * SPY),
+                };
+            }
+        }
         const graph: ShaderGraph = { materialId, nodes, edges } as any;
         geom.setShaderGraph(materialId, graph);
     }

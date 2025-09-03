@@ -12,7 +12,9 @@ export type ShaderNodeType =
   | 'const-float'
   | 'const-color' // vec3
   | 'texture' // texture sampler from uploaded file (outputs vec4)
-  | 'uv' // vec2
+  | 'normalMap' // builds a perturbed normal from a normal texture
+  | 'uv' // vec2 (primary)
+  | 'uv2' // vec2 (secondary)
   | 'normal' // vec3 (world)
   | 'add'
   | 'sub'
@@ -234,6 +236,7 @@ export const NodeInputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'const-color': {},
   'texture': { uv: 'vec2' },
   'uv': {},
+  'uv2': {},
   'normal': {},
   'add': { a: 'float', b: 'float' },
   'sub': { a: 'float', b: 'float' },
@@ -296,7 +299,9 @@ export const NodeInputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'unpack': { value: 'vec4' },
   // UV transforms
   'uvScale': { uv: 'vec2', scale: 'vec2' },
-  'uvTransform': { uv: 'vec2', offset: 'vec2', rotation: 'float', scale: 'vec2' },
+  'uvTransform': { uv: 'vec2', offset: 'vec2', rotation: 'float', scale: 'vec2', center: 'vec2' },
+  // Normal map helper: expects a sampled normal texture (vec4) on 'in'
+  'normalMap': { in: 'vec4', uv: 'vec2', scale: 'float' },
   // oscillators have no inputs (use global timer)
   'oscSine': {},
   'oscSquare': {},
@@ -385,7 +390,7 @@ export const NodeInputs: Record<ShaderNodeType, Record<string, SocketType>> = {
 };
 
 export const NodeOutputs: Record<ShaderNodeType, Record<string, SocketType>> = {
-  'input': { uv: 'vec2', normal: 'vec3' },
+  'input': { uv: 'vec2', uv2: 'vec2', normal: 'vec3' },
   'output': {},
   'output-standard': {},
   'output-physical': {},
@@ -394,7 +399,9 @@ export const NodeOutputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'const-float': { out: 'float' },
   'const-color': { out: 'vec3' },
   'texture': { out: 'vec4' },
+  'normalMap': { out: 'vec3' },
   'uv': { out: 'vec2' },
+  'uv2': { out: 'vec2' },
   'normal': { out: 'vec3' },
   'add': { out: 'float' },
   'sub': { out: 'float' },
