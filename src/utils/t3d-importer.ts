@@ -271,7 +271,6 @@ export async function importFromT3D(file: File): Promise<ImportedWorkspaceData> 
         // leave autoKey/snapping as-is
       }, false);
       if (anim) {
-  const a = useAnimationStore.getState();
         // Apply payload
   useAnimationStore.setState((s) => { s.fps = anim.fps ?? s.fps; }, false);
         // Recreate clips and tracks
@@ -343,7 +342,6 @@ export async function importFromT3D(file: File): Promise<ImportedWorkspaceData> 
     try {
       const p = (t3dScene as any).particles as T3DScene['particles'] | undefined;
       if (p?.systems && Array.isArray(p.systems)) {
-        const store = useParticlesStore.getState();
         // Clear existing systems first
         useParticlesStore.setState((s) => { s.systems = {}; }, false);
         p.systems.forEach((sys) => {

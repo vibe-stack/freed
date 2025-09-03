@@ -25,15 +25,6 @@ const faceEdges = (face: Face): [string, string][] => {
   return edges;
 };
 
-const edgeIndexInFace = (face: Face, a: string, b: string): number => {
-  const edges = faceEdges(face);
-  for (let i = 0; i < edges.length; i++) {
-    const [x, y] = edges[i];
-    if ((x === a && y === b) || (x === b && y === a)) return i;
-  }
-  return -1;
-};
-
 export interface MeshAdjacency {
   edgeByKey: Map<EdgeKey, { id: string; v: [string, string]; faceIds: string[] }>;
   facesById: Map<string, Face>;

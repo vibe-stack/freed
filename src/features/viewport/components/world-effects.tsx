@@ -33,7 +33,7 @@ const shadowMapType: Record<string, THREE.ShadowMapType> = {
 export const WorldEffects: React.FC = () => {
   const env = useEnvironment();
   const bloom = useBloom();
-  const dof = useDoF(); // currently unused; kept for future depth-of-field integration
+  // const dof = useDoF(); // currently unused; kept for future depth-of-field integration
   const fog = useFog();
   const renderer = useRendererSettings();
   const shading = useShadingMode();
@@ -103,7 +103,6 @@ export const WorldEffects: React.FC = () => {
       postRef.current = null;
       bloomRef.current = null;
       scenePassColorRef.current = null;
-      // eslint-disable-next-line no-console
       console.warn('Bloom postprocessing init failed:', e);
     }
     return () => {
@@ -134,7 +133,7 @@ export const WorldEffects: React.FC = () => {
       // In some WebGPU setups the default React-Three-Fiber render path can be bypassed; call render explicitly.
       try {
         (gl as any).render(scene, camera);
-      } catch (e) {
+      } catch {
         // ignore render errors here
       }
     }

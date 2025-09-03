@@ -10,13 +10,7 @@ import StarryLoader from '@/components/starry-loader';
 
 // Store provider component that initializes stores and provides context
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [hydrated, setHydrated] = React.useState(false);
   const [showSplash, setShowSplash] = React.useState(true);
-
-  // Hydration flag
-  React.useEffect(() => {
-    setHydrated(true);
-  }, []);
 
   // When hydrated, schedule hiding splash after min duration (handled inside StarryLoader too)
   const handleSplashDone = React.useCallback(() => {

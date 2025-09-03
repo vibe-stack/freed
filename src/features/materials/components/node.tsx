@@ -97,7 +97,7 @@ export const ShaderFlowNode: React.FC<any> = ({ id, data, isConnectable, selecte
                 (node as any).data = { ...(node as any).data, fileId: id, name: f.name };
             }
         });
-    }, [materialId, n?.id, updateShaderGraph]);
+    }, [materialId, n, updateShaderGraph]);
 
     const onDragOver = useCallback((e: React.DragEvent) => {
         if ((n as any).type !== 'texture') return;
@@ -107,10 +107,11 @@ export const ShaderFlowNode: React.FC<any> = ({ id, data, isConnectable, selecte
     const onDragLeave = useCallback(() => setHoveringDrop(false), []);
 
     // Force RF to re-measure this node after mount and when dynamic content changes
+    const nodeType = (n as any)?.type;
     useEffect(() => {
         const t = setTimeout(() => updateNodeInternals(id), 0);
         return () => clearTimeout(t);
-    }, [id, updateNodeInternals, (n as any)?.type, floatVal, colorVec?.x, colorVec?.y, colorVec?.z, textureFileId]);
+    }, [id, updateNodeInternals, nodeType, floatVal, colorVec?.x, colorVec?.y, colorVec?.z, textureFileId]);
 
     // Dynamic output typing for math nodes (add/sub/mul/div/mod/mix)
     const dynOutputs = useMemo(() => {

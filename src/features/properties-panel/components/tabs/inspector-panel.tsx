@@ -162,7 +162,7 @@ export const InspectorPanel: React.FC = () => {
       {selected.type === 'particles' && selected.particleSystemId && (
         <div>
           <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Particle System</div>
-          <ParticleSystemSection objectId={selected.id} systemId={selected.particleSystemId} />
+          <ParticleSystemSection systemId={selected.particleSystemId} />
         </div>
       )}
 
@@ -189,8 +189,8 @@ const XYZ: React.FC<{ label: string; value: { x: number; y: number; z: number };
     );
   };
 
-const ParticleSystemSection: React.FC<{ objectId: string; systemId: string }>
-  = ({ objectId: _objectId, systemId }) => {
+const ParticleSystemSection: React.FC<{ systemId: string }>
+  = ({ systemId }) => {
     const scene = useSceneStore();
     const particles = useParticlesStore();
     const sys = useParticlesStore((s) => s.systems[systemId]);

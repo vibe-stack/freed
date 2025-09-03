@@ -30,7 +30,7 @@ export const MaterialSection: React.FC<Props> = ({ materialId, onAssignMaterial 
     const hasToon = shaderGraph.nodes.some((n: any) => n.type === 'output-toon');
     if (hasToon) return 'toon';
     return 'standard';
-  }, [shaderGraph, shaderGraph?.nodes]);
+  }, [shaderGraph]);
 
   const update = (updater: (m: MatType) => void) => {
     if (!material) return;

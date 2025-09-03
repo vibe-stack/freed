@@ -88,7 +88,7 @@ type GeometryStore = GeometryState & GeometryActions;
 export const useGeometryStore = create<GeometryStore>()(
   temporal(
     subscribeWithSelector(
-      immer((set, _get) => ({
+      immer((set) => ({
         // Initial state
         meshes: new Map(),
         materials: new Map(),
@@ -375,7 +375,7 @@ export const useGeometryStore = create<GeometryStore>()(
                 });
               });
             }
-          } catch (e) {
+          } catch {
             // Non-fatal: if animation store isn't available, skip cleanup
           }
         },

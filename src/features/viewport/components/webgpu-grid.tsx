@@ -41,13 +41,21 @@ const WebGPUGrid = React.forwardRef<Object3D, GridProps>(
       renderOrder = 0,
       frustumCulled = false,
       // no-op props for parity
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       cellSize,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       sectionSize,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       cellThickness,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       sectionThickness,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       fadeDistance,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       fadeStrength,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       fadeFrom,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       followCamera,
       ...rest
     }: GridProps,

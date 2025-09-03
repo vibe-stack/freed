@@ -1,5 +1,3 @@
-import type { Vector2 } from '@/types/geometry';
-
 // Shared UV mapping types
 export type Axis = 'x' | 'y' | 'z';
 

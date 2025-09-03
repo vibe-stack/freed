@@ -100,7 +100,7 @@ function MeshUV({ mesh, selected, zoom }: { mesh?: MeshType; selected: Set<strin
       arr.push(v.uv.x, v.uv.y, 0);
     }
     return { sel: new Float32Array(sel), rest: new Float32Array(rest) };
-  }, [mesh, selected, zoom]);
+  }, [mesh, selected]);
 
   return (
     <>
