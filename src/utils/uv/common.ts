@@ -1,4 +1,4 @@
-import type { Mesh, Vector2, Vertex, Face } from '@/types/geometry';
+import type { Mesh, Vector2, Vertex } from '@/types/geometry';
 import type { Island } from './types';
 
 export function fitUVs01(mesh: Mesh, vertexIds?: Set<string>) {

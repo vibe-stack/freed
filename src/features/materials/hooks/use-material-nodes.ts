@@ -23,5 +23,5 @@ export function useMaterialNodes(materialId?: string) {
     // Prefer back-face shadowing to mitigate acne on thin meshes
     (mat as any).shadowSide = THREE.BackSide;
     return mat;
-  }, [graph, materialId, graph?.nodes, graph?.edges]);
+  }, [graph, materialId]);
 }

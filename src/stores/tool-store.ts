@@ -78,7 +78,7 @@ export const useToolStore = create<ToolState>((set) => ({
   startOperation: (tool, localData) => set({ tool, isActive: true, localData }),
   setLocalData: (localData) => set({ localData }),
   setAxisLock: (axis) => set({ axisLock: axis }),
-  endOperation: (_commit) => set({ tool: 'none', isActive: false, axisLock: 'none', localData: null }),
+  endOperation: () => set({ tool: 'none', isActive: false, axisLock: 'none', localData: null }),
   reset: () => set({ tool: 'none', isActive: false, axisLock: 'none', localData: null }),
   // Sensitivity defaults (tuned lower than previous hardcoded values)
   moveSensitivity: 0.0025,

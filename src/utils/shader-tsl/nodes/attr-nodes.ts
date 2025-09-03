@@ -1,5 +1,4 @@
 import * as TSL from 'three/tsl';
-import type { ShaderNode } from '@/types/shader';
 
 export const attrResolvers = {
   positionAttr: () => (TSL as any).positionLocal?.() ?? null,

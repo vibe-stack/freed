@@ -1,5 +1,4 @@
 import type { Mesh, Face, Vector3 } from '@/types/geometry';
-import { nanoid } from 'nanoid';
 
 function dot(a: Vector3, b: Vector3) { return a.x*b.x + a.y*b.y + a.z*b.z; }
 function length(a: Vector3) { return Math.sqrt(dot(a, a)); }

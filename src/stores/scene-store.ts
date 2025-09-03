@@ -308,7 +308,7 @@ export const useSceneStore = create<SceneStore>()(
           const t = a.playhead; const fps = a.fps || 30; const frameT = Math.round(t * fps) / fps;
           const obj = useSceneStore.getState().objects[objectId];
           if (!obj) return;
-          (['x','y','z'] as const).forEach((axis, i) => {
+          (['x','y','z'] as const).forEach((axis) => {
             const trackId = a.ensureTrack(objectId, `position.${axis}`);
             a.insertKey(trackId, frameT, (obj.transform.position as any)[axis], 'linear');
           });

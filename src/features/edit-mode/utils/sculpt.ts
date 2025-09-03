@@ -325,5 +325,5 @@ export function brushRotate(ctx: BrushContext, out: Map<string, Vertex>, angle: 
 
 export function brushSimplify(_ctx: BrushContext, _out: Map<string, Vertex>) {
   // Placeholder: requires dynamic topology; left as a no-op for now.
-  _ctx;_out;
+  void _ctx; void _out;
 }

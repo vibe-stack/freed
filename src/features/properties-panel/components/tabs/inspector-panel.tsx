@@ -190,7 +190,7 @@ const XYZ: React.FC<{ label: string; value: { x: number; y: number; z: number };
   };
 
 const ParticleSystemSection: React.FC<{ objectId: string; systemId: string }>
-  = ({ objectId, systemId }) => {
+  = ({ objectId: _objectId, systemId }) => {
     const scene = useSceneStore();
     const particles = useParticlesStore();
     const sys = useParticlesStore((s) => s.systems[systemId]);

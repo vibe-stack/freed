@@ -11,7 +11,7 @@ interface UVEditorState {
 }
 
 export const useUVEditorStore = create<UVEditorState>()(
-  immer((set, get) => ({
+  immer((set) => ({
     open: false,
     setOpen: (v) => set((s) => { s.open = v; }),
     selection: new Set<string>(),

@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid';
 import type { Island, SmartUVOptions } from './types';
 import { computeIslandsByAngle } from './islands';
 import { packIslandsSmart } from './packing';
-import { bboxForIsland, edgePosKey } from './common';
+import { edgePosKey } from './common';
 
 // Compute an island curvature metric to decide planar vs per-face projection
 function islandCurvature(mesh: Mesh, is: Island) {

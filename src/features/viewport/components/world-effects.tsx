@@ -33,7 +33,7 @@ const shadowMapType: Record<string, THREE.ShadowMapType> = {
 export const WorldEffects: React.FC = () => {
   const env = useEnvironment();
   const bloom = useBloom();
-  const dof = useDoF();
+  const dof = useDoF(); // currently unused; kept for future depth-of-field integration
   const fog = useFog();
   const renderer = useRendererSettings();
   const shading = useShadingMode();
@@ -54,7 +54,7 @@ export const WorldEffects: React.FC = () => {
     gl.shadowMap.type = shadowMapType[renderer.shadowType] ?? THREE.PCFSoftShadowMap;
   }, [gl, renderer]);
 
-  const fogColor = useMemo(() => toThreeColor(fog.color), [fog.color.x, fog.color.y, fog.color.z]);
+  const fogColor = useMemo(() => toThreeColor(fog.color), [fog.color]);
 
   // Ensure scene fog cleans up when switching types
   useEffect(() => {

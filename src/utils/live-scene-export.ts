@@ -2,13 +2,7 @@
 
 // Build an export THREE.Scene from the live R3F scene graph, excluding helpers and overlays.
 
-import {
-  Scene,
-  Group,
-  Object3D,
-  Mesh as ThreeMesh,
-  MeshStandardMaterial,
-} from 'three/webgpu';
+import { Scene, Object3D, MeshStandardMaterial } from 'three/webgpu';
 import { getObject3D } from '@/features/viewport/hooks/object3d-registry';
 import { useSceneStore } from '@/stores/scene-store';
 import { useGeometryStore } from '@/stores/geometry-store';

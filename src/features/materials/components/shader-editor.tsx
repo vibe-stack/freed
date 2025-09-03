@@ -15,8 +15,6 @@ import { useShaderEditorState } from './shader-editor/hooks/useShaderEditorState
 import { useNodeEdgeChanges, useSelectionClipboard } from './shader-editor/hooks/useFlowInteractions';
 import { useShaderEditorHotkeys } from './shader-editor/hooks/useShaderEditorHotkeys';
 import EditorHeader from './shader-editor/components/EditorHeader';
-// eslint-disable-next-line no-unused-vars
-import styles from './shader-editor/shader-flow.module.css';
 
 type Props = { open: boolean; onOpenChange: (v: boolean) => void };
 

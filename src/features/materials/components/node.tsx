@@ -17,7 +17,7 @@ export const ShaderFlowNode: React.FC<any> = ({ id, data, isConnectable, selecte
     const graph = useGeometryStore((s) => (materialId ? s.shaderGraphs.get(materialId) : undefined));
     const n = useMemo(() => (graph?.nodes.find((nn) => nn.id === id) ?? { id, type: 'input', position: { x: 0, y: 0 }, hidden: false }) as SNode, [graph, id]);
     const inputs = (ShaderTypes.NodeInputs as any)[n.type] ?? {} as Record<string, ShaderTypes.SocketType>;
-    const baseOutputs = (ShaderTypes.NodeOutputs as any)[n.type] ?? {} as Record<string, ShaderTypes.SocketType>;
+    const baseOutputs = useMemo(() => ((ShaderTypes.NodeOutputs as any)[n.type] ?? {}) as Record<string, ShaderTypes.SocketType>, [n?.type]);
     const updateShaderGraph = useGeometryStore((s) => s.updateShaderGraph);
     const updateNodeInternals = useUpdateNodeInternals();
     const [hoveringDrop, setHoveringDrop] = useState(false);

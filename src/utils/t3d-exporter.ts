@@ -309,8 +309,7 @@ export async function exportToT3D(
 
   // Optionally include animations and UI prefs (MVP)
   try {
-    const a = useAnimationStore.getState();
-    const activeClip = a.activeClipId ? a.clips[a.activeClipId] : null;
+  const a = useAnimationStore.getState();
     t3dScene.animations = {
       fps: a.fps,
       activeClipId: a.activeClipId,

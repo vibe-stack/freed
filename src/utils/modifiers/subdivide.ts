@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
 import type { Mesh, Vertex, Face, Vector3 } from '@/types/geometry';
-import { buildEdgesFromFaces, calculateVertexNormals, convertQuadToTriangles } from '@/utils/geometry';
+import { convertQuadToTriangles } from '@/utils/geometry';
 import type { SubdivideModifierSettings } from './types';
 
 export function subdivideModifier(mesh: Mesh, settings: SubdivideModifierSettings): Mesh {

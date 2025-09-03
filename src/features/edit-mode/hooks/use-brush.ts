@@ -29,7 +29,7 @@ export function useBrushRay(mesh: AppMesh | null, obj: ObjectTransform | null, r
     m.compose(new Vector3(obj.position.x, obj.position.y, obj.position.z), q, new Vector3(Math.max(1e-6, obj.scale.x), Math.max(1e-6, obj.scale.y), Math.max(1e-6, obj.scale.z)));
     const inv = new Matrix4().copy(m).invert();
     return { m, inv };
-  }, [obj?.position.x, obj?.position.y, obj?.position.z, obj?.rotation.x, obj?.rotation.y, obj?.rotation.z, obj?.scale.x, obj?.scale.y, obj?.scale.z, obj]);
+  }, [obj]);
 
   // Precompute triangle indices once per mesh topology
   const triIndex = useMemo(() => {
@@ -48,7 +48,7 @@ export function useBrushRay(mesh: AppMesh | null, obj: ObjectTransform | null, r
       }
     }
     return { tris };
-  }, [mesh?.id, mesh?.vertices.length, mesh?.faces.length, mesh]);
+  }, [mesh]);
 
   // BVH geometry and mesh
   const geomRef = useRef<BufferGeometry | null>(null);
@@ -195,7 +195,6 @@ export function useBrushRay(mesh: AppMesh | null, obj: ObjectTransform | null, r
       let bestD = Infinity;
       let bestP: Vector3 | null = null;
       let bestN: Vector3 | null = null;
-      let bestTriIdx = -1;
       let bestTri: { a: Vector3; b: Vector3; c: Vector3 } | null = null;
       for (let t = 0; t < (triIndex?.tris.length || 0); t++) {
         const [ia, ib, ic] = triIndex!.tris[t];

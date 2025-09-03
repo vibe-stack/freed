@@ -671,9 +671,9 @@ export const useAnimationStore = create<AnimationStore>()(
           if (x < 2.5 / d1) return n1 * (x -= 2.25 / d1) * x + 0.9375;
           return n1 * (x -= 2.625 / d1) * x + 0.984375;
         };
-        const easeInBounce = (x: number) => 1 - easeOutBounce(1 - x);
-        const easeInOutBounce = (x: number) => x < 0.5 ? (1 - easeOutBounce(1 - 2 * x)) / 2 : (1 + easeOutBounce(2 * x - 1)) / 2;
-        const easeOutElastic = (x: number) => {
+  const easeInBounce = (x: number) => 1 - easeOutBounce(1 - x);
+  const easeInOutBounce = (x: number) => x < 0.5 ? (1 - easeOutBounce(1 - 2 * x)) / 2 : (1 + easeOutBounce(2 * x - 1)) / 2;
+  const easeOutElastic = (x: number) => {
           const c4 = (2 * Math.PI) / (0.3 + 0.2 * (1 - clampV(strength, 0, 3)));
           return x === 0 ? 0 : x === 1 ? 1 : Math.pow(2, -10 * x) * Math.sin((x - 0.075) * c4) + 1;
         };
@@ -685,6 +685,11 @@ export const useAnimationStore = create<AnimationStore>()(
             ? -(Math.pow(2, 20 * x - 10) * Math.sin((20 * x - 11.125) * c5)) / 2
             : (Math.pow(2, -20 * x + 10) * Math.sin((20 * x - 11.125) * c5)) / 2 + 1;
         };
+  void easeInBounce;
+  void easeInOutBounce;
+  void easeOutElastic;
+  void easeInElastic;
+  void easeInOutElastic;
         pairs.forEach(({ trackId, keyId }) => {
           const tr = s.tracks[trackId]; if (!tr) return;
           const keys = tr.channel.keys; const idx = keys.findIndex((kk) => kk.id === keyId);

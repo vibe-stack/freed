@@ -456,7 +456,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
             if (!resizeRef.current.resizing) return;
             const dw = ev.clientX - resizeRef.current.ox;
             const dh = ev.clientY - resizeRef.current.oy;
-            setSize((s) => ({ w: Math.max(360, resizeRef.current.sw + dw), h: Math.max(260, resizeRef.current.sh + dh) }));
+            setSize((prev) => ({ w: Math.max(360, resizeRef.current.sw + dw), h: Math.max(260, resizeRef.current.sh + dh) }));
         };
         const onUp = () => {
             resizeRef.current.resizing = false;

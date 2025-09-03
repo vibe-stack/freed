@@ -45,9 +45,9 @@ export function useShaderEditorState(seMaterialIdProp: string | undefined) {
       targetHandle: e.targetHandle,
     }));
     return { defaultNodes: rfNodes, defaultEdges: rfEdges };
-  }, [graph, graph?.nodes, graph?.edges, materialId]);
+  }, [graph, materialId]);
 
-  const graphNodes = useMemo(() => graph?.nodes || [], [graph?.nodes]);
+  const graphNodes = useMemo(() => graph?.nodes || [], [graph]);
   const defaultEdgeOptions = useMemo(() => ({ animated: true }), []);
 
   // Connect logic reused by validators

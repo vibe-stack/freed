@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { InstancedMesh, Object3D, Matrix4, Quaternion, Vector3 as T3V, Euler, Material, BufferGeometry } from 'three/webgpu';
+import { InstancedMesh, Object3D, Quaternion, Vector3 as T3V, Euler, Material, BufferGeometry } from 'three/webgpu';
 import { useFrame } from '@react-three/fiber';
 import { useSceneStore } from '@/stores/scene-store';
 import { useParticlesStore } from '@/stores/particles-store';

@@ -89,7 +89,7 @@ function MeshUV({ mesh, selected, zoom }: { mesh?: MeshType; selected: Set<strin
       }
     }
     return new Float32Array(verts);
-  }, [mesh?.vertices, mesh?.edges, mesh?.faces, mesh]);
+  }, [mesh]);
 
   const points = useMemo(() => {
     if (!mesh) return { sel: new Float32Array(), rest: new Float32Array() };
@@ -100,7 +100,7 @@ function MeshUV({ mesh, selected, zoom }: { mesh?: MeshType; selected: Set<strin
       arr.push(v.uv.x, v.uv.y, 0);
     }
     return { sel: new Float32Array(sel), rest: new Float32Array(rest) };
-  }, [mesh?.vertices, selected, zoom, mesh]);
+  }, [mesh, selected, zoom]);
 
   return (
     <>

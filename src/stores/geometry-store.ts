@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { useMemo } from 'react';
-import { Mesh, Material, CameraResource, CameraType } from '../types/geometry';
+import { Mesh, Material, CameraResource } from '../types/geometry';
 import type { ShaderGraph } from '@/types/shader';
 import { nanoid } from 'nanoid';
 import { useSceneStore } from './scene-store';

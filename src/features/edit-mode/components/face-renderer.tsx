@@ -37,7 +37,7 @@ export const FaceRenderer: React.FC<FaceRendererProps> = ({
     const overrides = new Map(localVertices.map(v => [v.id, v] as const));
     return base.map(v => overrides.get(v.id) || v);
   }, [mesh?.vertices, localVertices]);
-  const faces = mesh?.faces || [];
+  const faces = useMemo(() => mesh?.faces || [], [mesh?.faces]);
   
   const batched = useMemo(() => {
     const vertexMap = new Map(vertices.map(v => [v.id, v] as const));

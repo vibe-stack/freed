@@ -32,7 +32,7 @@ const defaultCameraState: CameraState = {
 
 export const useViewportStore = create<ViewportStore>()(
   subscribeWithSelector(
-    immer((set, _get) => ({
+  immer((set) => ({
       // Initial state
       camera: defaultCameraState,
   activeCameraObjectId: null,

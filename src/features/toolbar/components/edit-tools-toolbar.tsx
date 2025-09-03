@@ -28,8 +28,7 @@ export const EditToolsToolbar: React.FC = () => {
 
   if (selection.viewMode !== 'edit') return null;
 
-  const hasEditSelection =
-    selection.vertexIds.length > 0 || selection.edgeIds.length > 0 || selection.faceIds.length > 0;
+  // Whether we have any edit selection is inferred inline where needed.
 
   const start = (id: Btn['id']) => {
     if (tool.isActive && tool.tool === id) return;

@@ -203,7 +203,7 @@ export async function importFromT3D(file: File): Promise<ImportedWorkspaceData> 
     
     try {
       t3dScene = JSON.parse(sceneJsonText);
-    } catch (parseError) {
+  } catch (_parseError) {
       throw new Error('Invalid T3D file: scene.json is not valid JSON');
     }
 
@@ -271,7 +271,7 @@ export async function importFromT3D(file: File): Promise<ImportedWorkspaceData> 
         // leave autoKey/snapping as-is
       }, false);
       if (anim) {
-        const a = useAnimationStore.getState();
+  const a = useAnimationStore.getState();
         // Apply payload
   useAnimationStore.setState((s) => { s.fps = anim.fps ?? s.fps; }, false);
         // Recreate clips and tracks
@@ -312,7 +312,7 @@ export async function importFromT3D(file: File): Promise<ImportedWorkspaceData> 
       if (graphs) {
         // Apply into geometry store
         const geo = (await import('@/stores/geometry-store')).useGeometryStore;
-        for (const [mid, g] of Object.entries(graphs)) {
+  for (const [mid, g] of Object.entries(graphs)) {
           geo.getState().setShaderGraph(mid, g as any);
         }
       }

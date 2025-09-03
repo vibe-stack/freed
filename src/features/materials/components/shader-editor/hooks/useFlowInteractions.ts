@@ -14,7 +14,7 @@ export function useNodeEdgeChanges(
   const rAF = useRef<number | null>(null);
   const pendingPositions = useRef<Map<string, { x: number; y: number }>>(new Map());
 
-  const flushPositions = () => {
+  const flushPositions = useCallback(() => {
     if (!materialId || pendingPositions.current.size === 0) return;
     const updates = Array.from(pendingPositions.current.entries());
     pendingPositions.current.clear();
@@ -24,7 +24,7 @@ export function useNodeEdgeChanges(
         if (n) n.position = { x: pos.x, y: pos.y } as any;
       }
     });
-  };
+  }, [materialId, updateShaderGraph]);
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     if (!materialId) return;
