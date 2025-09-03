@@ -25,8 +25,19 @@ export const normalMapResolvers = {
 
     // If TSL has a normalMap helper, use it; otherwise derive from RG to tangent space approximation
     const nmHelper = (TSL as any).normalMap;
-    if (nmHelper) {
-      return nmHelper(sampleFrom, uvExpr, scaleExpr);
+    if (nmHelper && typeof nmHelper === 'function') {
+      // Some builds expose a helper with different arities; call defensively
+      try {
+        if (typeof nmHelper.length === 'number') {
+          if (nmHelper.length >= 3) return nmHelper(sampleFrom, uvExpr, scaleExpr);
+          if (nmHelper.length === 2) return nmHelper(sampleFrom, scaleExpr);
+          return nmHelper(sampleFrom);
+        }
+        // Unknown arity: try single-arg safe call
+        return nmHelper(sampleFrom);
+      } catch {
+        // Fall through to our fallback implementation on error
+      }
     }
     // Fallback: unpack normal from texture (assumes texture sampled upstream as vec4 in tangent space),
     // convert from [0,1] to [-1,1], apply scale to XY, and re-normalize in world space using derivative trick.
