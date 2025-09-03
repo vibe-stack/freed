@@ -26,7 +26,7 @@ export const Timeline: React.FC = () => {
   const selectKey = useAnimationStore((s) => s.selectKey);
   const moveKey = useAnimationStore((s) => s.moveKey);
   // Interpolation setters handled inside InterpolationPanel
-  const nudgeSelectedKeys = useAnimationStore((s) => s.nudgeSelectedKeys);
+  // const nudgeSelectedKeys = useAnimationStore((s) => s.nudgeSelectedKeys);
   const clearSelection = useAnimationStore((s) => s.clearSelection);
   const setTrackMuted = useAnimationStore((s) => s.setTrackMuted);
   const setTrackLocked = useAnimationStore((s) => s.setTrackLocked);
@@ -128,7 +128,7 @@ export const Timeline: React.FC = () => {
             const modId = parts[1];
             (byMod[modId] ||= []).push(tid);
           });
-          Object.entries(byMod).forEach(([modId, tids]) => {
+          Object.entries(byMod).forEach(([/*modId*/ __m, tids]) => {
             // Emit a simple track row per property under this modifier
             tids.forEach((tid) => {
               const tr = tracks[tid]; if (!tr) return;
@@ -152,10 +152,14 @@ export const Timeline: React.FC = () => {
     });
     return Array.from(set.values()).sort((a,b)=>a-b);
   };
+
+  const trackIdsKey = useMemo(() => (clip ? clip.trackIds.join(',') : ''), [clip]);
   const allKeyTimes = useMemo(() => {
     if (!clip) return [] as number[];
+
     return unionKeyTimes(clip.trackIds);
-  }, [clip, tracks]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clip, trackIdsKey, tracks]);
 
   const posToTimeFromCurves = (clientX: number): number => {
     const rect = (curvesRef.current as HTMLDivElement | null)?.getBoundingClientRect();

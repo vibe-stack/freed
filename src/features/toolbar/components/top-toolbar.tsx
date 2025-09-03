@@ -77,7 +77,7 @@ const TopToolbar: React.FC = () => {
     setMenuOpen(false);
   };
 
-  const addLight = (type: 'directional' | 'spot' | 'point') => {
+  const addLight = (type: 'directional' | 'spot' | 'point' | 'ambient') => {
     const id = scene.createLightObject(
       `${type.charAt(0).toUpperCase() + type.slice(1)} Light`,
       type

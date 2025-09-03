@@ -104,7 +104,7 @@ export interface T3DViewport {
 
 export interface T3DLight {
   id: string;
-  type: 'directional' | 'spot' | 'point';
+  type: 'directional' | 'spot' | 'point' | 'ambient';
   color: { x: number; y: number; z: number };
   intensity: number;
   distance?: number;

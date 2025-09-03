@@ -7,17 +7,12 @@ import { useModifiersStore, useObjectModifiers } from '@/stores/modifier-store';
 
 export const ArraySettings: React.FC<{ objectId: string; id: string }> = ({ objectId, id }) => {
   const actions = useModifiersStore();
+  const clipId = useAnimationStore((st) => st.activeClipId);
+
   const mods = useObjectModifiers(objectId);
   const mod = mods.find((m) => m.id === id);
   if (!mod) return null;
   const s = mod.settings as { count: number; offset: { x: number; y: number; z: number } };
-  const anim = useAnimationStore();
-  const fps = useAnimationStore((st) => st.fps);
-  const playhead = useAnimationStore((st) => st.playhead);
-  const clipId = useAnimationStore((st) => st.activeClipId);
-  const hasKeyAt = useAnimationStore((st) => st.hasKeyAt);
-  const ensureTrack = useAnimationStore((st) => st.ensureTrack);
-  const toggleKeyAt = useAnimationStore((st) => st.toggleKeyAt);
 
   const KeyBtn: React.FC<{ path: string; value: number; title?: string }> = ({ path, value, title }) => {
     const property = `mod.${id}.${path}`;

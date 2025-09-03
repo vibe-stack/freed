@@ -6,19 +6,18 @@ import { useAnimationStore } from '@/stores/animation-store';
 import { Diamond as DiamondIcon } from 'lucide-react';
 
 export const MirrorSettings: React.FC<{ objectId: string; id: string }> = ({ objectId, id }) => {
+  const clipId = useAnimationStore((st) => st.activeClipId);
   const actions = useModifiersStore();
   const mods = useObjectModifiers(objectId);
   const mod = mods.find((m) => m.id === id);
   if (!mod) return null;
   const s = mod.settings as { axis: 'x'|'y'|'z'; merge?: boolean; mergeThreshold?: number };
-  const targetId = objectId as string;
-  const clipId = useAnimationStore((st) => st.activeClipId);
   const KeyBtn: React.FC<{ path: string; value: number; title?: string }> = ({ path, value, title }) => {
     const property = `mod.${id}.${path}`;
     const has = useAnimationStore((st) => {
       const f = Math.round(st.playhead * (st.fps || 30));
       const T = f / (st.fps || 30);
-      const tid = Object.values(st.tracks).find((tr) => tr.targetId === targetId && tr.property === property)?.id;
+  const tid = Object.values(st.tracks).find((tr) => tr.targetId === objectId && tr.property === property)?.id;
       if (!tid) return false;
       const tr = st.tracks[tid];
       return tr.channel.keys.some((k) => Math.abs(k.t - T) < 1e-6);
@@ -33,7 +32,7 @@ export const MirrorSettings: React.FC<{ objectId: string; id: string }> = ({ obj
           const st = useAnimationStore.getState();
           const f = Math.round(st.playhead * (st.fps || 30));
           const T = f / (st.fps || 30);
-          st.toggleKeyAt(targetId, property, T, value, 'linear');
+          st.toggleKeyAt(objectId, property, T, value, 'linear');
         }}
       >
         <DiamondIcon className={`w-3 h-3 ${has ? 'text-amber-400' : 'text-gray-400/70 hover:text-white'}`} strokeWidth={2} />

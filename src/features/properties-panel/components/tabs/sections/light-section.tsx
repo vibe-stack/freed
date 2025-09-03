@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useSceneStore } from '@/stores/scene-store';
+import type { LightType } from '@/types/geometry';
 import { DragInput } from '@/components/drag-input';
 import { ColorInput } from '@/components/color-input';
 
@@ -19,10 +20,30 @@ export const LightSection: React.FC<Props> = ({ lightId }) => {
     });
   };
 
+  const changeType = (t: LightType) => {
+    // Ensure sensible defaults when changing type
+    const defaults: Partial<typeof light> = { type: t } as any;
+    if (t === 'spot') Object.assign(defaults, { angle: Math.PI / 6, penumbra: 0.2, distance: 0, decay: 2 });
+    if (t === 'point') Object.assign(defaults, { distance: 0, decay: 2 });
+    if (t === 'ambient') Object.assign(defaults, { intensity: 0.8 });
+    useSceneStore.setState((s) => { Object.assign(s.lights[lightId], defaults); });
+  };
+
   return (
     <div className="bg-white/5 border border-white/10 rounded p-2 space-y-2">
       <div className="text-xs uppercase tracking-wide text-gray-400">Light</div>
-      <div className="text-xs text-gray-400">Type: <span className="text-gray-200">{light.type}</span></div>
+      <div className="text-xs text-gray-400">Type:
+        <select
+          className="ml-2 bg-transparent text-xs border border-white/10 rounded p-1"
+          value={light.type}
+          onChange={(e) => changeType(e.target.value as LightType)}
+        >
+          <option value="directional">Directional</option>
+          <option value="spot">Spot</option>
+          <option value="point">Point</option>
+          <option value="ambient">Ambient</option>
+        </select>
+      </div>
   <ColorInput label="Color" value={light.color} onChange={(v) => set({ color: v })} />
       <div>
         <div className="text-gray-400 mb-1 text-xs">Intensity</div>

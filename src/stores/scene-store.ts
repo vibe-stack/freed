@@ -472,7 +472,7 @@ export const useSceneStore = create<SceneStore>()(
           id,
           type,
           color: vec3(1, 1, 1),
-          intensity: 1,
+          intensity: type === 'ambient' ? 0.8 : 1,
           ...(type === 'spot' ? { angle: Math.PI / 6, penumbra: 0.2, distance: 0, decay: 2 } : {}),
           ...(type === 'point' ? { distance: 0, decay: 2 } : {}),
         };

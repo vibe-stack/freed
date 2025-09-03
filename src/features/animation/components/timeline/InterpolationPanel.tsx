@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { useAnimationStore, Key as AnimKey } from '@/stores/animation-store';
 import { DragInput } from '@/components/drag-input';
 
@@ -17,7 +17,6 @@ const sampleHermite = (k0: AnimKey, k1: AnimKey, t: number) => {
 };
 
 export const InterpolationPanel: React.FC = () => {
-  const activeClipId = useAnimationStore((s) => s.activeClipId);
   const clip = useAnimationStore((s) => s.activeClipId ? s.clips[s.activeClipId] : null);
   const tracks = useAnimationStore((s) => s.tracks);
   const selection = useAnimationStore((s) => s.selection);
@@ -68,10 +67,10 @@ export const InterpolationPanel: React.FC = () => {
 
   const W = 220 - 8; // panel width minus padding
   const H = 160;
-  const timeToX = (t: number) => ((t - t0) / Math.max(1e-6, (t1 - t0))) * W;
-  const valueToY = (v: number) => (1 - (v - Y0) / Math.max(1e-6, (Y1 - Y0))) * H;
-  const xToTime = (x: number) => t0 + (x / Math.max(1e-6, W)) * (t1 - t0);
-  const yToValue = (y: number) => Y0 + (1 - (y / Math.max(1e-6, H))) * (Y1 - Y0);
+  const timeToX = useMemo(() => (t: number) => ((t - t0) / Math.max(1e-6, (t1 - t0))) * W, [W, t0, t1, W]);
+  const valueToY = useMemo(() => (v: number) => (1 - (v - Y0) / Math.max(1e-6, (Y1 - Y0))) * H, [Y0, Y1, H]);
+  const xToTime = useMemo(() => (x: number) => t0 + (x / Math.max(1e-6, W)) * (t1 - t0), [W, t0, t1, W]);
+  const yToValue = useMemo(() => (y: number) => Y0 + (1 - (y / Math.max(1e-6, H))) * (Y1 - Y0), [Y0, Y1, H]);
 
   const pathD = useMemo(() => {
     if (!key || !next) return '';
@@ -121,7 +120,7 @@ export const InterpolationPanel: React.FC = () => {
       d += ` L ${timeToX(t)} ${valueToY(v)}`;
     }
     return d;
-  }, [key, next, t0, t1, Y0, Y1]);
+  }, [key, next, timeToX, valueToY]);
 
   // drag key
   const dragging = useRef<null | { id: string; startX: number; startY: number; startT: number; startV: number }>(null);
@@ -158,7 +157,6 @@ export const InterpolationPanel: React.FC = () => {
   const handleDrag = (which: 'in'|'out', e: React.MouseEvent) => {
     e.preventDefault();
     if (!key) return;
-    const startX = e.clientX; const startY = e.clientY;
     const baseX = timeToX(key.t); const baseY = valueToY(key.v);
     const neighbor = which === 'out' ? next : prev;
     if (!neighbor) return;

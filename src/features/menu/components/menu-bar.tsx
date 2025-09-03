@@ -201,7 +201,7 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 		useShapeCreationStore.getState().start(shape, id);
 	}, [geometryStore, sceneStore]);
 
-	const addLight = useCallback((type: 'directional' | 'spot' | 'point') => {
+	const addLight = useCallback((type: 'directional' | 'spot' | 'point' | 'ambient') => {
 		const id = sceneStore.createLightObject(`${type.charAt(0).toUpperCase() + type.slice(1)} Light`, type);
 		sceneStore.selectObject(id);
 		if (useSelectionStore.getState().selection.viewMode === 'object') useSelectionStore.getState().selectObjects([id]);
@@ -414,6 +414,7 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => addLight('directional')}>Directional</Menu.Item>
 												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => addLight('spot')}>Spot</Menu.Item>
 												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => addLight('point')}>Point</Menu.Item>
+												<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => addLight('ambient')}>Ambient</Menu.Item>
 											</Menu.Popup>
 										</Menu.Positioner>
 									</Menu.Portal>

@@ -77,7 +77,7 @@ export function DragInput({
     setHasDragged(false)
     setDragStartX(e.clientX)
     setDragStartValue(value ?? 0)
-  lastValueRef.current = value ?? 0
+    lastValueRef.current = value ?? 0
     
     e.preventDefault()
   }, [isEditing, disabled, value])
@@ -112,7 +112,7 @@ export function DragInput({
       const v = lastValueRef.current ?? value ?? dragStartValue
       onValueCommit(v)
     }
-  }, [])
+  }, [onValueCommit, value, dragStartValue])
 
   useEffect(() => {
     if (isDragging) {

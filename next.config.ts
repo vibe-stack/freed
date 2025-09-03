@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   eslint: {
     // Temporary: don't fail production builds on ESLint errors
     // Several pre-existing files trigger lint errors unrelated to this change
-    ignoreDuringBuilds: true,
+    // ignoreDuringBuilds: true,
   },
 };
 

@@ -6,12 +6,12 @@ import { useAnimationStore } from '@/stores/animation-store';
 import { Diamond as DiamondIcon } from 'lucide-react';
 
 export const VolumeToMeshSettings: React.FC<{ objectId: string; id: string }> = ({ objectId, id }) => {
+  const clipId = useAnimationStore((st) => st.activeClipId);
   const actions = useModifiersStore();
   const mods = useObjectModifiers(objectId);
   const mod = mods.find((m) => m.id === id);
   if (!mod) return null;
   const s = mod.settings as { threshold: number };
-  const clipId = useAnimationStore((st) => st.activeClipId);
   const KeyBtn: React.FC<{ path: string; value: number; title?: string }> = ({ path, value, title }) => {
     const property = `mod.${id}.${path}`;
     const has = useAnimationStore((st) => {

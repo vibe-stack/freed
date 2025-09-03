@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAnimationStore, type Track, type Channel, type PropertyPath } from '@/stores/animation-store';
 import { useFrame } from '@react-three/fiber';
 import { useViewportStore } from '@/stores/viewport-store';
@@ -78,6 +78,7 @@ export default function AnimationSampler() {
   const playing = useAnimationStore((s) => s.playing);
   const fps = useAnimationStore((s) => s.fps);
   const playhead = useAnimationStore((s) => s.playhead);
+  const activeClipId = useAnimationStore((s) => s.activeClipId);
   const pause = useAnimationStore((s) => s.pause);
   const seekSeconds = useAnimationStore((s) => s.seekSeconds);
   const applySampleAt = useAnimationStore((s) => s.applySampleAt);
@@ -102,7 +103,7 @@ export default function AnimationSampler() {
     } else {
       setAutoOrbit((autoOrbitSaved.current as 0 | 1 | 5 | 15) || 0);
     }
-  }, [playing]);
+  }, [playing, autoOrbit, setAutoOrbit]);
 
   // Throttle playhead writes to store while running (for UI), but never per-frame
   const uiSyncAccum = useRef(0);
@@ -117,12 +118,12 @@ export default function AnimationSampler() {
     } else {
       localTime.current = playhead;
     }
-  }, [getState.getState().activeClipId]);
+  }, [activeClipId, playhead, getState]);
   useEffect(() => {
     if (playing) {
       localTime.current = playhead;
     }
-  }, [playing]);
+  }, [playing, playhead]);
 
   // Build/refresh runtime snapshot when playback starts or when active clip changes
   const lastSnapshotKey = useRef<string | null>(null);
@@ -142,7 +143,7 @@ export default function AnimationSampler() {
       }
     }
     tracksRef.current = map;
-  }, [playing, getState.getState().activeClipId]);
+  }, [playing, activeClipId, getState]);
 
   useFrame((_, delta) => {
   const clip = clipRef.current;

@@ -109,7 +109,7 @@ export interface SceneObject {
 }
 
 // Scene component data types
-export type LightType = 'directional' | 'spot' | 'point';
+export type LightType = 'directional' | 'spot' | 'point' | 'ambient';
 
 export interface Light {
   id: string;

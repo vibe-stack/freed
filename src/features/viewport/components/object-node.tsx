@@ -139,6 +139,22 @@ const PointLightBare: React.FC<{ color: Color; intensity: number; distance: numb
     return <pointLight ref={ref} color={color} intensity={intensity} distance={distance} decay={decay} castShadow />;
   };
 
+// Ambient has no helper in three; a simple wrapper to place the actual ambient light
+const AmbientLightNode: React.FC<{ color: Color; intensity: number }> = ({ color, intensity }) => {
+  return <ambientLight color={color} intensity={intensity} />;
+};
+
+// Visual helper for editor when not in material shading (small emissive sphere)
+const AmbientLightHelper: React.FC<{ color: Color }> = ({ color }) => {
+  // simple visual indicator; doesn't emit light
+  return (
+    <mesh>
+      <sphereGeometry args={[0.08, 8, 8]} />
+      <meshBasicMaterial color={color} />
+    </mesh>
+  );
+};
+
 // RectAreaLight removed for WebGPU compatibility
 
 // Camera helper wrappers
@@ -371,6 +387,10 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
             return isMaterial
               ? <DirectionalLightBare color={color} intensity={light.intensity} />
               : <DirectionalLightNode color={color} intensity={0} />;
+          case 'ambient':
+            return isMaterial
+              ? <AmbientLightNode color={color} intensity={light.intensity} />
+              : <AmbientLightHelper color={color} />;
           case 'spot':
             return (
               isMaterial ? (
