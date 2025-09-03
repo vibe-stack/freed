@@ -20,6 +20,7 @@ import { useLoopcut } from '@/features/edit-mode/hooks/use-loopcut';
 import { computeEdgeLoopFaceSpans } from '@/utils/loopcut';
 import { SculptHandler } from '@/features/edit-mode/components/sculpt-handler';
 import { unwrapMeshBySeams } from '@/utils/uv-mapping';
+import { deleteVerticesInMesh, deleteEdgesInMesh, deleteFacesInMesh, mergeVerticesInMesh } from '@/utils/edit-ops';
 
 const EditModeOverlay: React.FC = () => {
 	const selectionStore = useSelectionStore();
@@ -390,7 +391,6 @@ const EditModeOverlay: React.FC = () => {
 													<ContextMenu.Item onClick={() => {
 														if (!meshId) return; const sel = selection;
 														const geo = useGeometryStore.getState();
-														const { deleteVerticesInMesh, deleteEdgesInMesh, deleteFacesInMesh } = require('@/utils/edit-ops');
 														if (sel.selectionMode === 'vertex' && sel.vertexIds.length) {
 															geo.updateMesh(meshId, (m) => deleteVerticesInMesh(m, sel.vertexIds));
 															geo.recalculateNormals(meshId);
@@ -411,7 +411,6 @@ const EditModeOverlay: React.FC = () => {
 													<ContextMenu.Item onClick={() => {
 														if (!meshId) return; const sel = selection; if (sel.selectionMode !== 'vertex' || sel.vertexIds.length < 2) return;
 														const geo = useGeometryStore.getState();
-														const { mergeVerticesInMesh } = require('@/utils/edit-ops');
 														geo.updateMesh(meshId, (m) => mergeVerticesInMesh(m, sel.vertexIds, 'center'));
 														geo.recalculateNormals(meshId);
 														const kept = sel.vertexIds[0];

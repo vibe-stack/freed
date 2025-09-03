@@ -27,6 +27,8 @@ function textureFromFileId(id?: string, colorSpace?: 'sRGB' | 'linear'): THREE.T
   // Enable tiling so scaled UVs repeat instead of clamping to edge (which causes streaks)
   (tex as any).wrapS = (THREE as any).RepeatWrapping;
   (tex as any).wrapT = (THREE as any).RepeatWrapping;
+  // Match glTF expectation (no vertical flip)
+  (tex as any).flipY = false;
   // Sensible default filters
   (tex as any).magFilter = (THREE as any).LinearFilter;
   (tex as any).minFilter = (THREE as any).LinearMipmapLinearFilter ?? (THREE as any).LinearFilter;

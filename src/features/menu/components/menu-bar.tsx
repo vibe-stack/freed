@@ -10,6 +10,7 @@ import { useToolStore } from '@/stores/tool-store';
 import { useShapeCreationStore } from '@/stores/shape-creation-store';
 import { WorkspaceData, exportToT3D } from '@/utils/t3d-exporter';
 import { openImportDialog } from '@/utils/t3d-importer';
+import { openGLTFImportDialog, type ImportSummary } from '@/utils/gltf-importer';
 import { Box, Download, FolderOpen, Save, Heart, Check, Orbit } from 'lucide-react';
 import DonateDialog from '@/components/donate-dialog';
 import { useUVEditorStore } from '@/stores/uv-editor-store';
@@ -157,6 +158,15 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 			);
 	}, [geometryStore, sceneStore, viewportStore, workspace]);
 
+	const handleImportGLB = useCallback(() => {
+		openGLTFImportDialog(
+			(summary: ImportSummary) => {
+				// Optionally focus the newly imported group
+				useSceneStore.getState().selectObject(summary.rootGroupId);
+			},
+			(err: Error) => console.error('GLB import failed', err)
+		);
+	}, []);
 	const handleNewScene = useCallback(() => {
 		geometryStore.reset();
 		sceneStore.reset();
@@ -299,12 +309,13 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 					</Menu.Trigger>
 					<Menu.Portal container={portalContainer}>
 						<Menu.Positioner side="bottom" align="start" sideOffset={4} className="z-90">
-							<Menu.Popup className="mt-0 w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
+							<Menu.Popup className="mt-0 w-52 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleNewScene}>New</Menu.Item>
 								<Menu.Separator className="my-1 h-px bg-white/10" />
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleOpen}>
 									<span className="inline-flex items-center gap-2"><FolderOpen className="w-4 h-4" /> Open…</span>
 								</Menu.Item>
+                            
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleSave}>
 									<span className="inline-flex items-center gap-2"><Save className="w-4 h-4" /> Save</span>
 								</Menu.Item>
@@ -315,6 +326,24 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => setExportOpen(true)}>
 									<span className="inline-flex items-center gap-2"><Download className="w-4 h-4" /> Export…</span>
 								</Menu.Item>
+							</Menu.Popup>
+						</Menu.Positioner>
+					</Menu.Portal>
+				</Menu.Root>
+
+				{/* Import */}
+				<Menu.Root modal={false} openOnHover>
+					<Menu.Trigger className="px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5 data-[open]:bg-white/10 data-[open]:text-white">
+						Import
+					</Menu.Trigger>
+					<Menu.Portal container={portalContainer}>
+						<Menu.Positioner side="bottom" align="start" sideOffset={4} className="z-90">
+							<Menu.Popup className="mt-0 w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleImportGLB}>
+									<span className="inline-flex items-center gap-2"><FolderOpen className="w-4 h-4" /> GLB/GLTF…</span>
+								</Menu.Item>
+								<Menu.Item disabled className="w-full text-left px-3 py-1.5 text-gray-500">OBJ… (soon)</Menu.Item>
+								<Menu.Item disabled className="w-full text-left px-3 py-1.5 text-gray-500">FBX… (soon)</Menu.Item>
 							</Menu.Popup>
 						</Menu.Positioner>
 					</Menu.Portal>

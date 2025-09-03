@@ -27,6 +27,12 @@
 				"$tsc"
 			],
 			"group": "build"
+		},
+		{
+			"label": "build:ts",
+			"type": "shell",
+			"command": "npm run -s build",
+			"group": "build"
 		}
 	]
 }
