@@ -35,13 +35,13 @@ export type ModifierSettings =
   | { type: 'array'; value: ArrayModifierSettings }
   | { type: 'weld'; value: WeldModifierSettings }
   | { type: 'triangulate'; value: TriangulateModifierSettings }
-  | { type: 'edge-split'; value: EdgeSplitModifierSettings }
+  | { type: 'edge-split'; value?: EdgeSplitModifierSettings }
   | { type: 'decimate'; value: DecimateModifierSettings }
   | { type: 'solidify'; value: SolidifyModifierSettings }
   | { type: 'screw'; value: ScrewModifierSettings }
   | { type: 'bevel'; value: BevelModifierSettings }
   | { type: 'remesh'; value: RemeshModifierSettings }
-  | { type: 'volume-to-mesh'; value: VolumeToMeshModifierSettings };
+  | { type: 'volume-to-mesh'; value?: VolumeToMeshModifierSettings };
 
 export interface ModifierStackItem {
   id: string;

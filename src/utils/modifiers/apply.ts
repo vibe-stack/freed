@@ -42,7 +42,7 @@ export function applyModifiersToMesh(base: Mesh, stack: ModifierStackItem[]): Me
         cur = triangulateModifier(cur);
         break;
       case 'edge-split':
-        cur = edgeSplitModifier(cur, item.settings);
+        cur = edgeSplitModifier(cur);
         break;
       case 'decimate':
         cur = decimateModifier(cur, item.settings);
@@ -60,7 +60,7 @@ export function applyModifiersToMesh(base: Mesh, stack: ModifierStackItem[]): Me
         cur = remeshModifier(cur, item.settings);
         break;
       case 'volume-to-mesh':
-        cur = volumeToMeshModifier(cur, item.settings);
+        cur = volumeToMeshModifier(cur);
         break;
       default:
         break;

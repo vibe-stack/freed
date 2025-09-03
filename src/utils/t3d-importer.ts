@@ -203,7 +203,7 @@ export async function importFromT3D(file: File): Promise<ImportedWorkspaceData> 
     
     try {
       t3dScene = JSON.parse(sceneJsonText);
-  } catch (_parseError) {
+  } catch {
       throw new Error('Invalid T3D file: scene.json is not valid JSON');
     }
 
