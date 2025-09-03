@@ -199,18 +199,15 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
 
     // Source geom/material from selected particle object (the thing each particle instances)
     const { geom, material } = useSourceGeometry(sys?.particleObjectId || null);
-  // Chunked instancing to avoid WebGPU 64KB UBO limits
-  const CHUNK_SIZE = 1024; // 64KB / 64B per instance
-  const totalCapacity = Math.max(1, Math.min(sys?.capacity ?? 1024, 200_000));
-  const chunkCount = Math.max(1, Math.ceil(totalCapacity / CHUNK_SIZE));
-  const particlesRef = useRef<Particle[]>(Array.from({ length: totalCapacity }, () => makeParticle(sys?.particleLifetime ?? 60)));
-  const deadStackRef = useRef<number[]>(Array.from({ length: totalCapacity }, (_, i) => totalCapacity - 1 - i)); // LIFO of dead indices
+    // Chunked instancing to avoid WebGPU 64KB UBO limits
+    const CHUNK_SIZE = 1024; // 64KB / 64B per instance
+    const totalCapacity = Math.max(1, Math.min(sys?.capacity ?? 1024, 200_000));
+    const chunkCount = Math.max(1, Math.ceil(totalCapacity / CHUNK_SIZE));
+    const particlesRef = useRef<Particle[]>(Array.from({ length: totalCapacity }, () => makeParticle(sys?.particleLifetime ?? 60)));
+    const deadStackRef = useRef<number[]>(Array.from({ length: totalCapacity }, (_, i) => totalCapacity - 1 - i)); // LIFO of dead indices
     const tempObj = useMemo(() => new Object3D(), []);
-    const mat4 = useMemo(() => new Matrix4(), []);
-    const quat = useMemo(() => new Quaternion(), []);
-    const v3 = useMemo(() => new T3V(), []);
-  const tmpV1 = useMemo(() => new T3V(), []);
-  const tmpV2 = useMemo(() => new T3V(), []);
+    const tmpV1 = useMemo(() => new T3V(), []);
+    const tmpV2 = useMemo(() => new T3V(), []);
     const tmpQ = useMemo(() => new Quaternion(), []);
 
     function writeTRSMatrix(arr: Float32Array, offset16: number, pos: T3V, rotEuler: Euler, scale: number) {
@@ -236,7 +233,7 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
       arr[offset16 + 0] = m00; arr[offset16 + 4] = m01; arr[offset16 + 8] = m02; arr[offset16 + 12] = pos.x;
       arr[offset16 + 1] = m10; arr[offset16 + 5] = m11; arr[offset16 + 9] = m12; arr[offset16 + 13] = pos.y;
       arr[offset16 + 2] = m20; arr[offset16 + 6] = m21; arr[offset16 + 10] = m22; arr[offset16 + 14] = pos.z;
-      arr[offset16 + 3] = 0;   arr[offset16 + 7] = 0;   arr[offset16 + 11] = 0;   arr[offset16 + 15] = 1;
+      arr[offset16 + 3] = 0; arr[offset16 + 7] = 0; arr[offset16 + 11] = 0; arr[offset16 + 15] = 1;
     }
 
     // Cache a mapping from forceFieldId -> Object3D to avoid repeated Object.values(...).find per particle
@@ -257,8 +254,8 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
     const rngRef = useRef<() => number>(() => Math.random());
     useEffect(() => {
       // Rebuild pool when system, capacity, or lifetime/seed changes
-    particlesRef.current = Array.from({ length: totalCapacity }, () => makeParticle(sys?.particleLifetime ?? 60));
-  deadStackRef.current = Array.from({ length: totalCapacity }, (_, i) => totalCapacity - 1 - i);
+      particlesRef.current = Array.from({ length: totalCapacity }, () => makeParticle(sys?.particleLifetime ?? 60));
+      deadStackRef.current = Array.from({ length: totalCapacity }, (_, i) => totalCapacity - 1 - i);
       // Reset accumulators to avoid weird transients after capacity changes
       accumRef.current = 0;
       emitAccumRef.current = 0;
@@ -352,7 +349,7 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
           if (!spawnPos) {
             // point with optional local XY jitter
             const [dx, dy] = sys.positionJitter > 0 ? randDisk2D(rng, sys.positionJitter) : [0, 0];
-      spawnPos = emitterPos.clone().addScaledVector(basisX, dx).addScaledVector(basisY, dy);
+            spawnPos = emitterPos.clone().addScaledVector(basisX, dx).addScaledVector(basisY, dy);
           }
           p.position.copy(spawnPos);
           // Initial velocity in chosen space plus jitter
@@ -459,7 +456,7 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
       lastSimFrameRef.current = frame;
       // Reset pool
       particlesRef.current.forEach((p) => { p.alive = false; p.t = 0; p.lifetime = Math.max(1, Math.floor(sys.particleLifetime)); });
-  deadStackRef.current = Array.from({ length: totalCapacity }, (_, i) => totalCapacity - 1 - i);
+      deadStackRef.current = Array.from({ length: totalCapacity }, (_, i) => totalCapacity - 1 - i);
       emitAccumRef.current = 0;
       // Get current emitter pose (use present world transform; not historical to keep it light)
       const emitterObj = sys.emitterObjectId ? scene.objects[sys.emitterObjectId] : scene.objects[objectId];
@@ -598,10 +595,11 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
         writeIndex++;
         if (writeIndex >= totalCapacity) break;
       }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [playing, playhead, fps, sys, scene.objects, objectId]);
 
-  // Render instanced mesh chunks
-  const meshRefs = useRef<InstancedMesh[]>([]);
+    // Render instanced mesh chunks
+    const meshRefs = useRef<InstancedMesh[]>([]);
 
     // Propagate live material/geometry pointer changes to the instanced mesh without remounting
     useEffect(() => {
@@ -616,7 +614,7 @@ export const ParticleSystemNode: React.FC<{ objectId: string; systemId: string }
           if ((mesh as any).instanceMatrix) (mesh as any).instanceMatrix.needsUpdate = true;
         }
       }
-    }, [geom, material]);
+    }, [geom, material, ]);
 
     if (!geom || !material) return null;
     return (

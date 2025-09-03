@@ -67,9 +67,9 @@ export const InterpolationPanel: React.FC = () => {
 
   const W = 220 - 8; // panel width minus padding
   const H = 160;
-  const timeToX = useMemo(() => (t: number) => ((t - t0) / Math.max(1e-6, (t1 - t0))) * W, [W, t0, t1, W]);
+  const timeToX = useMemo(() => (t: number) => ((t - t0) / Math.max(1e-6, (t1 - t0))) * W, [t0, t1, W]);
   const valueToY = useMemo(() => (v: number) => (1 - (v - Y0) / Math.max(1e-6, (Y1 - Y0))) * H, [Y0, Y1, H]);
-  const xToTime = useMemo(() => (x: number) => t0 + (x / Math.max(1e-6, W)) * (t1 - t0), [W, t0, t1, W]);
+  const xToTime = useMemo(() => (x: number) => t0 + (x / Math.max(1e-6, W)) * (t1 - t0), [t0, t1, W]);
   const yToValue = useMemo(() => (y: number) => Y0 + (1 - (y / Math.max(1e-6, H))) * (Y1 - Y0), [Y0, Y1, H]);
 
   const pathD = useMemo(() => {

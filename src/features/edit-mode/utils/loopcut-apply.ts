@@ -20,7 +20,6 @@ export const applyLoopCut = (
         if (spans.length === 0) return;
 
         const vmap = new Map(m.vertices.map((v) => [v.id, v] as const));
-        const keyFor = (a: string, b: string) => (a < b ? `${a}-${b}` : `${b}-${a}`);
         const edgeSplit = new Map<string, string>(); // key: canonicalEdge|segIndex -> vertexId
 
     const base = (i: number) => i / (N + 1);

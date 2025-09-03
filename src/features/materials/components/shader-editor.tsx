@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlow, Background, Controls, MiniMap, ReactFlowProvider, NodeTypes, ConnectionMode } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useGeometryStore } from '@/stores/geometry-store';
@@ -15,15 +15,13 @@ import { useShaderEditorState } from './shader-editor/hooks/useShaderEditorState
 import { useNodeEdgeChanges, useSelectionClipboard } from './shader-editor/hooks/useFlowInteractions';
 import { useShaderEditorHotkeys } from './shader-editor/hooks/useShaderEditorHotkeys';
 import EditorHeader from './shader-editor/components/EditorHeader';
+// eslint-disable-next-line no-unused-vars
 import styles from './shader-editor/shader-flow.module.css';
 
 type Props = { open: boolean; onOpenChange: (v: boolean) => void };
 
 // We pass through store graph data directly; RF nodes use shader node types as their `type` and
 // minimal data carries only the materialId. The node component reads the full node from the store by id.
-
-
-
 
 export const ShaderEditor: React.FC<Props> = ({ open, onOpenChange }) => {
     const seOpen = useShaderEditorStore((s) => s.open);
@@ -55,14 +53,14 @@ export const ShaderEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         try {
             const raw = localStorage.getItem('shaderEditorPos');
             if (raw) return JSON.parse(raw);
-        } catch {}
+        } catch { }
         return { x: 0, y: 0 };
     });
     const dragRef = useRef<{ dragging: boolean; ox: number; oy: number; sx: number; sy: number }>({ dragging: false, ox: 0, oy: 0, sx: 0, sy: 0 });
     // Track if we are actively dragging (for global listeners)
     const dragging = useRef(false);
     useEffect(() => {
-        try { localStorage.setItem('shaderEditorPos', JSON.stringify(pos)); } catch {}
+        try { localStorage.setItem('shaderEditorPos', JSON.stringify(pos)); } catch { }
     }, [pos]);
     const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
     const [cmPos, setCmPos] = useState<{ x: number; y: number } | null>(null);
@@ -75,155 +73,155 @@ export const ShaderEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         default: ShaderFlowNode,
         input: ShaderFlowNode,
         output: ShaderFlowNode,
-    'output-standard': ShaderFlowNode,
-    'output-physical': ShaderFlowNode,
-    'output-phong': ShaderFlowNode,
-    'output-toon': ShaderFlowNode,
+        'output-standard': ShaderFlowNode,
+        'output-physical': ShaderFlowNode,
+        'output-phong': ShaderFlowNode,
+        'output-toon': ShaderFlowNode,
         'const-float': ShaderFlowNode,
         'const-color': ShaderFlowNode,
-    texture: ShaderFlowNode,
-    uvScale: ShaderFlowNode,
-    uvTransform: ShaderFlowNode,
+        texture: ShaderFlowNode,
+        uvScale: ShaderFlowNode,
+        uvTransform: ShaderFlowNode,
         uv: ShaderFlowNode,
         normal: ShaderFlowNode,
         add: ShaderFlowNode,
-    sub: ShaderFlowNode,
+        sub: ShaderFlowNode,
         mul: ShaderFlowNode,
-    div: ShaderFlowNode,
-    assign: ShaderFlowNode,
-    mod: ShaderFlowNode,
-    equal: ShaderFlowNode,
-    notEqual: ShaderFlowNode,
-    lessThan: ShaderFlowNode,
-    greaterThan: ShaderFlowNode,
-    lessThanEqual: ShaderFlowNode,
-    greaterThanEqual: ShaderFlowNode,
-    and: ShaderFlowNode,
-    or: ShaderFlowNode,
-    not: ShaderFlowNode,
-    xor: ShaderFlowNode,
-    bitAnd: ShaderFlowNode,
-    bitNot: ShaderFlowNode,
-    bitOr: ShaderFlowNode,
-    bitXor: ShaderFlowNode,
-    shiftLeft: ShaderFlowNode,
-    shiftRight: ShaderFlowNode,
-    oscSine: ShaderFlowNode,
-    oscSquare: ShaderFlowNode,
-    oscTriangle: ShaderFlowNode,
-    oscSawtooth: ShaderFlowNode,
-    modelDirection: ShaderFlowNode,
-    modelViewMatrix: ShaderFlowNode,
-    modelNormalMatrix: ShaderFlowNode,
-    modelWorldMatrix: ShaderFlowNode,
-    modelPosition: ShaderFlowNode,
-    modelScale: ShaderFlowNode,
-    modelViewPosition: ShaderFlowNode,
-    modelWorldMatrixInverse: ShaderFlowNode,
-    highpModelViewMatrix: ShaderFlowNode,
-    highpModelNormalViewMatrix: ShaderFlowNode,
-    mix: ShaderFlowNode,
-    // common
-    abs: ShaderFlowNode,
-    floor: ShaderFlowNode,
-    ceil: ShaderFlowNode,
-    clamp: ShaderFlowNode,
-    saturate: ShaderFlowNode,
-    min: ShaderFlowNode,
-    max: ShaderFlowNode,
-    step: ShaderFlowNode,
-    smoothstep: ShaderFlowNode,
-    pow: ShaderFlowNode,
-    exp: ShaderFlowNode,
-    log: ShaderFlowNode,
-    sqrt: ShaderFlowNode,
-    sign: ShaderFlowNode,
-    fract: ShaderFlowNode,
-    length: ShaderFlowNode,
-    normalize: ShaderFlowNode,
-    dot: ShaderFlowNode,
-    cross: ShaderFlowNode,
-    distance: ShaderFlowNode,
-    // trig
-    sin: ShaderFlowNode,
-    cos: ShaderFlowNode,
-    tan: ShaderFlowNode,
-    asin: ShaderFlowNode,
-    acos: ShaderFlowNode,
-    atan: ShaderFlowNode,
-    // vectors
-    vec2: ShaderFlowNode,
-    vec3: ShaderFlowNode,
-    vec4: ShaderFlowNode,
-    swizzle: ShaderFlowNode,
-    combine: ShaderFlowNode,
-    unpack: ShaderFlowNode,
-    // attributes
-    positionAttr: ShaderFlowNode,
-    normalAttr: ShaderFlowNode,
-    uvAttr: ShaderFlowNode,
-    viewPosition: ShaderFlowNode,
-    worldPosition: ShaderFlowNode,
-    cameraPosition: ShaderFlowNode,
-    // time
-    time: ShaderFlowNode,
-    timeSine: ShaderFlowNode,
-    timeCos: ShaderFlowNode,
-    // conditionals
-    select: ShaderFlowNode,
-    // camera
-    cameraNear: ShaderFlowNode,
-    cameraFar: ShaderFlowNode,
-    cameraProjectionMatrix: ShaderFlowNode,
-    cameraProjectionMatrixInverse: ShaderFlowNode,
-    cameraViewMatrix: ShaderFlowNode,
-    cameraWorldMatrix: ShaderFlowNode,
-    cameraNormalMatrix: ShaderFlowNode,
-    // screen & viewport
-    screenUV: ShaderFlowNode,
-    screenCoordinate: ShaderFlowNode,
-    screenSize: ShaderFlowNode,
-    viewportUV: ShaderFlowNode,
-    viewport: ShaderFlowNode,
-    viewportCoordinate: ShaderFlowNode,
-    viewportSize: ShaderFlowNode,
-    // uv utils
-    matcapUV: ShaderFlowNode,
-    rotateUV: ShaderFlowNode,
-    spherizeUV: ShaderFlowNode,
-    spritesheetUV: ShaderFlowNode,
-    equirectUV: ShaderFlowNode,
-    // interpolation
-    remap: ShaderFlowNode,
-    remapClamp: ShaderFlowNode,
-    // random
-    hash: ShaderFlowNode,
-    // rotate
-    rotate: ShaderFlowNode,
-    // blend modes
-    blendBurn: ShaderFlowNode,
-    blendDodge: ShaderFlowNode,
-    blendOverlay: ShaderFlowNode,
-    blendScreen: ShaderFlowNode,
-    blendColor: ShaderFlowNode,
-    // packing
-    directionToColor: ShaderFlowNode,
-    colorToDirection: ShaderFlowNode,
-    // extra math / optics
-    reflect: ShaderFlowNode,
-    refract: ShaderFlowNode,
-    round: ShaderFlowNode,
-    trunc: ShaderFlowNode,
-    inverseSqrt: ShaderFlowNode,
-    degrees: ShaderFlowNode,
-    radians: ShaderFlowNode,
-    exp2: ShaderFlowNode,
-    log2: ShaderFlowNode,
-    lengthSq: ShaderFlowNode,
-    oneMinus: ShaderFlowNode,
-    pow2: ShaderFlowNode,
-    pow3: ShaderFlowNode,
-    pow4: ShaderFlowNode,
+        div: ShaderFlowNode,
+        assign: ShaderFlowNode,
+        mod: ShaderFlowNode,
+        equal: ShaderFlowNode,
+        notEqual: ShaderFlowNode,
+        lessThan: ShaderFlowNode,
+        greaterThan: ShaderFlowNode,
+        lessThanEqual: ShaderFlowNode,
+        greaterThanEqual: ShaderFlowNode,
+        and: ShaderFlowNode,
+        or: ShaderFlowNode,
+        not: ShaderFlowNode,
+        xor: ShaderFlowNode,
+        bitAnd: ShaderFlowNode,
+        bitNot: ShaderFlowNode,
+        bitOr: ShaderFlowNode,
+        bitXor: ShaderFlowNode,
+        shiftLeft: ShaderFlowNode,
+        shiftRight: ShaderFlowNode,
+        oscSine: ShaderFlowNode,
+        oscSquare: ShaderFlowNode,
+        oscTriangle: ShaderFlowNode,
+        oscSawtooth: ShaderFlowNode,
+        modelDirection: ShaderFlowNode,
+        modelViewMatrix: ShaderFlowNode,
+        modelNormalMatrix: ShaderFlowNode,
+        modelWorldMatrix: ShaderFlowNode,
+        modelPosition: ShaderFlowNode,
+        modelScale: ShaderFlowNode,
+        modelViewPosition: ShaderFlowNode,
+        modelWorldMatrixInverse: ShaderFlowNode,
+        highpModelViewMatrix: ShaderFlowNode,
+        highpModelNormalViewMatrix: ShaderFlowNode,
+        mix: ShaderFlowNode,
+        // common
+        abs: ShaderFlowNode,
+        floor: ShaderFlowNode,
+        ceil: ShaderFlowNode,
+        clamp: ShaderFlowNode,
+        saturate: ShaderFlowNode,
+        min: ShaderFlowNode,
+        max: ShaderFlowNode,
+        step: ShaderFlowNode,
+        smoothstep: ShaderFlowNode,
+        pow: ShaderFlowNode,
+        exp: ShaderFlowNode,
+        log: ShaderFlowNode,
+        sqrt: ShaderFlowNode,
+        sign: ShaderFlowNode,
+        fract: ShaderFlowNode,
+        length: ShaderFlowNode,
+        normalize: ShaderFlowNode,
+        dot: ShaderFlowNode,
+        cross: ShaderFlowNode,
+        distance: ShaderFlowNode,
+        // trig
+        sin: ShaderFlowNode,
+        cos: ShaderFlowNode,
+        tan: ShaderFlowNode,
+        asin: ShaderFlowNode,
+        acos: ShaderFlowNode,
+        atan: ShaderFlowNode,
+        // vectors
+        vec2: ShaderFlowNode,
+        vec3: ShaderFlowNode,
+        vec4: ShaderFlowNode,
+        swizzle: ShaderFlowNode,
+        combine: ShaderFlowNode,
+        unpack: ShaderFlowNode,
+        // attributes
+        positionAttr: ShaderFlowNode,
+        normalAttr: ShaderFlowNode,
+        uvAttr: ShaderFlowNode,
+        viewPosition: ShaderFlowNode,
+        worldPosition: ShaderFlowNode,
+        cameraPosition: ShaderFlowNode,
+        // time
+        time: ShaderFlowNode,
+        timeSine: ShaderFlowNode,
+        timeCos: ShaderFlowNode,
+        // conditionals
+        select: ShaderFlowNode,
+        // camera
+        cameraNear: ShaderFlowNode,
+        cameraFar: ShaderFlowNode,
+        cameraProjectionMatrix: ShaderFlowNode,
+        cameraProjectionMatrixInverse: ShaderFlowNode,
+        cameraViewMatrix: ShaderFlowNode,
+        cameraWorldMatrix: ShaderFlowNode,
+        cameraNormalMatrix: ShaderFlowNode,
+        // screen & viewport
+        screenUV: ShaderFlowNode,
+        screenCoordinate: ShaderFlowNode,
+        screenSize: ShaderFlowNode,
+        viewportUV: ShaderFlowNode,
+        viewport: ShaderFlowNode,
+        viewportCoordinate: ShaderFlowNode,
+        viewportSize: ShaderFlowNode,
+        // uv utils
+        matcapUV: ShaderFlowNode,
+        rotateUV: ShaderFlowNode,
+        spherizeUV: ShaderFlowNode,
+        spritesheetUV: ShaderFlowNode,
+        equirectUV: ShaderFlowNode,
+        // interpolation
+        remap: ShaderFlowNode,
+        remapClamp: ShaderFlowNode,
+        // random
+        hash: ShaderFlowNode,
+        // rotate
+        rotate: ShaderFlowNode,
+        // blend modes
+        blendBurn: ShaderFlowNode,
+        blendDodge: ShaderFlowNode,
+        blendOverlay: ShaderFlowNode,
+        blendScreen: ShaderFlowNode,
+        blendColor: ShaderFlowNode,
+        // packing
+        directionToColor: ShaderFlowNode,
+        colorToDirection: ShaderFlowNode,
+        // extra math / optics
+        reflect: ShaderFlowNode,
+        refract: ShaderFlowNode,
+        round: ShaderFlowNode,
+        trunc: ShaderFlowNode,
+        inverseSqrt: ShaderFlowNode,
+        degrees: ShaderFlowNode,
+        radians: ShaderFlowNode,
+        exp2: ShaderFlowNode,
+        log2: ShaderFlowNode,
+        lengthSq: ShaderFlowNode,
+        oneMinus: ShaderFlowNode,
+        pow2: ShaderFlowNode,
+        pow3: ShaderFlowNode,
+        pow4: ShaderFlowNode,
     } as unknown as NodeTypes), []);
 
     // Toggle via shortcut: Shift+m to open/close
@@ -241,13 +239,13 @@ export const ShaderEditor: React.FC<Props> = ({ open, onOpenChange }) => {
 
     const addNodeAt = (type: ShaderNodeType, clientPos?: { x: number; y: number } | null) => {
         if (!materialId) return;
-    const id = nanoid();
+        const id = nanoid();
         const basePos = clientPos && (rf as any)?.screenToFlowPosition ? (rf as any).screenToFlowPosition(clientPos) : ({ x: 220, y: 120 } as any);
         const node: any =
             type === 'const-float' ? ({ id, type, position: basePos as any, data: { value: 1 } } as any) :
-            type === 'const-color' ? ({ id, type, position: basePos as any, data: { r: 1, g: 1, b: 1 } } as any) :
-            type === 'texture' ? ({ id, type, position: basePos as any, data: { fileId: undefined } } as any) :
-            ({ id, type, position: basePos as any } as any);
+                type === 'const-color' ? ({ id, type, position: basePos as any, data: { r: 1, g: 1, b: 1 } } as any) :
+                    type === 'texture' ? ({ id, type, position: basePos as any, data: { fileId: undefined } } as any) :
+                        ({ id, type, position: basePos as any } as any);
         // Update RF internal state immediately
         if (rf) { (rf as any).addNodes([{ id, type: type as any, position: basePos as any, data: { materialId }, dragHandle: '.rf-drag', draggable: true } as any]); }
         // Persist in store
@@ -360,7 +358,7 @@ export const ShaderEditor: React.FC<Props> = ({ open, onOpenChange }) => {
                                             transform: `translate(${cmFlipX ? '-100%' : '0'}, ${cmFlipY ? '-100%' : '0'})`
                                         }}
                                     >
-                                            <div className="p-1 h-full max-h-72  overflow-y-auto overscroll-contain">
+                                        <div className="p-1 h-full max-h-72  overflow-y-auto overscroll-contain">
                                             <ShaderContextMenuContent onAdd={(t) => { addNodeAt(t, cmPos); setCmOpen(false); }} />
                                         </div>
                                     </ContextMenu.Popup>

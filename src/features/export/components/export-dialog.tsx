@@ -3,9 +3,8 @@
 import React, { useMemo, useState } from 'react';
 import { Dialog } from '@base-ui-components/react/dialog';
 import { useSceneStore } from '@/stores/scene-store';
-import { useGeometryStore } from '@/stores/geometry-store';
 import { ChevronDown, ChevronRight, Download } from 'lucide-react';
-import { buildThreeScene, downloadBlob, exportThreeScene, ExportFormat } from '@/utils/three-export';
+import { downloadBlob, exportThreeScene, ExportFormat } from '@/utils/three-export';
 import { buildExportSceneFromLive } from '@/utils/live-scene-export';
 
 export type ExportDialogProps = {
@@ -15,7 +14,6 @@ export type ExportDialogProps = {
 
 const ExportDialog: React.FC<ExportDialogProps> = ({ open, onOpenChange }) => {
   const sceneStore = useSceneStore();
-  const geometryStore = useGeometryStore();
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [includeChildren, setIncludeChildren] = useState(true);

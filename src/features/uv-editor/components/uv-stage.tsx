@@ -51,7 +51,9 @@ function GridLines({ zoom }: { zoom: number }) {
     pushLine(1, 1, 0, 1, 0.8);
     pushLine(0, 1, 0, 0, 0.8);
     return { positions: new Float32Array(verts), colors: new Float32Array(cols) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoom]);
+
   return (
     <lineSegments>
       <bufferGeometry>
@@ -87,7 +89,7 @@ function MeshUV({ mesh, selected, zoom }: { mesh?: MeshType; selected: Set<strin
       }
     }
     return new Float32Array(verts);
-  }, [mesh?.vertices, mesh?.edges, mesh?.faces]);
+  }, [mesh?.vertices, mesh?.edges, mesh?.faces, mesh]);
 
   const points = useMemo(() => {
     if (!mesh) return { sel: new Float32Array(), rest: new Float32Array() };
@@ -98,7 +100,7 @@ function MeshUV({ mesh, selected, zoom }: { mesh?: MeshType; selected: Set<strin
       arr.push(v.uv.x, v.uv.y, 0);
     }
     return { sel: new Float32Array(sel), rest: new Float32Array(rest) };
-  }, [mesh?.vertices, selected, zoom]);
+  }, [mesh?.vertices, selected, zoom, mesh]);
 
   return (
     <>
@@ -110,19 +112,19 @@ function MeshUV({ mesh, selected, zoom }: { mesh?: MeshType; selected: Set<strin
         <lineBasicMaterial color="#cbd5e1" linewidth={1} transparent opacity={0.85} />
       </lineSegments>
       {/* Vertices: rest */}
-  <points>
+      <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[points.rest, 3]} />
         </bufferGeometry>
-    {/* Keep point size stable in pixels regardless of zoom */}
-  <pointsMaterial color="#e5e7eb" size={Math.max(3, 9 / Math.max(1, zoom))} sizeAttenuation={false} />
+        {/* Keep point size stable in pixels regardless of zoom */}
+        <pointsMaterial color="#e5e7eb" size={Math.max(3, 9 / Math.max(1, zoom))} sizeAttenuation={false} />
       </points>
       {/* Vertices: selected */}
-    <points>
+      <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[points.sel, 3]} />
         </bufferGeometry>
-  <pointsMaterial color="#ff6d00" size={Math.max(4, 11 / Math.max(1, zoom))} sizeAttenuation={false} />
+        <pointsMaterial color="#ff6d00" size={Math.max(4, 11 / Math.max(1, zoom))} sizeAttenuation={false} />
       </points>
     </>
   );

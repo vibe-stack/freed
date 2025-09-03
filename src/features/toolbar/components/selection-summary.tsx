@@ -46,26 +46,6 @@ export const SelectionSummary: React.FC = () => {
     return parts.join(', ');
   };
 
-  const getModeColor = (viewMode: string, selectionMode?: string) => {
-    if (viewMode === 'object') {
-      return 'text-purple-600 dark:text-purple-400';
-    }
-    
-    switch (selectionMode) {
-      case 'vertex': return 'text-yellow-600 dark:text-yellow-400';
-      case 'edge': return 'text-green-600 dark:text-green-400';
-      case 'face': return 'text-blue-600 dark:text-blue-400';
-      default: return 'text-gray-600 dark:text-gray-400';
-    }
-  };
-
-  const getCurrentModeLabel = () => {
-    if (selection.viewMode === 'object') {
-      return 'OBJECT';
-    }
-    return `${selection.selectionMode.toUpperCase()} (EDIT)`;
-  };
-
   return (
     <div className="p-2">
       <div className="flex items-center justify-between gap-3">

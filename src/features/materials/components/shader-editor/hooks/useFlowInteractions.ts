@@ -68,7 +68,7 @@ export function useNodeEdgeChanges(
       rf.setNodes((nds) => nds.filter((n) => !removedIds.has(n.id)) as any);
       rf.setEdges((eds) => eds.filter((e) => !removedIds.has(e.source) && !removedIds.has(e.target)) as any);
     }
-  }, [materialId, updateShaderGraph, graphNodes, rf]);
+  }, [flushPositions, materialId, updateShaderGraph, graphNodes, rf]);
 
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
     if (!materialId) return;

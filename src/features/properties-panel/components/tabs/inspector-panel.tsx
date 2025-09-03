@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useSelectedObject, useSceneStore } from '@/stores/scene-store';
 import { DragInput } from '@/components/drag-input';
 import Switch from '@/components/switch';
@@ -27,12 +27,7 @@ const Row: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = '', c
 export const InspectorPanel: React.FC = () => {
   const selected = useSelectedObject();
   const scene = useSceneStore();
-  const playhead = useAnimationStore((s) => s.playhead);
-  const fps = useAnimationStore((s) => s.fps);
   const activeClipId = useAnimationStore((s) => s.activeClipId);
-  const ensureTrack = useAnimationStore((s) => s.ensureTrack);
-  const toggleKeyAt = useAnimationStore((s) => s.toggleKeyAt);
-  const hasKeyAtFn = useAnimationStore((s) => s.hasKeyAt);
 
   if (!selected) {
     return <div className="p-3 text-xs text-gray-500">No object selected.</div>;

@@ -7,7 +7,7 @@ import { DragInput } from '@/components/drag-input';
 import { ColorInput } from '@/components/color-input';
 import { useShaderEditorStore } from '@/stores/shader-editor-store';
 import type { ShaderGraph } from '@/types/shader';
-import { Plus, Beaker, Box, Diamond } from 'lucide-react';
+import { Plus, Beaker } from 'lucide-react';
 
 type Props = { materialId?: string; onAssignMaterial?: (id: string | undefined) => void };
 
@@ -30,7 +30,7 @@ export const MaterialSection: React.FC<Props> = ({ materialId, onAssignMaterial 
     const hasToon = shaderGraph.nodes.some((n: any) => n.type === 'output-toon');
     if (hasToon) return 'toon';
     return 'standard';
-  }, [shaderGraph?.nodes]);
+  }, [shaderGraph, shaderGraph?.nodes]);
 
   const update = (updater: (m: MatType) => void) => {
     if (!material) return;

@@ -20,7 +20,7 @@ import {
 } from 'three/webgpu';
 import { useHelper } from '@react-three/drei';
 import { useViewportStore } from '@/stores/viewport-store';
-import { useGeometryStore, useCameraResource } from '@/stores/geometry-store';
+import { useCameraResource } from '@/stores/geometry-store';
 import { registerCamera, unregisterCamera } from '../hooks/camera-registry';
 import { registerObject3D, unregisterObject3D } from '../hooks/object3d-registry';
 import { useAnimationStore } from '@/stores/animation-store';

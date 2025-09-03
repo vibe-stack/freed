@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Vector3, Euler } from 'three/webgpu';
 import { useToolStore } from '@/stores/tool-store';
@@ -26,7 +26,6 @@ interface ToolHandlerProps {
 export const ToolHandler: React.FC<ToolHandlerProps> = ({ meshId, onLocalDataChange, objectRotation, objectScale }) => {
   const { camera, gl } = useThree();
   const toolStore = useToolStore();
-  const selectionStore = useSelectionStore();
   const geometryStore = useGeometryStore();
   
   const [originalVertices, setOriginalVertices] = useState<Vertex[]>([]);
@@ -89,7 +88,6 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({ meshId, onLocalDataCha
         // Compute average normal in local space when face selection and extrude
         if (selection.selectionMode === 'face' && faceIds.length > 0 && mesh) {
           // Average face normals using current mesh vertices (object-local)
-          const vmap = new Map(mesh.vertices.map(v => [v.id, v]));
           let nx = 0, ny = 0, nz = 0;
           faceIds.forEach(fid => {
             const face = mesh.faces.find(f => f.id === fid);
@@ -432,7 +430,7 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({ meshId, onLocalDataCha
       document.removeEventListener('mousedown', handleMouseDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [toolStore, originalVertices, localVertices, centroid, accumulator, camera, meshId, geometryStore, onLocalDataChange]);
+  }, [toolStore, originalVertices, localVertices, centroid, accumulator, camera, meshId, geometryStore, onLocalDataChange, avgNormalLocal, objectRotation, objectScale, selectedFaceIds]);
   
   return null; // This component only handles events, no rendering
 };

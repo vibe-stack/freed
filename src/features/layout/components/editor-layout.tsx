@@ -7,7 +7,6 @@ import { TopToolbar } from '@/features/toolbar';
 import { EditToolsToolbar } from '@/features/toolbar';
 import { SculptToolsToolbar } from '@/features/toolbar/components/sculpt-tools-toolbar';
 import { useToolStore } from '@/stores/tool-store';
-import { SelectionSummary } from '@/features/toolbar/components/selection-summary';
 import { ToolIndicator } from '@/features/tools';
 import { EditorViewport } from '@/features/viewport';
 import { PropertiesPanel } from '@/features/properties-panel/components/properties-panel';

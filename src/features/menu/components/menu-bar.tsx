@@ -106,11 +106,6 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 		if (res) workspace.setFileInfo(res.fileName, res.handle);
 	}, [buildWorkspaceData, workspace]);
 
-	// Export (other formats) -> open dialog
-	const handleExport = useCallback(async () => {
-		setExportOpen(true);
-	}, []);
-
 	const handleOpen = useCallback(() => {
 			openImportDialog(
 				(data) => {

@@ -128,7 +128,7 @@ export const Timeline: React.FC = () => {
             const modId = parts[1];
             (byMod[modId] ||= []).push(tid);
           });
-          Object.entries(byMod).forEach(([/*modId*/ __m, tids]) => {
+          Object.entries(byMod).forEach(([/*modId*/ _, tids]) => {
             // Emit a simple track row per property under this modifier
             tids.forEach((tid) => {
               const tr = tracks[tid]; if (!tr) return;

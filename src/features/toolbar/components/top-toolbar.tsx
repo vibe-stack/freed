@@ -7,7 +7,6 @@ import { useViewportStore } from '@/stores/viewport-store';
 import { useSceneStore } from '@/stores/scene-store';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { useShapeCreationStore } from '@/stores/shape-creation-store';
-import { useClipboardStore } from '@/stores/clipboard-store';
 import { useToolStore } from '@/stores/tool-store';
 
 const Pill = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className = '', children, ...rest }, ref) => (
@@ -42,11 +41,9 @@ const TopToolbar: React.FC = () => {
   const scene = useSceneStore();
   const geometry = useGeometryStore();
   const shapeCreation = useShapeCreationStore();
-  const clipboard = useClipboardStore();
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [portalContainer, setPortalContainer] = React.useState<HTMLElement | null>(null);
   React.useEffect(() => { setPortalContainer(document.body); }, []);
-  const [videoOpen, setVideoOpen] = React.useState(false);
 
   const beginShape = (shape: 'cube' | 'plane' | 'cylinder' | 'cone' | 'uvsphere' | 'icosphere' | 'torus') => {
     let id = '';

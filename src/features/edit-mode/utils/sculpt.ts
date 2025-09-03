@@ -276,7 +276,7 @@ export function brushBlob(ctx: BrushContext, out: Map<string, Vertex>, pinchAtEd
   }
 }
 
-export function brushSnakeHook(ctx: BrushContext, out: Map<string, Vertex>, strokeDirLocal: Vector3, pinch = 0.5, rake = 0) {
+export function brushSnakeHook(ctx: BrushContext, out: Map<string, Vertex>, strokeDirLocal: Vector3, pinch = 0.5) {
   const verts = collectVerticesInRadius(ctx.mesh, ctx.hitLocal, ctx.radius, ctx.spatial);
   // Move along stroke and pinch to maintain volume, with optional rake (rotate normals following stroke)
   for (const v of verts) {
@@ -325,4 +325,5 @@ export function brushRotate(ctx: BrushContext, out: Map<string, Vertex>, angle: 
 
 export function brushSimplify(_ctx: BrushContext, _out: Map<string, Vertex>) {
   // Placeholder: requires dynamic topology; left as a no-op for now.
+  _ctx;_out;
 }

@@ -136,6 +136,7 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     return { geom: geo, mat: material };
   }, [
     // Rebuild when topology or vertex attributes change
+    displayMesh,
     displayMesh?.vertices,
     displayMesh?.faces,
     displayMesh?.materialId,

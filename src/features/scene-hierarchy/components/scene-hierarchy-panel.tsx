@@ -3,12 +3,12 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useSceneStore, useSceneHierarchy } from '@/stores/scene-store';
 import { useSelection, useSelectionStore } from '@/stores/selection-store';
-import { Eye, EyeOff, Lock, Unlock, Camera, CameraOff, Folder, FolderOpen, Shapes, Trash2, Copy, Scissors, ClipboardPaste, Plus, FolderPlus } from 'lucide-react';
+import { Eye, EyeOff, Lock, Unlock, Camera, CameraOff, Folder, FolderOpen, Shapes, Trash2, Copy, Scissors, ClipboardPaste, FolderPlus } from 'lucide-react';
 import { useClipboardStore } from '@/stores/clipboard-store';
 import { ContextMenu } from '@base-ui-components/react/context-menu';
 
-	const Panel: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = '', children, ...rest }) => (
-		<div className={`bg-black/40 backdrop-blur-md border border-white/10 rounded-lg shadow-lg shadow-black/30 w-64 h-full ${className}`} {...rest}>
+const Panel: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = '', children, ...rest }) => (
+	<div className={`bg-black/40 backdrop-blur-md border border-white/10 rounded-lg shadow-lg shadow-black/30 w-64 h-full ${className}`} {...rest}>
 		{children}
 	</div>
 );
@@ -31,256 +31,267 @@ type RowProps = {
 };
 const Row: React.FC<RowProps>
 	= ({ id, name, depth, visible, locked, type, render, renamingId, draftName, setRenamingId, setDraftName, isCollapsed = false, onToggleCollapse, portalContainer }) => {
-	const selection = useSelection();
-	const { selectObjects, enterEditMode, toggleObjectSelection } = useSelectionStore();
-	const scene = useSceneStore();
-	const isSelected = selection.objectIds.includes(id);
-	const [isDragOver, setIsDragOver] = useState(false);
+		const selection = useSelection();
+		const { selectObjects, enterEditMode, toggleObjectSelection } = useSelectionStore();
+		const scene = useSceneStore();
+		const isSelected = selection.objectIds.includes(id);
+		const [isDragOver, setIsDragOver] = useState(false);
 
-	const onClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
-		if (e.shiftKey) {
-			if (type === 'group') {
-				const ids = [id, ...scene.getDescendants(id)];
-				const allSelected = ids.every((oid) => selection.objectIds.includes(oid));
-				if (allSelected) {
-					const next = selection.objectIds.filter((oid) => !ids.includes(oid));
-					selectObjects(next);
+		const onClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
+			if (e.shiftKey) {
+				if (type === 'group') {
+					const ids = [id, ...scene.getDescendants(id)];
+					const allSelected = ids.every((oid) => selection.objectIds.includes(oid));
+					if (allSelected) {
+						const next = selection.objectIds.filter((oid) => !ids.includes(oid));
+						selectObjects(next);
+					} else {
+						const set = new Set(selection.objectIds);
+						ids.forEach((oid) => set.add(oid));
+						selectObjects(Array.from(set));
+					}
 				} else {
-					const set = new Set(selection.objectIds);
-					ids.forEach((oid) => set.add(oid));
-					selectObjects(Array.from(set));
+					toggleObjectSelection(id);
 				}
 			} else {
-				toggleObjectSelection(id);
-			}
-		} else {
-			scene.selectObject(id);
-			if (type === 'group') {
-				const ids = [id, ...scene.getDescendants(id)];
-				selectObjects(ids);
-			} else {
-				selectObjects([id]);
-			}
-		}
-	};
-
-	const handleDoubleClick = () => {
-		const meshId = scene.objects[id]?.meshId;
-		if (meshId) enterEditMode(meshId);
-	};
-
-	const commitRename = () => {
-		if (renamingId === id) {
-			const trimmed = draftName.trim();
-			if (trimmed && trimmed !== name) scene.updateObject(id, (o) => { o.name = trimmed; });
-			setRenamingId(null);
-		}
-	};
-
-	const onDragStart: React.DragEventHandler<HTMLDivElement> = (e) => {
-		if (locked) { e.preventDefault(); return; }
-		const selectedIds = selection.objectIds.includes(id)
-			? selection.objectIds
-			: [id];
-		e.dataTransfer.setData('application/x-object-ids', JSON.stringify(selectedIds));
-		e.dataTransfer.effectAllowed = 'move';
-	};
-
-	const onDragOver: React.DragEventHandler<HTMLDivElement> = (e) => {
-		e.preventDefault();
-		if (locked) return;
-		setIsDragOver(true);
-		e.dataTransfer.dropEffect = 'move';
-	};
-
-	const onDragLeave: React.DragEventHandler<HTMLDivElement> = () => setIsDragOver(false);
-
-	const onDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
-		e.preventDefault();
-		setIsDragOver(false);
-		const data = e.dataTransfer.getData('application/x-object-ids');
-		if (!data) return;
-		let ids: string[] = [];
-		try { ids = JSON.parse(data); } catch { return; }
-		// Filter invalid or cyclic drops
-		const isDescOf = (a: string, b: string) => scene.getDescendants(b).includes(a) || a === b;
-		const sources = ids.filter((sid) => !isDescOf(id, sid));
-		if (sources.length === 0) return;
-		const target = scene.objects[id];
-		if (!target) return;
-		if (target.type === 'group' && !target.locked) {
-			// Parent into group; append at end
-			sources.forEach((sid) => scene.moveObject(sid, id));
-			return;
-		}
-		// Otherwise, insert next to target under its parent
-		const parentId = target.parentId;
-		const siblings = parentId === null ? scene.rootObjects : scene.objects[parentId]?.children || [];
-		const targetIndex = siblings.indexOf(id);
-		const insertIndex = targetIndex + 1;
-		sources.forEach((sid, i) => scene.moveObject(sid, parentId, insertIndex + i));
-	};
-
-	return (
-		<ContextMenu.Root>
-			<ContextMenu.Trigger
-				className={`group flex items-center gap-1.5 px-2 py-1.5 text-sm cursor-default ${isSelected ? 'bg-white/10' : 'hover:bg-white/5'} ${isDragOver ? 'ring-1 ring-white/30' : ''}`}
-				onClick={onClick}
-				onContextMenu={(e) => {
-				// Ensure the row becomes active selection before opening
-				if (!isSelected) {
-					scene.selectObject(id);
-					if (type === 'group') selectObjects([id, ...scene.getDescendants(id)]);
-					else selectObjects([id]);
+				scene.selectObject(id);
+				if (type === 'group') {
+					const ids = [id, ...scene.getDescendants(id)];
+					selectObjects(ids);
+				} else {
+					selectObjects([id]);
 				}
-			}}
-				onDoubleClick={handleDoubleClick}
-				draggable
-				onDragStart={onDragStart}
-				onDragOver={onDragOver}
-				onDragLeave={onDragLeave}
-				onDrop={onDrop}
-			>
-			<div style={{ width: depth * 12 }} />
-			{/* type icon / folder toggle (smaller), click to expand/collapse groups */}
-			<button
-				className="shrink-0 text-gray-400 hover:text-gray-200"
-				onClick={(e) => { if (type === 'group' && onToggleCollapse) { e.stopPropagation(); onToggleCollapse(id); } }}
-				title={type === 'group' ? (isCollapsed ? 'Expand' : 'Collapse') : name}
-				aria-label={type === 'group' ? (isCollapsed ? 'Expand' : 'Collapse') : 'Object'}
-			>
-				{type === 'group' ? (
-					isCollapsed ? <Folder className="w-3.5 h-3.5" /> : <FolderOpen className="w-3.5 h-3.5" />
-				) : (
-					<Shapes className="w-3.5 h-3.5" />
-				)}
-			</button>
+			}
+		};
 
-			<div className="truncate flex-1 text-gray-200">
-				{renamingId === id ? (
-					<input
-						autoFocus
-						value={draftName}
-						onBlur={commitRename}
-						onChange={(e) => setDraftName(e.target.value)}
-						onKeyDown={(e) => {
-							if (e.key === 'Enter') commitRename();
-							if (e.key === 'Escape') setRenamingId(null);
-						}}
-						className="w-full rounded-sm bg-black/40 border border-white/10 px-1 py-0.5 text-gray-200 outline-none"
-					/>
-				) : (
-					name
-				)}
-			</div>
+		const handleDoubleClick = () => {
+			const meshId = scene.objects[id]?.meshId;
+			if (meshId) enterEditMode(meshId);
+		};
 
-			{/* hover actions pinned to right, no layout when hidden */}
-			<div className="hidden group-hover:flex items-center gap-1">
-				<button
-					className={`shrink-0 rounded text-[11px] p-0.5 ${visible ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-400'}`}
-					onClick={(e) => { e.stopPropagation(); type === 'group' ? scene.setVisibleRecursive(id, !visible) : scene.setVisible(id, !visible); }}
-					title={visible ? 'Hide' : 'Show'}
-					aria-label={visible ? 'Hide' : 'Show'}
-				>{visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}</button>
-				<button
-					className={`shrink-0 rounded text-[11px] p-0.5 ${locked ? 'text-gray-500 hover:text-gray-400' : 'text-gray-300 hover:text-white'}`}
-					onClick={(e) => { e.stopPropagation(); type === 'group' ? scene.setLockedRecursive(id, !locked) : scene.setLocked(id, !locked); }}
-					title={locked ? 'Unlock' : 'Lock'}
-					aria-label={locked ? 'Unlock' : 'Lock'}
-				>{locked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}</button>
-				<button
-					className={`shrink-0 rounded text-[11px] p-0.5 ${render ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-400'}`}
-					onClick={(e) => { e.stopPropagation(); type === 'group' ? scene.setRenderRecursive(id, !render) : scene.setRender(id, !render); }}
-					title={render ? 'Exclude from final render' : 'Include in final render'}
-					aria-label={render ? 'Exclude from final render' : 'Include in final render'}
-				>{render ? <Camera className="w-3.5 h-3.5" /> : <CameraOff className="w-3.5 h-3.5" />}</button>
-			</div>
-			</ContextMenu.Trigger>
-			<ContextMenu.Portal container={portalContainer}>
-				<ContextMenu.Positioner className="z-90">
-					<ContextMenu.Popup 
-						className="z-[9999] min-w-48 rounded-md border border-white/10 bg-zinc-900/95 backdrop-blur-md p-1 text-sm text-gray-200 shadow-lg shadow-black/40"
-						style={{ position: 'fixed', zIndex: 9999 }}
+		const commitRename = () => {
+			if (renamingId === id) {
+				const trimmed = draftName.trim();
+				if (trimmed && trimmed !== name) scene.updateObject(id, (o) => { o.name = trimmed; });
+				setRenamingId(null);
+			}
+		};
+
+		const onDragStart: React.DragEventHandler<HTMLDivElement> = (e) => {
+			if (locked) { e.preventDefault(); return; }
+			const selectedIds = selection.objectIds.includes(id)
+				? selection.objectIds
+				: [id];
+			e.dataTransfer.setData('application/x-object-ids', JSON.stringify(selectedIds));
+			e.dataTransfer.effectAllowed = 'move';
+		};
+
+		const onDragOver: React.DragEventHandler<HTMLDivElement> = (e) => {
+			e.preventDefault();
+			if (locked) return;
+			setIsDragOver(true);
+			e.dataTransfer.dropEffect = 'move';
+		};
+
+		const onDragLeave: React.DragEventHandler<HTMLDivElement> = () => setIsDragOver(false);
+
+		const onDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
+			e.preventDefault();
+			setIsDragOver(false);
+			const data = e.dataTransfer.getData('application/x-object-ids');
+			if (!data) return;
+			let ids: string[] = [];
+			try { ids = JSON.parse(data); } catch { return; }
+			// Filter invalid or cyclic drops
+			const isDescOf = (a: string, b: string) => scene.getDescendants(b).includes(a) || a === b;
+			const sources = ids.filter((sid) => !isDescOf(id, sid));
+			if (sources.length === 0) return;
+			const target = scene.objects[id];
+			if (!target) return;
+			if (target.type === 'group' && !target.locked) {
+				// Parent into group; append at end
+				sources.forEach((sid) => scene.moveObject(sid, id));
+				return;
+			}
+			// Otherwise, insert next to target under its parent
+			const parentId = target.parentId;
+			const siblings = parentId === null ? scene.rootObjects : scene.objects[parentId]?.children || [];
+			const targetIndex = siblings.indexOf(id);
+			const insertIndex = targetIndex + 1;
+			sources.forEach((sid, i) => scene.moveObject(sid, parentId, insertIndex + i));
+		};
+
+		return (
+			<ContextMenu.Root>
+				<ContextMenu.Trigger
+					className={`group flex items-center gap-1.5 px-2 py-1.5 text-sm cursor-default ${isSelected ? 'bg-white/10' : 'hover:bg-white/5'} ${isDragOver ? 'ring-1 ring-white/30' : ''}`}
+					onClick={onClick}
+					onContextMenu={() => {
+						// Ensure the row becomes active selection before opening
+						if (!isSelected) {
+							scene.selectObject(id);
+							if (type === 'group') selectObjects([id, ...scene.getDescendants(id)]);
+							else selectObjects([id]);
+						}
+					}}
+					onDoubleClick={handleDoubleClick}
+					draggable
+					onDragStart={onDragStart}
+					onDragOver={onDragOver}
+					onDragLeave={onDragLeave}
+					onDrop={onDrop}
+				>
+					<div style={{ width: depth * 12 }} />
+					{/* type icon / folder toggle (smaller), click to expand/collapse groups */}
+					<button
+						className="shrink-0 text-gray-400 hover:text-gray-200"
+						onClick={(e) => { if (type === 'group' && onToggleCollapse) { e.stopPropagation(); onToggleCollapse(id); } }}
+						title={type === 'group' ? (isCollapsed ? 'Expand' : 'Collapse') : name}
+						aria-label={type === 'group' ? (isCollapsed ? 'Expand' : 'Collapse') : 'Object'}
 					>
-						<ContextMenu.Item onClick={() => { setRenamingId(id); setDraftName(name); }}>
-							<div className="flex items-center gap-2 px-2 py-1.5">
-								<span>Rename</span>
-							</div>
-						</ContextMenu.Item>
-						<ContextMenu.Separator />
-						<ContextMenu.Item onClick={() => (type === 'group' ? scene.setVisibleRecursive(id, !visible) : scene.setVisible(id, !visible))}>
-							<div className="flex items-center gap-2 px-2 py-1.5">
-								{visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-								<span>{visible ? 'Hide' : 'Show'}</span>
-							</div>
-						</ContextMenu.Item>
-						<ContextMenu.Item onClick={() => (type === 'group' ? scene.setLockedRecursive(id, !locked) : scene.setLocked(id, !locked))}>
-							<div className="flex items-center gap-2 px-2 py-1.5">
-								{locked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-								<span>{locked ? 'Unlock' : 'Lock'}</span>
-							</div>
-						</ContextMenu.Item>
-						<ContextMenu.Item onClick={() => (type === 'group' ? scene.setRenderRecursive(id, !render) : scene.setRender(id, !render))}>
-							<div className="flex items-center gap-2 px-2 py-1.5">
-								{render ? <CameraOff className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
-								<span>{render ? 'Exclude from render' : 'Include in render'}</span>
-							</div>
-						</ContextMenu.Item>
-						<ContextMenu.Separator />
-						{type === 'group' && (
-							<ContextMenu.Item onClick={() => scene.ungroupObject(id)}>
+						{type === 'group' ? (
+							isCollapsed ? <Folder className="w-3.5 h-3.5" /> : <FolderOpen className="w-3.5 h-3.5" />
+						) : (
+							<Shapes className="w-3.5 h-3.5" />
+						)}
+					</button>
+
+					<div className="truncate flex-1 text-gray-200">
+						{renamingId === id ? (
+							<input
+								autoFocus
+								value={draftName}
+								onBlur={commitRename}
+								onChange={(e) => setDraftName(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === 'Enter') commitRename();
+									if (e.key === 'Escape') setRenamingId(null);
+								}}
+								className="w-full rounded-sm bg-black/40 border border-white/10 px-1 py-0.5 text-gray-200 outline-none"
+							/>
+						) : (
+							name
+						)}
+					</div>
+
+					{/* hover actions pinned to right, no layout when hidden */}
+					<div className="hidden group-hover:flex items-center gap-1">
+						<button
+							className={`shrink-0 rounded text-[11px] p-0.5 ${visible ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-400'}`}
+							onClick={(e) => {
+								e.stopPropagation();
+								if (type === 'group') scene.setVisibleRecursive(id, !visible);
+								else scene.setVisible(id, !visible);
+							}}
+							title={visible ? 'Hide' : 'Show'}
+							aria-label={visible ? 'Hide' : 'Show'}
+						>{visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}</button>
+						<button
+							className={`shrink-0 rounded text-[11px] p-0.5 ${locked ? 'text-gray-500 hover:text-gray-400' : 'text-gray-300 hover:text-white'}`}
+							onClick={(e) => {
+								e.stopPropagation();
+								if (type === 'group') scene.setLockedRecursive(id, !locked);
+								else scene.setLocked(id, !locked);
+							}}
+							title={locked ? 'Unlock' : 'Lock'}
+							aria-label={locked ? 'Unlock' : 'Lock'}
+						>{locked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}</button>
+						<button
+							className={`shrink-0 rounded text-[11px] p-0.5 ${render ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-400'}`}
+							onClick={(e) => {
+								e.stopPropagation();
+								if (type === 'group') scene.setRenderRecursive(id, !render);
+								else scene.setRender(id, !render);
+							}}
+							title={render ? 'Exclude from final render' : 'Include in final render'}
+							aria-label={render ? 'Exclude from final render' : 'Include in final render'}
+						>{render ? <Camera className="w-3.5 h-3.5" /> : <CameraOff className="w-3.5 h-3.5" />}</button>
+					</div>
+				</ContextMenu.Trigger>
+				<ContextMenu.Portal container={portalContainer}>
+					<ContextMenu.Positioner className="z-90">
+						<ContextMenu.Popup
+							className="z-[9999] min-w-48 rounded-md border border-white/10 bg-zinc-900/95 backdrop-blur-md p-1 text-sm text-gray-200 shadow-lg shadow-black/40"
+							style={{ position: 'fixed', zIndex: 9999 }}
+						>
+							<ContextMenu.Item onClick={() => { setRenamingId(id); setDraftName(name); }}>
 								<div className="flex items-center gap-2 px-2 py-1.5">
-									<span>Ungroup</span>
+									<span>Rename</span>
 								</div>
 							</ContextMenu.Item>
-						)}
-						<ContextMenu.Item onClick={() => useClipboardStore.getState().copySelection()}>
-							<div className="flex items-center gap-2 px-2 py-1.5">
-								<Copy className="w-4 h-4" />
-								<span>Copy</span>
-							</div>
-						</ContextMenu.Item>
-						<ContextMenu.Item onClick={() => useClipboardStore.getState().cutSelection()}>
-							<div className="flex items-center gap-2 px-2 py-1.5">
-								<Scissors className="w-4 h-4" />
-								<span>Cut</span>
-							</div>
-						</ContextMenu.Item>
-						<ContextMenu.Item onClick={() => useClipboardStore.getState().paste()}>
-							<div className="flex items-center gap-2 px-2 py-1.5">
-								<ClipboardPaste className="w-4 h-4" />
-								<span>Paste</span>
-							</div>
-						</ContextMenu.Item>
-						<ContextMenu.Separator />
-						<ContextMenu.Item onClick={() => scene.removeObject(id)}>
-							<div className="flex items-center gap-2 px-2 py-1.5 text-red-300">
-								<Trash2 className="w-4 h-4" />
-								<span>Delete</span>
-							</div>
-						</ContextMenu.Item>
-					</ContextMenu.Popup>
-				</ContextMenu.Positioner>
-			</ContextMenu.Portal>
-		</ContextMenu.Root>
-	);
-};
+							<ContextMenu.Separator />
+							<ContextMenu.Item onClick={() => { if (type === 'group') scene.setVisibleRecursive(id, !visible); else scene.setVisible(id, !visible); }}>
+								<div className="flex items-center gap-2 px-2 py-1.5">
+									{visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+									<span>{visible ? 'Hide' : 'Show'}</span>
+								</div>
+							</ContextMenu.Item>
+							<ContextMenu.Item onClick={() => { if (type === 'group') scene.setLockedRecursive(id, !locked); else scene.setLocked(id, !locked); }}>
+								<div className="flex items-center gap-2 px-2 py-1.5">
+									{locked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+									<span>{locked ? 'Unlock' : 'Lock'}</span>
+								</div>
+							</ContextMenu.Item>
+							<ContextMenu.Item onClick={() => { if (type === 'group') scene.setRenderRecursive(id, !render); else scene.setRender(id, !render); }}>
+								<div className="flex items-center gap-2 px-2 py-1.5">
+									{render ? <CameraOff className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
+									<span>{render ? 'Exclude from render' : 'Include in render'}</span>
+								</div>
+							</ContextMenu.Item>
+							<ContextMenu.Separator />
+							{type === 'group' && (
+								<ContextMenu.Item onClick={() => scene.ungroupObject(id)}>
+									<div className="flex items-center gap-2 px-2 py-1.5">
+										<span>Ungroup</span>
+									</div>
+								</ContextMenu.Item>
+							)}
+							<ContextMenu.Item onClick={() => useClipboardStore.getState().copySelection()}>
+								<div className="flex items-center gap-2 px-2 py-1.5">
+									<Copy className="w-4 h-4" />
+									<span>Copy</span>
+								</div>
+							</ContextMenu.Item>
+							<ContextMenu.Item onClick={() => useClipboardStore.getState().cutSelection()}>
+								<div className="flex items-center gap-2 px-2 py-1.5">
+									<Scissors className="w-4 h-4" />
+									<span>Cut</span>
+								</div>
+							</ContextMenu.Item>
+							<ContextMenu.Item onClick={() => useClipboardStore.getState().paste()}>
+								<div className="flex items-center gap-2 px-2 py-1.5">
+									<ClipboardPaste className="w-4 h-4" />
+									<span>Paste</span>
+								</div>
+							</ContextMenu.Item>
+							<ContextMenu.Separator />
+							<ContextMenu.Item onClick={() => scene.removeObject(id)}>
+								<div className="flex items-center gap-2 px-2 py-1.5 text-red-300">
+									<Trash2 className="w-4 h-4" />
+									<span>Delete</span>
+								</div>
+							</ContextMenu.Item>
+						</ContextMenu.Popup>
+					</ContextMenu.Positioner>
+				</ContextMenu.Portal>
+			</ContextMenu.Root>
+		);
+	};
 
 const SceneHierarchyPanel: React.FC = () => {
 	const scene = useSceneStore();
 	const hierarchy = useSceneHierarchy();
 	const [query, setQuery] = useState('');
-	const clipboard = useClipboardStore();
 	const selection = useSelection();
 	const [renamingId, setRenamingId] = useState<string | null>(null);
 	const [draftName, setDraftName] = useState('');
 	const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 	const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
-	
+
 	useEffect(() => {
 		setPortalContainer(document.body);
 	}, []);
-	
+
 	const toggleCollapse = (id: string) => setCollapsed((prev) => {
 		const next = new Set(prev);
 		if (next.has(id)) next.delete(id); else next.add(id);
@@ -400,13 +411,13 @@ const SceneHierarchyPanel: React.FC = () => {
 						locked={obj.locked}
 						type={obj.type}
 						render={obj.render}
-            renamingId={renamingId}
-            draftName={draftName}
-            setRenamingId={setRenamingId}
-            setDraftName={setDraftName}
-				isCollapsed={collapsed.has(obj.id)}
-				onToggleCollapse={toggleCollapse}
-				portalContainer={portalContainer}
+						renamingId={renamingId}
+						draftName={draftName}
+						setRenamingId={setRenamingId}
+						setDraftName={setDraftName}
+						isCollapsed={collapsed.has(obj.id)}
+						onToggleCollapse={toggleCollapse}
+						portalContainer={portalContainer}
 					/>
 				))}
 			</div>

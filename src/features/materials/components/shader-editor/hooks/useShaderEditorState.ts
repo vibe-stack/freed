@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import type { ReactFlowInstance, Edge, Node, Connection } from '@xyflow/react';
 import { nanoid } from 'nanoid';
 import { useGeometryStore } from '@/stores/geometry-store';
-import type { ShaderGraph, ShaderNode as SNode, ShaderEdge as SEdge, ShaderNodeType } from '@/types/shader';
+import type { ShaderEdge as SEdge } from '@/types/shader';
 import * as ShaderTypes from '@/types/shader';
 
 export function useShaderEditorState(seMaterialIdProp: string | undefined) {
@@ -45,7 +45,7 @@ export function useShaderEditorState(seMaterialIdProp: string | undefined) {
       targetHandle: e.targetHandle,
     }));
     return { defaultNodes: rfNodes, defaultEdges: rfEdges };
-  }, [graph?.nodes, graph?.edges, materialId]);
+  }, [graph, graph?.nodes, graph?.edges, materialId]);
 
   const graphNodes = useMemo(() => graph?.nodes || [], [graph?.nodes]);
   const defaultEdgeOptions = useMemo(() => ({ animated: true }), []);

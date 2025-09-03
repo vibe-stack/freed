@@ -29,7 +29,7 @@ export function useBrushRay(mesh: AppMesh | null, obj: ObjectTransform | null, r
     m.compose(new Vector3(obj.position.x, obj.position.y, obj.position.z), q, new Vector3(Math.max(1e-6, obj.scale.x), Math.max(1e-6, obj.scale.y), Math.max(1e-6, obj.scale.z)));
     const inv = new Matrix4().copy(m).invert();
     return { m, inv };
-  }, [obj?.position.x, obj?.position.y, obj?.position.z, obj?.rotation.x, obj?.rotation.y, obj?.rotation.z, obj?.scale.x, obj?.scale.y, obj?.scale.z]);
+  }, [obj?.position.x, obj?.position.y, obj?.position.z, obj?.rotation.x, obj?.rotation.y, obj?.rotation.z, obj?.scale.x, obj?.scale.y, obj?.scale.z, obj]);
 
   // Precompute triangle indices once per mesh topology
   const triIndex = useMemo(() => {
@@ -48,7 +48,7 @@ export function useBrushRay(mesh: AppMesh | null, obj: ObjectTransform | null, r
       }
     }
     return { tris };
-  }, [mesh?.id, mesh?.vertices.length, mesh?.faces.length]);
+  }, [mesh?.id, mesh?.vertices.length, mesh?.faces.length, mesh]);
 
   // BVH geometry and mesh
   const geomRef = useRef<BufferGeometry | null>(null);
@@ -111,7 +111,7 @@ export function useBrushRay(mesh: AppMesh | null, obj: ObjectTransform | null, r
       posAttrRef.current = null;
       threeMeshRef.current = null;
     };
-  }, [mesh?.id, triIndex?.tris.length]);
+  }, [mesh, triIndex, mesh?.id, triIndex?.tris.length]);
 
   useEffect(() => {
     if (!mesh || !obj || !mObj || !triIndex) { setHover(null); return; }
@@ -221,7 +221,7 @@ export function useBrushRay(mesh: AppMesh | null, obj: ObjectTransform | null, r
         if (tHit < 0) continue;
         const hitP = new Vector3().copy(dLocal).multiplyScalar(tHit).add(oLocal);
         const dist = hitP.distanceToSquared(oLocal);
-        if (dist < bestD) { bestD = dist; bestP = hitP.clone(); bestN = normal.clone().normalize(); bestTriIdx = t; bestTri = { a, b, c }; }
+        if (dist < bestD) { bestD = dist; bestP = hitP.clone(); bestN = normal.clone().normalize(); bestTri = { a, b, c }; }
       }
       if (!bestP || !bestN) { setHover(null); return; }
       const worldP = bestP.clone().applyMatrix4(mObj!.m);

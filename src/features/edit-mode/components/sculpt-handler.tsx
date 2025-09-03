@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useThree } from '@react-three/fiber';
-import { Euler, Matrix4, Quaternion, Vector2, Vector3 } from 'three/webgpu';
+import { Euler, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
 import { useToolStore } from '@/stores/tool-store';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { useBrushRay } from '../hooks/use-brush';
@@ -24,7 +24,7 @@ export const SculptHandler: React.FC<SculptHandlerProps> = ({ meshId, objectPosi
   const avgLocalScale = (Math.abs(objectScale.x) + Math.abs(objectScale.y) + Math.abs(objectScale.z)) / 3;
   const radiusLocalApprox = tools.brushRadius / Math.max(1e-6, avgLocalScale);
   const hover = useBrushRay(mesh, obj, tools.brushRadius);
-  const { camera, gl } = useThree();
+  const { camera } = useThree();
   const [isDragging, setDragging] = useState(false);
   const grabAnchorLocal = useRef<Vector3 | null>(null);
   const spatialRef = useRef<ReturnType<typeof buildSpatialIndex> | null>(null);
@@ -53,7 +53,7 @@ export const SculptHandler: React.FC<SculptHandlerProps> = ({ meshId, objectPosi
         spatial: spatialRef.current,
       } as const;
       // optional: rebuild spatial on significant movement
-  if (kind === 'sculpt-draw') {
+      if (kind === 'sculpt-draw') {
         brushDraw(ctx, out);
       } else if (kind === 'sculpt-clay') {
         brushFlatten(ctx, out, false, useToolStore.getState().planeOffset);
@@ -144,11 +144,11 @@ export const SculptHandler: React.FC<SculptHandlerProps> = ({ meshId, objectPosi
     };
     const onUp = (e: MouseEvent) => {
       if (e.button !== 0) return;
-  setDragging(false);
+      setDragging(false);
       grabAnchorLocal.current = null;
-  useToolStore.getState().setSculptStrokeActive(false);
-  // final normals
-  useGeometryStore.getState().recalculateNormals(meshId);
+      useToolStore.getState().setSculptStrokeActive(false);
+      // final normals
+      useGeometryStore.getState().recalculateNormals(meshId);
       // Keep brush selected for subsequent strokes
     };
     const onMove = (e: MouseEvent) => {
@@ -189,14 +189,13 @@ export const SculptHandler: React.FC<SculptHandlerProps> = ({ meshId, objectPosi
         brushInflate(ctx, out, false);
       } else if (kind === 'sculpt-smooth') {
         brushSmooth(ctx, out);
-  } else if (kind === 'sculpt-pinch' || kind === 'sculpt-magnify') {
+      } else if (kind === 'sculpt-pinch' || kind === 'sculpt-magnify') {
         brushPinch(ctx, out, kind === 'sculpt-magnify');
       } else if (kind === 'sculpt-grab' && grabAnchorLocal.current) {
         // Move along camera plane based on cursor movement
         // Convert pixel delta to object-local delta roughly
         const dist = camera.position.distanceTo(new Vector3(objectPosition.x, objectPosition.y, objectPosition.z));
         const pxScale = dist * 0.0025; // reuse move sensitivity feel
-        const worldDelta = new Vector3(e.movementX * pxScale, -e.movementY * pxScale, 0);
         // project onto camera right/up
         const right = new Vector3();
         const up = new Vector3();
@@ -221,7 +220,7 @@ export const SculptHandler: React.FC<SculptHandlerProps> = ({ meshId, objectPosi
         const q = new Quaternion().setFromEuler(new Euler(objectRotation.x, objectRotation.y, objectRotation.z, 'XYZ'));
         m.compose(new Vector3(), q, new Vector3(Math.max(1e-6, objectScale.x), Math.max(1e-6, objectScale.y), Math.max(1e-6, objectScale.z))).invert();
         const localDir = world.applyMatrix4(m);
-        brushSnakeHook(ctx, out, localDir, useToolStore.getState().pinchFactor, useToolStore.getState().rakeFactor);
+        brushSnakeHook(ctx, out, localDir, useToolStore.getState().pinchFactor);
       } else if (kind === 'sculpt-thumb') {
         // Thumb: flatten while pushing along stroke direction
         const right = new Vector3();
@@ -305,7 +304,7 @@ export const SculptHandler: React.FC<SculptHandlerProps> = ({ meshId, objectPosi
       document.removeEventListener('mouseup', onUp);
       document.removeEventListener('mousemove', onMove);
     };
-  }, [mesh, tools.isActive, tools.tool, tools.brushStrength, tools.brushFalloff, tools.brushRadius, hover, meshId, avgLocalScale, radiusLocalApprox, camera, objectPosition.x, objectPosition.y, objectPosition.z, objectRotation.x, objectRotation.y, objectRotation.z, objectScale.x, objectScale.y, objectScale.z]);
+  }, [mesh, isDragging, tools.isActive, tools.tool, tools.brushStrength, tools.brushFalloff, tools.brushRadius, hover, meshId, avgLocalScale, radiusLocalApprox, camera, objectPosition.x, objectPosition.y, objectPosition.z, objectRotation.x, objectRotation.y, objectRotation.z, objectScale.x, objectScale.y, objectScale.z]);
 
   // Visual brush circle in 3D: draw in the surface tangent plane at the hit point.
   const circle = useMemo(() => {

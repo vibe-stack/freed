@@ -157,6 +157,7 @@ export const OutputPanel: React.FC = () => {
         });
         writable = await handle.createWritable();
       } catch (e) {
+        console.warn(e);
         // If user cancels or unsupported, fall back to memory
         writable = null;
         setTargetMode('memory');

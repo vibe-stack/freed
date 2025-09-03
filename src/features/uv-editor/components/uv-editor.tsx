@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useUVEditorStore } from '@/stores/uv-editor-store';
 import { useSelectionStore } from '@/stores/selection-store';
 import { useGeometryStore } from '@/stores/geometry-store';
@@ -63,6 +63,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
             meshId = (obj?.meshId as string | undefined) || geometry.selectedMeshId || undefined;
         }
         return meshId ? geometry.meshes.get(meshId) : undefined;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selection.viewMode, selection.meshId, selection.objectIds, scene.selectedObjectId, scene.objects, geometry.meshes, geometry.selectedMeshId, updateTrigger]);
 
     // Keep UV selection in sync with mesh changes and global edit selection
@@ -74,7 +75,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
             uvSel.clearSelection();
             lastMeshIdRef.current = currentId;
         }
-    }, [mesh?.id]);
+    }, [mesh?.id, uvSel]);
 
     // Mirror global edit vertex selection into UV editor when applicable
     useEffect(() => {
@@ -83,7 +84,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
                 uvSel.setSelection(selection.vertexIds);
             }
         }
-    }, [selection.viewMode, selection.meshId, selection.vertexIds, mesh?.id]);
+    }, [selection.viewMode, selection.meshId, selection.vertexIds, mesh?.id, mesh, uvSel]);
 
     // r3f handles rendering; keep refs for interaction math that still uses screenToUV
 
@@ -113,7 +114,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         return () => el.removeEventListener('wheel', onWheel as any);
     }, [pan.x, pan.y, zoom]);
 
-    const screenToUV = (el: HTMLElement, clientX: number, clientY: number) => {
+    const screenToUV = useCallback((el: HTMLElement, clientX: number, clientY: number) => {
         const rect = el.getBoundingClientRect();
         const w = el.clientWidth; const h = el.clientHeight;
         const cx = (clientX - rect.left); const cy = (clientY - rect.top);
@@ -121,7 +122,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         // Stage scales Y by -zoom, so invert here to map screen pixels -> UV space correctly
         const v = - (cy - (h / 2 + pan.y)) / zoom;
         return { x: u, y: v };
-    };
+    }, [pan.x, pan.y, zoom]);
 
     // React onWheel removed; we use a native non-passive listener above
 
@@ -557,20 +558,20 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
                             <label className="col-span-1 flex items-center justify-between gap-2">
                                 <span>Angle Limit (°)</span>
                                 <input type="number" className="w-24 bg-black/30 border border-white/10 rounded px-2 py-1"
-                                       value={angleLimitDeg} min={1} max={89}
-                                       onChange={(e) => setAngleLimitDeg(Number(e.target.value))} />
+                                    value={angleLimitDeg} min={1} max={89}
+                                    onChange={(e) => setAngleLimitDeg(Number(e.target.value))} />
                             </label>
                             <label className="col-span-1 flex items-center justify-between gap-2">
                                 <span>Island Margin</span>
                                 <input type="number" step="0.001" className="w-24 bg-black/30 border border-white/10 rounded px-2 py-1"
-                                       value={islandMargin}
-                                       onChange={(e) => setIslandMargin(Number(e.target.value))} />
+                                    value={islandMargin}
+                                    onChange={(e) => setIslandMargin(Number(e.target.value))} />
                             </label>
                             <label className="col-span-2 flex items-center justify-between gap-2">
                                 <span>Margin Method</span>
                                 <select className="w-40 bg-black/30 border border-white/10 rounded px-2 py-1"
-                                        value={marginMethod}
-                                        onChange={(e) => setMarginMethod(e.target.value as MarginMethod)}>
+                                    value={marginMethod}
+                                    onChange={(e) => setMarginMethod(e.target.value as MarginMethod)}>
                                     <option value="scaled">Scaled</option>
                                     <option value="add">Add</option>
                                     <option value="fraction">Fraction</option>
@@ -579,8 +580,8 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
                             <label className="col-span-2 flex items-center justify-between gap-2">
                                 <span>Rotation Method</span>
                                 <select className="w-56 bg-black/30 border border-white/10 rounded px-2 py-1"
-                                        value={rotationMethod}
-                                        onChange={(e) => setRotationMethod(e.target.value as RotationMethod)}>
+                                    value={rotationMethod}
+                                    onChange={(e) => setRotationMethod(e.target.value as RotationMethod)}>
                                     <option value="axis-aligned">Axis-Aligned</option>
                                     <option value="axis-aligned-vertical">Axis Aligned Vertical</option>
                                     <option value="axis-aligned-horizontal">Axis Aligned Horizontal</option>
@@ -589,8 +590,8 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
                             <label className="col-span-2 flex items-center justify-between gap-2">
                                 <span>Area Weight</span>
                                 <input type="range" min={0} max={1} step={0.01} className="flex-1"
-                                       value={areaWeight}
-                                       onChange={(e) => setAreaWeight(Number(e.target.value))} />
+                                    value={areaWeight}
+                                    onChange={(e) => setAreaWeight(Number(e.target.value))} />
                                 <span className="w-10 text-right tabular-nums">{areaWeight.toFixed(2)}</span>
                             </label>
                             <label className="col-span-1 flex items-center gap-2">
