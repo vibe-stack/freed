@@ -43,6 +43,12 @@ export const lengthVec3 = (v: Vector3): number => {
   return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 };
 
+// UV helpers for handling seam wrapping when duplicating pole/corner loops
+const wrap01 = (u: number) => {
+  u = u % 1; if (u < 0) u += 1; return u;
+};
+const adjustWrap = (uv: Vector2): Vector2 => ({ x: wrap01(uv.x), y: uv.y });
+
 // Geometry creation utilities
 export const createVertex = (
   position: Vector3,
@@ -64,17 +70,10 @@ export const createEdge = (vertexId1: string, vertexId2: string): Edge => ({
   seam: false,
 });
 
-export const createFace = (vertexIds: string[]): Face => {
-  if (vertexIds.length < 3) {
-    throw new Error('Face must have at least 3 vertices');
-  }
-  
-  return {
-    id: nanoid(),
-    vertexIds,
-    normal: vec3(0, 1, 0), // Will be calculated later
-    selected: false,
-  };
+export const createFace = (vertexIds: string[], uvs?: Vector2[]): Face => {
+  if (vertexIds.length < 3) throw new Error('Face must have at least 3 vertices');
+  if (uvs && uvs.length !== vertexIds.length) throw new Error('Face uvs length mismatch');
+  return { id: nanoid(), vertexIds, normal: vec3(0, 1, 0), selected: false, uvs: uvs ? uvs.slice() : undefined };
 };
 
 // Geometry computation utilities
@@ -193,19 +192,17 @@ export const buildCubeGeometry = (size: number = 1): BuiltGeometry => {
   const vertices: Vertex[] = corners.map(p => createVertex(p, vec3(0, 0, 0), vec2(0, 0)));
   const id = (i: number) => vertices[i].id;
   // 6 quad faces (CCW from outside)
+  // Cube 3x2 atlas layout: columns (-X, +Z, +X) on top row; columns (-Y, -Z, +Y) bottom row
+  const cw = 1/3; const ch = 1/2;
+  const cell = (cx: number, cy: number) => (u: number, v: number) => vec2(cx*cw + u*cw, cy*ch + v*ch);
+  const cNX = cell(0,1), cPZ = cell(1,1), cPX = cell(2,1), cNY = cell(0,0), cNZ = cell(1,0), cPY = cell(2,0);
   const faces: Face[] = [
-    // Front (+Z): 4,5,6,7
-    createFace([id(4), id(5), id(6), id(7)]),
-    // Back (-Z): 1,0,3,2 (note winding to keep CCW)
-    createFace([id(1), id(0), id(3), id(2)]),
-    // Top (+Y): 7,6,2,3
-    createFace([id(7), id(6), id(2), id(3)]),
-    // Bottom (-Y): 0,1,5,4
-    createFace([id(0), id(1), id(5), id(4)]),
-    // Left (-X): 0,4,7,3
-    createFace([id(0), id(4), id(7), id(3)]),
-    // Right (+X): 5,1,2,6
-    createFace([id(5), id(1), id(2), id(6)]),
+    createFace([id(4), id(5), id(6), id(7)], [cPZ(0,0), cPZ(1,0), cPZ(1,1), cPZ(0,1)]), // +Z
+    createFace([id(1), id(0), id(3), id(2)], [cNZ(0,0), cNZ(1,0), cNZ(1,1), cNZ(0,1)]), // -Z
+    createFace([id(7), id(6), id(2), id(3)], [cPY(0,0), cPY(1,0), cPY(1,1), cPY(0,1)]), // +Y
+    createFace([id(0), id(1), id(5), id(4)], [cNY(0,0), cNY(1,0), cNY(1,1), cNY(0,1)]), // -Y
+    createFace([id(0), id(4), id(7), id(3)], [cNX(0,0), cNX(1,0), cNX(1,1), cNX(0,1)]), // -X
+    createFace([id(5), id(1), id(2), id(6)], [cPX(0,0), cPX(1,0), cPX(1,1), cPX(0,1)]), // +X
   ];
   return { vertices, faces };
 };
@@ -289,13 +286,14 @@ export const buildCylinderGeometry = (
   // Side vertices
   const rings: number[][] = [];
   for (let iy = 0; iy <= hs; iy++) {
-  const v = iy / hs;
+  const v = iy / hs; // 0..1 height fraction
     const y = (v - 0.5) * height;
     // v = 0 -> bottom, v = 1 -> top
     const radius = radiusBottom + (radiusTop - radiusBottom) * v;
     // If radius nearly zero, create a single apex vertex
     if (radius <= 1e-8) {
-      const apex = createVertex(vec3(0, y, 0), vec3(0, 0, 0), vec2(0.5, v * 0.5));
+      // Apex (cone side) use center U, V linear
+      const apex = createVertex(vec3(0, y, 0), vec3(0, 0, 0), vec2(0.5, v));
       rings.push([vertices.push(apex) - 1]);
     } else {
       const ring: number[] = [];
@@ -304,7 +302,7 @@ export const buildCylinderGeometry = (
   const theta = u * Math.PI * 2;
         const x = Math.cos(theta) * radius;
         const z = Math.sin(theta) * radius;
-        const vert = createVertex(vec3(x, y, z), vec3(0, 0, 0), vec2(u, v * 0.5));
+        const vert = createVertex(vec3(x, y, z), vec3(0, 0, 0), vec2(u, v)); // side strip full height
         ring.push(vertices.push(vert) - 1);
       }
       rings.push(ring);
@@ -317,21 +315,27 @@ export const buildCylinderGeometry = (
     if (ringA.length === 1 && ringB.length === 1) {
       // Degenerate (both apex) - skip
       continue;
-    } else if (ringA.length === 1 && ringB.length > 1) {
+  } else if (ringA.length === 1 && ringB.length > 1) {
       // Bottom apex -> triangles [apex, next, current]
       const apex = ringA[0];
       for (let i = 0; i < rs; i++) {
-        const cur = ringB[i % rs];
-        const next = ringB[(i + 1) % rs];
-        faces.push(createFace([vertices[apex].id, vertices[next].id, vertices[cur].id]));
+        const cur = ringB[i % rs]; const next = ringB[(i + 1) % rs];
+        const uA = vertices[apex].uv; const uN = vertices[next].uv; const uC = vertices[cur].uv;
+        faces.push(createFace(
+          [vertices[apex].id, vertices[next].id, vertices[cur].id],
+          [vec2(uA.x, 0.5 + uA.y * 0.5), vec2(uN.x, 0.5 + uN.y * 0.5), vec2(uC.x, 0.5 + uC.y * 0.5)]
+        ));
       }
     } else if (ringA.length > 1 && ringB.length === 1) {
       // Top apex -> triangles [current, next, apex]
       const apex = ringB[0];
       for (let i = 0; i < rs; i++) {
-        const cur = ringA[i % rs];
-        const next = ringA[(i + 1) % rs];
-        faces.push(createFace([vertices[cur].id, vertices[next].id, vertices[apex].id]));
+        const cur = ringA[i % rs]; const next = ringA[(i + 1) % rs];
+        const uC = vertices[cur].uv; const uN = vertices[next].uv; const uA = vertices[apex].uv;
+        faces.push(createFace(
+          [vertices[cur].id, vertices[next].id, vertices[apex].id],
+          [vec2(uC.x, 0.5 + uC.y * 0.5), vec2(uN.x, 0.5 + uN.y * 0.5), vec2(uA.x, 0.5 + uA.y * 0.5)]
+        ));
       }
     } else {
       // Regular quads
@@ -340,7 +344,16 @@ export const buildCylinderGeometry = (
         const b = ringA[(i + 1) % rs];
         const c = ringB[(i + 1) % rs];
         const d = ringB[i];
-        faces.push(createFace([vertices[a].id, vertices[b].id, vertices[c].id, vertices[d].id]));
+        const ua = vertices[a].uv, ub = vertices[b].uv, uc = vertices[c].uv, ud = vertices[d].uv;
+        faces.push(createFace(
+          [vertices[a].id, vertices[b].id, vertices[c].id, vertices[d].id],
+          [
+            vec2(ua.x, 0.5 + ua.y * 0.5),
+            vec2(ub.x, 0.5 + ub.y * 0.5),
+            vec2(uc.x, 0.5 + uc.y * 0.5),
+            vec2(ud.x, 0.5 + ud.y * 0.5),
+          ]
+        ));
       }
     }
   }
@@ -352,11 +365,15 @@ export const buildCylinderGeometry = (
     if (topRing.length > 1 && radiusTop > 0) {
       const topCenter = createVertex(vec3(0, height / 2, 0), vec3(0, 1, 0), vec2(0.5, 0.5));
       const topCenterIndex = vertices.push(topCenter) - 1;
+      // Disk in bottom half left: center (0.25,0.25)
+      const cx = 0.25, cy = 0.25, scale = 0.23, invR = radiusTop ? 1 / radiusTop : 0;
       for (let i = 0; i < rs; i++) {
-        const a = topRing[i];
-        const b = topRing[(i + 1) % rs];
-        // CCW seen from above: a -> b -> center
-        faces.push(createFace([vertices[a].id, vertices[b].id, vertices[topCenterIndex].id]));
+        const a = topRing[i]; const b = topRing[(i + 1) % rs];
+        const pa = vertices[a].position; const pb = vertices[b].position;
+        const ua = vec2(cx + pa.x * invR * scale, cy + pa.z * invR * scale);
+        const ub = vec2(cx + pb.x * invR * scale, cy + pb.z * invR * scale);
+        const uc = vec2(cx, cy);
+        faces.push(createFace([vertices[a].id, vertices[b].id, vertices[topCenterIndex].id], [ua, ub, uc]));
       }
     }
     // Bottom cap (y = -height/2)
@@ -364,11 +381,15 @@ export const buildCylinderGeometry = (
     if (bottomRing.length > 1 && radiusBottom > 0) {
       const bottomCenter = createVertex(vec3(0, -height / 2, 0), vec3(0, -1, 0), vec2(0.5, 0.5));
       const bottomCenterIndex = vertices.push(bottomCenter) - 1;
+      // Disk in bottom half right: center (0.75,0.25)
+      const cx = 0.75, cy = 0.25, scale = 0.23, invR = radiusBottom ? 1 / radiusBottom : 0;
       for (let i = 0; i < rs; i++) {
-        const a = bottomRing[(i + 1) % rs];
-        const b = bottomRing[i];
-        // CCW seen from below (outside): a -> b -> center
-        faces.push(createFace([vertices[a].id, vertices[b].id, vertices[bottomCenterIndex].id]));
+        const a = bottomRing[(i + 1) % rs]; const b = bottomRing[i];
+        const pa = vertices[a].position; const pb = vertices[b].position;
+        const ua = vec2(cx + pa.x * invR * scale, cy + pa.z * invR * scale);
+        const ub = vec2(cx + pb.x * invR * scale, cy + pb.z * invR * scale);
+        const uc = vec2(cx, cy);
+        faces.push(createFace([vertices[a].id, vertices[b].id, vertices[bottomCenterIndex].id], [ua, ub, uc]));
       }
     }
   }
@@ -423,10 +444,14 @@ export const buildUVSphereGeometry = (
   if (rings.length > 0) {
     const firstRing = rings[0];
     for (let i = 0; i < ws; i++) {
-      const a = firstRing[i];
-      const b = firstRing[(i + 1) % ws];
-  // CCW seen from outside (upwards normal): a -> top -> b
-  faces.push(createFace([vertices[a].id, vertices[topIndex].id, vertices[b].id]));
+  const a = firstRing[i]; const b = firstRing[(i + 1) % ws];
+  const ua = vertices[a].uv.x; let ub = vertices[b].uv.x;
+      const vRing = vertices[a].uv.y;
+      if (ub < ua) ub += 1; // seam correction
+      const poleU = (ua + ub) * 0.5;
+      faces.push(createFace([
+        vertices[a].id, vertices[topIndex].id, vertices[b].id
+      ], [vec2(ua, vRing), vec2(poleU, 1), vec2(ub, vRing)]));
     }
   }
 
@@ -439,7 +464,13 @@ export const buildUVSphereGeometry = (
       const b = r1[(i + 1) % ws];
       const c = r2[(i + 1) % ws];
       const d = r2[i];
-      faces.push(createFace([vertices[a].id, vertices[b].id, vertices[c].id, vertices[d].id]));
+        const ua = vertices[a].uv.x; let ub = vertices[b].uv.x; let uc = vertices[c].uv.x; let ud = vertices[d].uv.x;
+      const v1 = vertices[a].uv.y; const v2 = vertices[d].uv.y;
+      // seam fix: ensure monotonic wrap (compare against first)
+      if (ub < ua) ub += 1; if (uc < ua) uc += 1; if (ud < ua) ud += 1;
+      faces.push(createFace([vertices[a].id, vertices[b].id, vertices[c].id, vertices[d].id], [
+        vec2(ua, v1), vec2(ub, v1), vec2(uc, v2), vec2(ud, v2)
+      ]));
     }
   }
 
@@ -447,10 +478,14 @@ export const buildUVSphereGeometry = (
   if (rings.length > 0) {
     const lastRing = rings[rings.length - 1];
     for (let i = 0; i < ws; i++) {
-      const a = lastRing[i];
-      const b = lastRing[(i + 1) % ws];
-  // CCW seen from outside (downwards normal): a -> b -> bottom
-  faces.push(createFace([vertices[a].id, vertices[b].id, vertices[bottomIndex].id]));
+  const a = lastRing[i]; const b = lastRing[(i + 1) % ws];
+  const ua = vertices[a].uv.x; let ub = vertices[b].uv.x;
+      const vRing = vertices[a].uv.y;
+      if (ub < ua) ub += 1;
+      const poleU = (ua + ub) * 0.5;
+      faces.push(createFace([
+        vertices[a].id, vertices[b].id, vertices[bottomIndex].id
+      ], [vec2(ua, vRing), vec2(ub, vRing), vec2(poleU, 0)]));
     }
   }
 
@@ -518,7 +553,16 @@ export const buildIcoSphereGeometry = (
     const v = 0.5 - Math.asin(Math.max(-1, Math.min(1, n.y))) / Math.PI;
     return createVertex(p, vec3(0, 0, 0), vec2(u, v));
   });
-  const faces: Face[] = facesIdx.map((tri) => createFace(tri.map(i => vertices[i].id)));
+  const faces: Face[] = facesIdx.map((tri) => {
+    const loops = tri.map(i => ({ ...vertices[i].uv }));
+  const minU = Math.min(loops[0].x, loops[1].x, loops[2].x);
+  const maxU = Math.max(loops[0].x, loops[1].x, loops[2].x);
+    if (maxU - minU > 0.5) {
+      // seam: push smaller ones +1
+      for (const l of loops) if (l.x < 0.5) l.x += 1;
+    }
+    return createFace(tri.map(i => vertices[i].id), loops.map(l => vec2(l.x, l.y)));
+  });
   return { vertices, faces };
 };
 

@@ -9,24 +9,14 @@ function unwrapQuadIsland(mesh: Mesh, island: Island, faces: Face[], vmap: Map<s
 
   if (faces.length === 1) {
     const face = faces[0];
-    const verts = face.vertexIds.map(id => vmap.get(id)!);
-    for (let i = 0; i < verts.length; i++) {
-      const u = i === 1 || i === 2 ? 1 : 0;
-      const v = i === 2 || i === 3 ? 1 : 0;
-      verts[i].uv = { x: u, y: v };
-    }
+  face.uvs = face.vertexIds.map((_, i) => ({ x: (i === 1 || i === 2) ? 1 : 0, y: (i === 2 || i === 3) ? 1 : 0 }));
     return;
   }
 
   let offsetX = 0;
   for (let fi = 0; fi < faces.length; fi++) {
     const face = faces[fi];
-    const verts = face.vertexIds.map(id => vmap.get(id)!);
-    for (let i = 0; i < verts.length; i++) {
-      const u = (i === 1 || i === 2 ? 1 : 0) + offsetX;
-      const v = i === 2 || i === 3 ? 1 : 0;
-      verts[i].uv = { x: u, y: v };
-    }
+  face.uvs = face.vertexIds.map((_, i) => ({ x: ((i === 1 || i === 2) ? 1 : 0) + offsetX, y: (i === 2 || i === 3) ? 1 : 0 }));
     offsetX += 1.1;
   }
 }
@@ -210,8 +200,10 @@ export function unwrapIsland(mesh: Mesh, island: Island) {
     }
   }
 
-  for (const vid of island.verts) {
-    const uv = uvs.get(vid)!;
-    vmap.get(vid)!.uv = { x: uv.x, y: uv.y };
+  // Assign per-face loop UVs duplicating vertex UV per loop
+  for (const face of faces) {
+    face.uvs = face.vertexIds.map(vid => {
+      const uv = uvs.get(vid)!; return { x: uv.x, y: uv.y };
+    });
   }
 }

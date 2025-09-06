@@ -61,17 +61,24 @@ export function buildThreeScene(input: ExportBuildInput): Scene {
     const positions: number[] = [];
     const normals: number[] = [];
 
+    const uvs: number[] = [];
     mesh.faces.forEach((face) => {
       const tris = convertQuadToTriangles(face.vertexIds);
       tris.forEach((tri) => {
-        const v0 = vertexMap.get(tri[0])!;
-        const v1 = vertexMap.get(tri[1])!;
-        const v2 = vertexMap.get(tri[2])!;
+        const v0 = vertexMap.get(tri[0])!; const v1 = vertexMap.get(tri[1])!; const v2 = vertexMap.get(tri[2])!;
         const p0 = new ThreeVector3(v0.position.x, v0.position.y, v0.position.z);
         const p1 = new ThreeVector3(v1.position.x, v1.position.y, v1.position.z);
         const p2 = new ThreeVector3(v2.position.x, v2.position.y, v2.position.z);
         const faceNormal = new ThreeVector3().subVectors(p1, p0).cross(new ThreeVector3().subVectors(p2, p0)).normalize();
         positions.push(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+        // Loop UVs
+        const loopUV = (vid: string) => {
+          if (!face.uvs) return (vertexMap.get(vid)!).uv;
+          const idx = face.vertexIds.indexOf(vid);
+            return face.uvs[idx] || (vertexMap.get(vid)!).uv;
+        };
+        const lu0 = loopUV(tri[0]); const lu1 = loopUV(tri[1]); const lu2 = loopUV(tri[2]);
+        uvs.push(lu0.x, lu0.y, lu1.x, lu1.y, lu2.x, lu2.y);
         if ((mesh.shading ?? 'flat') === 'smooth') {
           const n0 = v0.normal; const n1 = v1.normal; const n2 = v2.normal;
           normals.push(n0.x, n0.y, n0.z, n1.x, n1.y, n1.z, n2.x, n2.y, n2.z);
@@ -82,7 +89,8 @@ export function buildThreeScene(input: ExportBuildInput): Scene {
     });
 
     geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
-    geo.setAttribute('normal', new Float32BufferAttribute(normals, 3));
+  geo.setAttribute('normal', new Float32BufferAttribute(normals, 3));
+  if (uvs.length) geo.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
     geo.computeBoundingSphere();
 
     // Material

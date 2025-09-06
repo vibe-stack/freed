@@ -37,6 +37,8 @@ export interface Face {
   normal: Vector3;
   materialId?: string;
   selected: boolean;
+  // Per-face-corner (loop) UVs – length matches vertexIds. Enables seams without duplicating geometry vertices.
+  uvs?: Vector2[];
 }
 
 export interface Mesh {

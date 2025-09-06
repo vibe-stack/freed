@@ -56,9 +56,7 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
     dmesh.faces.forEach((face) => {
       const tris = convertQuadToTriangles(face.vertexIds);
       tris.forEach((tri) => {
-        const v0 = vertexMap.get(tri[0])!;
-        const v1 = vertexMap.get(tri[1])!;
-        const v2 = vertexMap.get(tri[2])!;
+        const v0 = vertexMap.get(tri[0])!; const v1 = vertexMap.get(tri[1])!; const v2 = vertexMap.get(tri[2])!;
         const p0 = new Vector3(v0.position.x, v0.position.y, v0.position.z);
         const p1 = new Vector3(v1.position.x, v1.position.y, v1.position.z);
         const p2 = new Vector3(v2.position.x, v2.position.y, v2.position.z);
@@ -77,9 +75,14 @@ const MeshView: React.FC<Props> = ({ objectId, noTransform = false }) => {
           p2.y,
           p2.z
         );
-    // Per-vertex UVs matching the triangle order
-  const uv0 = v0.uv; const uv1 = v1.uv; const uv2_ = v2.uv;
-  uvs.push(uv0.x, uv0.y, uv1.x, uv1.y, uv2_.x, uv2_.y);
+        // Per-loop UVs: if face.uvs present, map vertex index within face
+        const loopUV = (vid: string) => {
+          if (!face.uvs) return vertexMap.get(vid)!.uv;
+          const idx = face.vertexIds.indexOf(vid);
+          return face.uvs[idx] || vertexMap.get(vid)!.uv;
+        };
+        const uv0 = loopUV(tri[0]); const uv1 = loopUV(tri[1]); const uv2_ = loopUV(tri[2]);
+        uvs.push(uv0.x, uv0.y, uv1.x, uv1.y, uv2_.x, uv2_.y);
   // Optional uv2
   const u20 = v0.uv2 ?? uv0; const u21 = v1.uv2 ?? uv1; const u22 = v2.uv2 ?? uv2_;
   uvs2.push(u20.x, u20.y, u21.x, u21.y, u22.x, u22.y);

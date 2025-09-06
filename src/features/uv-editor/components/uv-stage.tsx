@@ -68,24 +68,15 @@ function GridLines({ zoom }: { zoom: number }) {
 function MeshUV({ mesh, selected, zoom }: { mesh?: MeshType; selected: Set<string>; zoom: number }) {
   const linesPos = useMemo(() => {
     if (!mesh) return new Float32Array();
-    // Prefer unique edges to avoid double draw
-    const vmap = new Map(mesh.vertices.map((v) => [v.id, v] as const));
     const verts: number[] = [];
-    if (mesh.edges && mesh.edges.length) {
-      for (const e of mesh.edges) {
-        const a = vmap.get(e.vertexIds[0]);
-        const b = vmap.get(e.vertexIds[1]);
-        if (!a || !b) continue;
-        verts.push(a.uv.x, a.uv.y, 0, b.uv.x, b.uv.y, 0);
-      }
-    } else {
-      // Fallback: build from faces
-      for (const f of mesh.faces) {
-        for (let i = 0; i < f.vertexIds.length; i++) {
-          const a = vmap.get(f.vertexIds[i])!;
-          const b = vmap.get(f.vertexIds[(i + 1) % f.vertexIds.length])!;
-          verts.push(a.uv.x, a.uv.y, 0, b.uv.x, b.uv.y, 0);
-        }
+    // Use face loop UVs to draw edges per face to show seams accurately
+    for (const f of mesh.faces) {
+      const loopCount = f.vertexIds.length;
+      for (let i = 0; i < loopCount; i++) {
+        const uvA = f.uvs ? f.uvs[i] : mesh.vertices.find(v=>v.id===f.vertexIds[i])!.uv;
+        const ni = (i + 1) % loopCount;
+        const uvB = f.uvs ? f.uvs[ni] : mesh.vertices.find(v=>v.id===f.vertexIds[ni])!.uv;
+        verts.push(uvA.x, uvA.y, 0, uvB.x, uvB.y, 0);
       }
     }
     return new Float32Array(verts);
@@ -95,9 +86,14 @@ function MeshUV({ mesh, selected, zoom }: { mesh?: MeshType; selected: Set<strin
     if (!mesh) return { sel: new Float32Array(), rest: new Float32Array() };
     const sel: number[] = [];
     const rest: number[] = [];
-    for (const v of mesh.vertices) {
-      const arr = selected.has(v.id) ? sel : rest;
-      arr.push(v.uv.x, v.uv.y, 0);
+    // Display unique loop UVs: we map (faceId,index) to position; selection still vertex-based fallback
+    for (const f of mesh.faces) {
+      for (let i = 0; i < f.vertexIds.length; i++) {
+        const vid = f.vertexIds[i];
+        const luv = f.uvs ? f.uvs[i] : mesh.vertices.find(v=>v.id===vid)!.uv;
+        const arr = selected.has(vid) ? sel : rest;
+        arr.push(luv.x, luv.y, 0);
+      }
     }
     return { sel: new Float32Array(sel), rest: new Float32Array(rest) };
   }, [mesh, selected]);
