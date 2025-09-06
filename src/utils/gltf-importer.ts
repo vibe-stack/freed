@@ -524,7 +524,13 @@ export async function importGLTFFile(file: File): Promise<ImportSummary> {
             try {
                 const geo = obj.geometry;
                 const { vertices, faces } = buildGeometryFromThreeGeometry(geo);
-                const mesh: GMesh = createMeshFromGeometry(obj.name || 'Mesh', vertices, faces);
+                // Preserve normals coming from the glTF (avoid recompute smoothing) and default to smooth shading
+                const mesh: GMesh = createMeshFromGeometry(
+                    obj.name || 'Mesh',
+                    vertices,
+                    faces,
+                    { preserveVertexNormals: true, shading: 'smooth' }
+                );
                 // Assign material if available (first material when array)
                 const tMat = Array.isArray(obj.material) ? obj.material[0] : obj.material;
                 const matId = ensureMaterial(tMat);

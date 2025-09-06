@@ -213,7 +213,12 @@ export const createCubeMesh = (size: number = 1): Mesh => {
 };
 
 // Generic mesh creation from geometry
-export const createMeshFromGeometry = (name: string, vertices: Vertex[], faces: Face[]): Mesh => {
+export const createMeshFromGeometry = (
+  name: string,
+  vertices: Vertex[],
+  faces: Face[],
+  opts?: { preserveVertexNormals?: boolean; shading?: 'flat' | 'smooth' }
+): Mesh => {
   const mesh: Mesh = {
     id: nanoid(),
     name,
@@ -227,11 +232,13 @@ export const createMeshFromGeometry = (name: string, vertices: Vertex[], faces: 
     },
     visible: true,
     locked: false,
-  castShadow: true,
-  receiveShadow: true,
-  shading: 'flat',
+    castShadow: true,
+    receiveShadow: true,
+    shading: opts?.shading ?? 'flat',
   };
-  mesh.vertices = calculateVertexNormals(mesh);
+  if (!opts?.preserveVertexNormals) {
+    mesh.vertices = calculateVertexNormals(mesh);
+  }
   return mesh;
 };
 
