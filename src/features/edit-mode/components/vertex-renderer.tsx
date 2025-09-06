@@ -50,7 +50,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
   const boxGeo = useMemo(() => new BoxGeometry(0.5, 0.5, 0.5), []);
   const blackMat = useMemo(() => new MeshBasicMaterial({ color: BLACK, depthTest: false, depthWrite: false }), []);
   const orangeMat = useMemo(() => new MeshBasicMaterial({ color: ORANGE, depthTest: false, depthWrite: false }), []);
-  
+
   // Merge local vertex overrides (during tool operations) with mesh vertices so all vertices are always visible
   const vertices = useMemo(() => {
     const base = mesh?.vertices || [];
@@ -72,7 +72,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
     indexToSelectedId.current = selIds;
     // Note: Don't set count here - let useFrame handle the correct counts
   }, [vertices, selectedVertexIds]);
-  
+
   const { selectedVerts, unselectedVerts } = useMemo(() => {
     const selSet = new Set(selectedVertexIds);
     const selected: { id: string; position: Vector3 }[] = [];
@@ -97,10 +97,10 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
       const count = Math.max(0, arr.length);
       // Render exactly 'count' instances; allow 0 to avoid ghost instance
       ref.count = count;
-      
+
       // Create a new temp object for each update to avoid interference
       const localTmp = new Object3D();
-      
+
       // Update valid instances
       for (let i = 0; i < count; i++) {
         const v = arr[i];
@@ -126,7 +126,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
         localTmp.updateMatrix();
         ref.setMatrixAt(i, localTmp.matrix);
       }
-      
+
       // Zero out any leftover instances from previous frame to avoid stale instances
       // Use a separate temp object to avoid affecting the main tmp object
       const cleanupTmp = new Object3D();
@@ -136,7 +136,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
       for (let i = count; i < prevRef.current; i++) {
         ref.setMatrixAt(i, cleanupTmp.matrix);
       }
-      
+
       ref.instanceMatrix.needsUpdate = true;
       prevRef.current = count;
     };
@@ -148,44 +148,44 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({
   const handleUnselectedClick = (e: ThreeEvent<PointerEvent>) => {
     if (selectionMode !== 'vertex') return;
     e.stopPropagation();
-  const idx: number = e.instanceId ?? -1;
-  if (idx < 0) return;
-  const id = indexToUnselectedId.current[idx];
-  if (id) onVertexClick(id, e);
+    const idx: number = e.instanceId ?? -1;
+    if (idx < 0) return;
+    const id = indexToUnselectedId.current[idx];
+    if (id) onVertexClick(id, e);
   };
 
   const handleSelectedClick = (e: ThreeEvent<PointerEvent>) => {
     if (selectionMode !== 'vertex') return;
     e.stopPropagation();
-  const idx: number = e.instanceId ?? -1;
-  if (idx < 0) return;
-  const id = indexToSelectedId.current[idx];
-  if (id) onVertexClick(id, e);
+    const idx: number = e.instanceId ?? -1;
+    if (idx < 0) return;
+    const id = indexToSelectedId.current[idx];
+    if (id) onVertexClick(id, e);
   };
 
   return (
     <>
       {/* Unselected vertices */}
-  <instancedMesh
-    key={`unselected-${instanceCapacity}`}
+      <instancedMesh
+        key={`unselected-${instanceCapacity}`}
         ref={unselectedRef}
-    // Capacity equals total vertex count to keep instanceId stable
-    args={[boxGeo, blackMat, instanceCapacity]}
-  onPointerDown={handleUnselectedClick}
-    // Only raycast in vertex mode; otherwise don't steal clicks
-    raycast={selectionMode === 'vertex' ? (InstancedMesh.prototype.raycast as unknown as any) : (() => {})}
+        // Capacity equals total vertex count to keep instanceId stable
+        args={[boxGeo, blackMat, instanceCapacity]}
+        onPointerDown={handleUnselectedClick}
+        // Only raycast in vertex mode; otherwise don't steal clicks
+        raycast={selectionMode === 'vertex' ? (InstancedMesh.prototype.raycast as unknown as any) : (() => { })}
         renderOrder={3000}
       >
         {/* geometry and material provided via args */}
       </instancedMesh>
 
       {/* Selected vertices */}
-  <instancedMesh
-    key={`selected-${instanceCapacity}`}
+      <instancedMesh
+        key={`selected-${instanceCapacity}`}
         ref={selectedRef}
-    args={[boxGeo, orangeMat, instanceCapacity]}
-  onPointerDown={handleSelectedClick}
-    raycast={selectionMode === 'vertex' ? (InstancedMesh.prototype.raycast as unknown as any) : (() => {})}
+        args={[boxGeo, orangeMat, instanceCapacity]}
+        onPointerDown={handleSelectedClick}
+        raycast={selectionMode === 'vertex' ? (InstancedMesh.prototype.raycast as unknown as any) : (() => { })}
         renderOrder={3001}
       >
         {/* geometry and material provided via args */}
