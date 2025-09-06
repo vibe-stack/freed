@@ -15,7 +15,12 @@ export const useUVEditorStore = create<UVEditorState>()(
     open: false,
     setOpen: (v) => set((s) => { s.open = v; }),
     selection: new Set<string>(),
-    setSelection: (ids) => set((s) => { s.selection = new Set(ids); }),
+    setSelection: (ids) => set((s) => {
+      const newSelection = new Set(ids);
+      if (s.selection.size !== newSelection.size || ![...s.selection].every(id => newSelection.has(id))) {
+        s.selection = newSelection;
+      }
+    }),
     toggleSelection: (id) => set((s) => {
       if (s.selection.has(id)) s.selection.delete(id); else s.selection.add(id);
       s.selection = new Set(s.selection);

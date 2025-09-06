@@ -75,7 +75,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
             uvSel.clearSelection();
             lastMeshIdRef.current = currentId;
         }
-    }, [mesh?.id, uvSel]);
+    }, [mesh?.id]);
 
     // Mirror global edit vertex selection into UV editor when applicable
     useEffect(() => {
@@ -84,7 +84,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
                 uvSel.setSelection(selection.vertexIds);
             }
         }
-    }, [selection.viewMode, selection.meshId, selection.vertexIds, mesh?.id, mesh, uvSel]);
+    }, [selection.viewMode, selection.meshId, selection.vertexIds, mesh?.id, mesh]);
 
     // r3f handles rendering; keep refs for interaction math that still uses screenToUV
 
