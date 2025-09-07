@@ -62,7 +62,7 @@ export interface T3DMaterial {
 export interface T3DSceneObject {
   id: string;
   name: string;
-  type: 'mesh' | 'light' | 'camera' | 'group' | 'force';
+  type: 'mesh' | 'light' | 'camera' | 'group' | 'force' | 'fluid';
   parentId: string | null;
   children: string[];
   transform: {
@@ -81,6 +81,8 @@ export interface T3DSceneObject {
   particleSystemId?: string;
   // Optional force field link (editor extension)
   forceFieldId?: string;
+  // Optional fluid system link (editor extension)
+  fluidSystemId?: string;
 }
 
 export interface T3DCamera {
@@ -166,6 +168,26 @@ export interface T3DScene {
   // Optional force fields payload (editor extension)
   forces?: {
     fields: Array<{ id: string; type: 'attractor' | 'repulsor' | 'vortex'; name?: string; enabled?: boolean; radius: number; strength: number }>
+  };
+  // Optional fluid systems payload (editor extension)
+  fluids?: {
+    systems: Array<{
+      id: string;
+      name?: string;
+      seed?: number;
+      capacity?: number;
+      emitterObjectId: string | null;
+      particleObjectId: string | null;
+      volumeObjectId: string | null;
+      emissionRate: number;
+      gravity: { x: number; y: number; z: number };
+      damping: number;
+      viscosity: number;
+      speed: number;
+      bounce: number;
+      particleLifetime: number;
+      size: number;
+    }>;
   };
   // Optional MVP animation payload
   animations?: {

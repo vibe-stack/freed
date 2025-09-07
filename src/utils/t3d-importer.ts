@@ -129,6 +129,7 @@ function t3dToSceneObject(t3dObject: T3DSceneObject): SceneObject {
   // Keep editor component links for round-trips
   particleSystemId: (t3dObject as any).particleSystemId,
   forceFieldId: (t3dObject as any).forceFieldId,
+  fluidSystemId: (t3dObject as any).fluidSystemId,
   };
 }
 
@@ -368,6 +369,36 @@ export async function importFromT3D(file: File): Promise<ImportedWorkspaceData> 
               wind: t3dToVector3(sys.wind),
             } as any;
           }, false);
+        });
+      }
+    } catch {}
+
+    // Rebuild fluid systems if payload exists (editor extension) - stored under sceneExtension.fluid?
+    try {
+      const fluids = (t3dScene as any).fluids as any;
+      if (fluids?.systems && Array.isArray(fluids.systems)) {
+        const { useFluidStore } = await import('@/stores/fluid-store');
+        useFluidStore.setState((s: any) => { s.systems = {}; }, false as any);
+        fluids.systems.forEach((sys: any) => {
+          useFluidStore.setState((s: any) => {
+            s.systems[sys.id] = {
+              id: sys.id,
+              name: sys.name,
+              seed: sys.seed ?? Math.floor(Math.random() * 1_000_000),
+              capacity: sys.capacity ?? 8000,
+              emitterObjectId: sys.emitterObjectId ?? null,
+              particleObjectId: sys.particleObjectId ?? null,
+              volumeObjectId: sys.volumeObjectId ?? null,
+              emissionRate: sys.emissionRate ?? 50,
+              gravity: t3dToVector3(sys.gravity ?? { x: 0, y: -0.002, z: 0 }),
+              damping: sys.damping ?? 0.0025,
+              viscosity: sys.viscosity ?? 0.1,
+              speed: sys.speed ?? 1,
+              bounce: sys.bounce ?? 0.4,
+              particleLifetime: sys.particleLifetime ?? 0,
+              size: sys.size ?? 0.08,
+            };
+          }, false as any);
         });
       }
     } catch {}

@@ -20,6 +20,7 @@ import { Mesh, Material, SceneObject, ViewportState, Light, CameraResource } fro
 import { useParticlesStore } from '@/stores/particles-store';
 import { useAnimationStore } from '@/stores/animation-store';
 import { useForceFieldStore } from '@/stores/force-field-store';
+import { useFluidStore } from '@/stores/fluid-store';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { listAllFiles, getSuggestedFilename } from '@/stores/files-store';
 
@@ -93,10 +94,10 @@ function materialToT3D(material: Material): T3DMaterial {
  * Converts internal scene object to T3D format
  */
 function sceneObjectToT3D(object: SceneObject): T3DSceneObject {
-  return {
+  const base: any = {
     id: object.id,
     name: object.name,
-  type: (['mesh', 'light', 'camera', 'group'] as const).includes(object.type as any) ? (object.type as any) : 'group',
+  type: (['mesh', 'light', 'camera', 'group', 'force'] as const).includes(object.type as any) ? (object.type as any) : 'group',
     parentId: object.parentId,
     children: [...object.children],
     transform: {
@@ -114,6 +115,8 @@ function sceneObjectToT3D(object: SceneObject): T3DSceneObject {
   particleSystemId: (object as any).particleSystemId,
   forceFieldId: (object as any).forceFieldId,
   };
+  if ((object as any).fluidSystemId) base.fluidSystemId = (object as any).fluidSystemId; // editor extension
+  return base as T3DSceneObject;
 }
 
 function lightToT3D(id: string, l: Light): T3DLight {
@@ -272,6 +275,7 @@ export async function exportToT3D(
   // Optional particle systems payload (editor extension only)
   try {
     const p = useParticlesStore.getState();
+  const fluid = useFluidStore.getState();
 
         try {
             const fieldValues = Object.values(useForceFieldStore.getState().fields) as any[];
@@ -305,6 +309,31 @@ export async function exportToT3D(
         }))
       };
     }
+    // Fluid systems (editor extension)
+    try {
+      const fSystems = Object.values(fluid.systems);
+      if (fSystems.length) {
+        (t3dScene as any).fluids = {
+          systems: fSystems.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            seed: s.seed,
+            capacity: s.capacity,
+            emitterObjectId: s.emitterObjectId,
+            particleObjectId: s.particleObjectId,
+            volumeObjectId: s.volumeObjectId,
+            emissionRate: s.emissionRate,
+            gravity: vector3ToT3D(s.gravity),
+            damping: s.damping,
+            viscosity: s.viscosity,
+            speed: s.speed,
+            bounce: s.bounce,
+            particleLifetime: s.particleLifetime,
+            size: s.size,
+          }))
+        };
+      }
+    } catch {}
   } catch {}
 
   // Optionally include animations and UI prefs (MVP)

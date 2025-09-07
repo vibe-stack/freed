@@ -501,10 +501,18 @@ export const useAnimationStore = create<AnimationStore>()(
         // Apply using scene and geometry store actions only (dynamic import to avoid cycle)
         const { useSceneStore } = require('./scene-store');
         const { useGeometryStore } = require('./geometry-store');
+  const { useFluidStore } = require('./fluid-store');
         const scene = useSceneStore.getState();
         const geo = useGeometryStore.getState();
+  const fluidStore = useFluidStore.getState();
+  // Note: fluid system animatable property path convention:
+  //   'fluid.emissionRate', 'fluid.gravityY', 'fluid.size', 'fluid.speed', 'fluid.damping', 'fluid.bounce'
+  //   'fluid.initialVelX', 'fluid.initialVelY', 'fluid.initialVelZ'
+  // Each path is associated with the fluid scene object targetId.
         // Batch per object for transforms and per-modifier for modifier settings
-        const byObj: Record<string, Partial<{ position: Record<string, number>; rotation: Record<string, number>; scale: Record<string, number> }>> = {};
+  const byObj: Record<string, Partial<{ position: Record<string, number>; rotation: Record<string, number>; scale: Record<string, number> }>> = {};
+  // Fluid system property buckets keyed by scene object id (owner of fluidSystemId)
+  const byFluid: Record<string, Partial<{ emissionRate: number; gravityY: number; size: number; speed: number; damping: number; bounce: number; initialVelX: number; initialVelY: number; initialVelZ: number }>> = {};
         const byObjMods: Record<string, Record<string, Record<string, number>>> = {};
         updates.forEach((u) => {
           if (u.property.startsWith('position.') || u.property.startsWith('rotation.') || u.property.startsWith('scale.')) {
@@ -513,6 +521,22 @@ export const useAnimationStore = create<AnimationStore>()(
             const vec = (bucket as any)[prop] || {};
             (vec as any)[axis] = u.value;
             (bucket as any)[prop] = vec;
+          } else if (u.property.startsWith('fluid.')) {
+            // fluid.<sceneObjectId>.<prop> where <prop> in emissionRate|gravityY|size|speed|damping|bounce
+            // targetId is still the scene object id
+            const parts = u.property.split('.');
+            // parts[0] = fluid, parts[1+] may include object scoped alias but we use targetId directly
+            const prop = parts[1];
+            const bucket = byFluid[u.targetId] || (byFluid[u.targetId] = {});
+            if (prop === 'emissionRate') bucket.emissionRate = u.value;
+            else if (prop === 'gravityY') bucket.gravityY = u.value;
+            else if (prop === 'size') bucket.size = u.value;
+            else if (prop === 'speed') bucket.speed = u.value;
+            else if (prop === 'damping') bucket.damping = u.value;
+            else if (prop === 'bounce') bucket.bounce = u.value;
+            else if (prop === 'initialVelX') bucket.initialVelX = u.value;
+            else if (prop === 'initialVelY') bucket.initialVelY = u.value;
+            else if (prop === 'initialVelZ') bucket.initialVelZ = u.value;
           } else if (u.property.startsWith('mod.')) {
             // Format: mod.<modifierId>.<path>
             const parts = u.property.split('.');
@@ -552,6 +576,29 @@ export const useAnimationStore = create<AnimationStore>()(
             transform.scale = { ...(prev || {}), ...partial.scale };
           }
           if (Object.keys(transform).length) scene.setTransform(objId, transform);
+        });
+        // Apply fluid system property updates
+        Object.entries(byFluid).forEach(([objId, partial]) => {
+          const obj = scene.objects[objId];
+          if (!obj || obj.type !== 'fluid' || !obj.fluidSystemId) return;
+          const sysId = obj.fluidSystemId;
+          const sys = fluidStore.systems[sysId];
+          if (!sys) return;
+          const patch: any = {};
+            if (partial.emissionRate !== undefined) patch.emissionRate = Math.max(0, partial.emissionRate);
+            if (partial.gravityY !== undefined) patch.gravity = { ...sys.gravity, y: partial.gravityY };
+            if (partial.size !== undefined) patch.size = Math.max(0.0001, partial.size);
+            if (partial.speed !== undefined) patch.speed = Math.max(0.001, partial.speed);
+            if (partial.damping !== undefined) patch.damping = Math.max(0, Math.min(0.5, partial.damping));
+            if (partial.bounce !== undefined) patch.bounce = Math.max(0, Math.min(1, partial.bounce));
+            if (partial.initialVelX !== undefined || partial.initialVelY !== undefined || partial.initialVelZ !== undefined) {
+              patch.initialVelocity = {
+                x: partial.initialVelX !== undefined ? partial.initialVelX : sys.initialVelocity.x,
+                y: partial.initialVelY !== undefined ? partial.initialVelY : sys.initialVelocity.y,
+                z: partial.initialVelZ !== undefined ? partial.initialVelZ : sys.initialVelocity.z,
+              };
+            }
+          if (Object.keys(patch).length) fluidStore.updateSystem(sysId, patch);
         });
         // Apply modifier settings
         Object.entries(byObjMods).forEach(([objId, mods]) => {

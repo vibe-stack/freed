@@ -176,6 +176,11 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 		sceneStore.selectObject(id);
 	}, [sceneStore]);
 
+	const handleCreateFluidSystem = useCallback(() => {
+		const id = sceneStore.createFluidSystemObject('Fluid System');
+		sceneStore.selectObject(id);
+	}, [sceneStore]);
+
 	const beginShape = useCallback((shape: 'cube' | 'plane' | 'cylinder' | 'cone' | 'uvsphere' | 'icosphere' | 'torus') => {
 		let id = '';
 		let name = '';
@@ -382,6 +387,7 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 								<Menu.Popup className="mt-0 min-w-48 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
 								{/* Quick */}
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleCreateParticleSystem}>Particle System</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleCreateFluidSystem}>Fluid System</Menu.Item>
 								<Menu.Separator className="my-1 h-px bg-white/10" />
 								{/* Mesh submenu */}
 								<Menu.SubmenuRoot>
