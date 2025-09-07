@@ -92,7 +92,7 @@ export interface Selection {
 export interface SceneObject {
   id: string;
   name: string;
-  type: 'mesh' | 'light' | 'camera' | 'group' | 'particles' | 'force' | 'fluid';
+  type: 'mesh' | 'light' | 'camera' | 'group' | 'particles' | 'force' | 'fluid' | 'text';
   parentId: string | null;
   children: string[];
   transform: Transform;
@@ -110,6 +110,25 @@ export interface SceneObject {
   forceFieldId?: string;
   // Fluid system component reference (for type === 'fluid')
   fluidSystemId?: string;
+  // Text 3D component reference (for type === 'text')
+  textId?: string;
+}
+
+// Parametric Text3D resource (procedural until rasterized)
+export interface Text3D {
+  id: string;
+  text: string;
+  fontFamily: string; // CSS font family name
+  size: number; // nominal character height in world units
+  depth: number; // extrusion depth
+  bevelEnabled: boolean;
+  bevelSize: number; // inset on front/back face
+  bevelSegments: number; // steps between front/back
+  curveSegments: number; // outline smoothing for future advanced fonts
+  align: 'left' | 'center' | 'right';
+  lineHeight: number; // multiple of size
+  meshId: string; // underlying generated mesh (kept in geometry-store)
+  rasterized: boolean; // if true, resource is ready to be removed & object converted to mesh
 }
 
 // Scene component data types

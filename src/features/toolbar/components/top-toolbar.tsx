@@ -3,6 +3,7 @@
 import React from 'react';
 import { Menu } from '@base-ui-components/react/menu';
 import AddObjectMenu from '@/features/shared/add-object-menu';
+import { useTextStore } from '@/stores/text-store';
 import { useSelection, useSelectionStore } from '@/stores/selection-store';
 import { useViewportStore } from '@/stores/viewport-store';
 import { useSceneStore } from '@/stores/scene-store';
@@ -165,6 +166,7 @@ const TopToolbar: React.FC = () => {
           triggerLabel={"Add"}
           triggerClassName={"px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5 data-[open]:bg-white/10 data-[open]:text-white"}
           onCreateShape={beginShape}
+          onCreateText={() => { useTextStore.getState().createText(); setMenuOpen(false); }}
           onAddLight={addLight}
           onAddCamera={addCamera}
           onAddForce={addForce}

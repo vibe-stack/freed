@@ -12,6 +12,7 @@ import { Diamond as DiamondIcon } from 'lucide-react';
 import { useParticlesStore } from '@/stores/particles-store';
 import { useForceFieldStore } from '@/stores/force-field-store';
 import { useFluidStore } from '@/stores/fluid-store';
+import { useTextStore, useTextResource } from '@/stores/text-store';
 
 const Label: React.FC<{ label: string } & React.HTMLAttributes<HTMLDivElement>> = ({ label, children, className = '', ...rest }) => (
   <div className={`text-xs text-gray-400 ${className}`} {...rest}>
@@ -177,6 +178,12 @@ export const InspectorPanel: React.FC = () => {
         <div>
           <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Fluid System</div>
           <FluidSystemSection systemId={selected.fluidSystemId} />
+        </div>
+      )}
+      {selected.type === 'text' && selected.textId && (
+        <div>
+          <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Text</div>
+          <Text3DSection textId={selected.textId} objectId={selected.id} />
         </div>
       )}
     </div>
@@ -406,6 +413,86 @@ const FluidSystemSection: React.FC<{ systemId: string }> = ({ systemId }) => {
           <DragInput compact value={sys.size} precision={3} step={0.005} onChange={(v) => update({ size: Math.max(0.001, v) })} />
         </Label>
       </div>
+    </div>
+  );
+};
+
+const Text3DSection: React.FC<{ textId: string; objectId: string }> = ({ textId, objectId }) => {
+  const text = useTextResource(textId);
+  const { updateText, rasterizeText } = useTextStore();
+  // Prepare hooks BEFORE conditional early return
+  const commonFonts = ['Inter','Arial','Helvetica','Times New Roman','Courier New','Georgia','Verdana','Tahoma','Trebuchet MS','Impact','Monaco','Menlo'];
+  const [available, setAvailable] = React.useState<Record<string, boolean>>({});
+  React.useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const detect = (family: string) => {
+      const span = document.createElement('span');
+      span.style.fontFamily = 'monospace';
+      span.style.position = 'absolute';
+      span.style.left = '-9999px';
+      span.style.fontSize = '72px';
+      span.textContent = 'mmmmmmmmmmlli';
+      document.body.appendChild(span);
+      const baseWidth = span.getBoundingClientRect().width;
+      span.style.fontFamily = `${family}, monospace`;
+      const newWidth = span.getBoundingClientRect().width;
+      document.body.removeChild(span);
+      return Math.abs(newWidth - baseWidth) > 0.5; // heuristic
+    };
+    const res: Record<string, boolean> = {};
+    commonFonts.forEach(f => { try { res[f] = detect(f); } catch { res[f] = false; } });
+    setAvailable(res);
+  }, []); // commonFonts static
+  if (!text) return null;
+  const update = (fn: (t: any) => void) => updateText(textId, fn);
+  return (
+    <div className="bg-white/5 border border-white/10 rounded p-2 space-y-2">
+      <Label label="Text">
+        <textarea
+          className="w-full bg-black/30 border border-white/10 rounded p-1 text-xs resize-none"
+          rows={2}
+          value={text.text}
+          onChange={(e) => update(t => { t.text = e.target.value; })}
+        />
+      </Label>
+      <div className="grid grid-cols-2 gap-2">
+        <Label label="Size">
+          <DragInput compact value={text.size} precision={3} step={0.01} onChange={(v) => update(t => { t.size = Math.max(0.01, v); })} />
+        </Label>
+        <Label label="Depth">
+          <DragInput compact value={text.depth} precision={3} step={0.01} onChange={(v) => update(t => { t.depth = Math.max(0, v); })} />
+        </Label>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Label label="Line Height">
+          <DragInput compact value={text.lineHeight} precision={2} step={0.05} onChange={(v) => update(t => { t.lineHeight = Math.max(0.5, v); })} />
+        </Label>
+        <Label label="Align">
+          <select className="w-full bg-transparent text-xs border border-white/10 rounded p-1" value={text.align} onChange={(e) => update(t => { t.align = e.target.value as any; })}>
+            <option value="left">Left</option>
+            <option value="center">Center</option>
+            <option value="right">Right</option>
+          </select>
+        </Label>
+      </div>
+      <Label label="Font">
+        <select
+          className="w-full bg-transparent text-xs border border-white/10 rounded p-1"
+          value={text.fontFamily}
+          onChange={(e) => update(t => { t.fontFamily = e.target.value; })}
+        >
+          {commonFonts.map(f => <option key={f} value={f}>{f}{available[f] === false ? ' (fallback)' : ''}</option>)}
+        </select>
+      </Label>
+      <div className="flex items-center gap-2">
+        <button
+          className="px-2 py-1 rounded bg-white/10 text-xs hover:bg-white/20 disabled:opacity-50"
+          disabled={text.rasterized}
+          onClick={() => rasterizeText(textId)}
+        >Rasterize to Mesh</button>
+        {text.rasterized && <span className="text-[10px] text-emerald-400">Rasterized</span>}
+      </div>
+      {!text.rasterized && <div className="text-[10px] text-gray-500">Modifiers & materials work pre-rasterization. Enter Edit Mode only after rasterizing.</div>}
     </div>
   );
 };

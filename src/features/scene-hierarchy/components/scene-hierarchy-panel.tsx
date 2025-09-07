@@ -7,6 +7,7 @@ import { Eye, EyeOff, Lock, Unlock, Camera, CameraOff, Folder, FolderOpen, Shape
 import { useClipboardStore } from '@/stores/clipboard-store';
 import { ContextMenu } from '@base-ui-components/react/context-menu';
 import { SceneObject } from '@/types/geometry';
+import { useTextStore } from '@/stores/text-store';
 
 const Panel: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = '', children, ...rest }) => (
 	<div className={`bg-black/40 backdrop-blur-md border border-white/10 rounded-lg shadow-lg shadow-black/30 w-64 h-full ${className}`} {...rest}>
@@ -122,6 +123,8 @@ const Row: React.FC<RowProps>
 			sources.forEach((sid, i) => scene.moveObject(sid, parentId, insertIndex + i));
 		};
 
+		const textStore = useTextStore();
+		const textRes = type === 'text' && scene.objects[id]?.textId ? textStore.texts[scene.objects[id]!.textId!] : null;
 		return (
 			<ContextMenu.Root>
 				<ContextMenu.Trigger
@@ -221,6 +224,13 @@ const Row: React.FC<RowProps>
 								</div>
 							</ContextMenu.Item>
 							<ContextMenu.Separator />
+						{type === 'text' && textRes && !textRes.rasterized && (
+							<ContextMenu.Item onClick={() => { if (scene.objects[id]?.textId) textStore.rasterizeText(scene.objects[id]!.textId!); }}>
+								<div className="flex items-center gap-2 px-2 py-1.5">
+									<span>Rasterize to Mesh</span>
+								</div>
+							</ContextMenu.Item>
+						)}
 							<ContextMenu.Item onClick={() => { if (type === 'group') scene.setVisibleRecursive(id, !visible); else scene.setVisible(id, !visible); }}>
 								<div className="flex items-center gap-2 px-2 py-1.5">
 									{visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}

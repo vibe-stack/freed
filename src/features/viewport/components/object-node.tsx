@@ -375,7 +375,7 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
 
   return (
     <group ref={groupRef} visible={obj.visible} {...transformProps} userData={{ ...((groupRef.current?.userData as any) ?? {}), sceneObjectId: objectId }}>
-      {obj.type === 'mesh' && <MeshView objectId={objectId} noTransform />}
+      { (obj.type === 'mesh' || obj.type === 'text') && <MeshView objectId={objectId} noTransform /> }
       {obj.type === 'particles' && obj.particleSystemId && (
         <ParticleSystemNode objectId={objectId} systemId={obj.particleSystemId} />
       )}

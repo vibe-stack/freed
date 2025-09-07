@@ -173,6 +173,18 @@ export const useSelectionStore = create<SelectionStore>()(
       },
       
       enterEditMode: (meshId: string) => {
+        // Prevent entering edit mode for Text3D objects unless rasterized
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const scene = require('./scene-store').useSceneStore.getState();
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const textStore = require('./text-store').useTextStore.getState();
+          const obj: any = Object.values(scene.objects).find((o: any) => o.meshId === meshId);
+          if (obj && obj.type === 'text' && obj.textId) {
+            const t = textStore.texts[obj.textId];
+            if (t && !t.rasterized) return; // block
+          }
+        } catch {}
         set((state) => {
           useToolStore.getState().reset();
           state.selection.viewMode = 'edit';

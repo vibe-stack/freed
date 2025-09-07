@@ -22,6 +22,7 @@ import { geometryRedo, geometryUndo } from '@/stores/geometry-store';
 import { useRegisterShortcuts } from '@/components/shortcut-provider';
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
 import AddObjectMenu from '@/features/shared/add-object-menu';
+import { useTextStore } from '@/stores/text-store';
 
 type Props = { onOpenShaderEditor?: () => void };
 const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
@@ -381,6 +382,7 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 					<AddObjectMenu
 						portalContainer={portalContainer}
 						onCreateShape={beginShape}
+						onCreateText={() => { useTextStore.getState().createText(); }}
 						onAddLight={addLight}
 						onAddCamera={addCamera}
 						onAddForce={addForce}
