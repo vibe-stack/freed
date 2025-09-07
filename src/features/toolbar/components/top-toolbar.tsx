@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Menu } from '@base-ui-components/react/menu';
+import AddObjectMenu from '@/features/shared/add-object-menu';
 import { useSelection, useSelectionStore } from '@/stores/selection-store';
 import { useViewportStore } from '@/stores/viewport-store';
 import { useSceneStore } from '@/stores/scene-store';
@@ -157,84 +158,19 @@ const TopToolbar: React.FC = () => {
       </Pill>
 
   <Pill className="px-1 py-1 relative">
-        <Menu.Root open={menuOpen} onOpenChange={setMenuOpen}>
-          <Menu.Trigger className="px-3 py-1.5 text-xs rounded-md transition-colors text-gray-300 hover:text-white hover:bg-white/5">
-            +
-          </Menu.Trigger>
-          <Menu.Portal container={portalContainer}>
-            <Menu.Positioner sideOffset={6} className="z-90">
-              <Menu.Popup className="pointer-events-auto z-90 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-44" style={{ zIndex: 10050 }}>
-                {/* Quick actions */}
-                <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={addParticleSystem}>Particle System</Menu.Item>
-                <div className="my-1 h-px bg-white/10" />
-                {/* Force Field submenu */}
-                <Menu.SubmenuRoot>
-                  <Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 rounded hover:bg-white/5">
-                    Force Field
-                  </Menu.SubmenuTrigger>
-                  <Menu.Portal>
-                    <Menu.Positioner sideOffset={6} className="z-90">
-                      <Menu.Popup className="z-90 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-40" style={{ zIndex: 10050 }}>
-                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addForce('attractor')}>Attractor</Menu.Item>
-                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addForce('repulsor')}>Repulsor</Menu.Item>
-                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addForce('vortex')}>Vortex</Menu.Item>
-                      </Menu.Popup>
-                    </Menu.Positioner>
-                  </Menu.Portal>
-                </Menu.SubmenuRoot>
-                <div className="my-1 h-px bg-white/10" />
-                {/* Mesh submenu */}
-                <Menu.SubmenuRoot>
-                  <Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 rounded hover:bg-white/5">
-                    Mesh
-                  </Menu.SubmenuTrigger>
-                  <Menu.Portal>
-                    <Menu.Positioner sideOffset={6} className="z-90">
-                      <Menu.Popup className="z-90 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-40" style={{ zIndex: 10050 }}>
-                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('cube')}>Cube</Menu.Item>
-                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('plane')}>Plane</Menu.Item>
-                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('cylinder')}>Cylinder</Menu.Item>
-                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('cone')}>Cone</Menu.Item>
-                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('uvsphere')}>UV Sphere</Menu.Item>
-                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('icosphere')}>Ico Sphere</Menu.Item>
-                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => beginShape('torus')}>Torus</Menu.Item>
-                      </Menu.Popup>
-                    </Menu.Positioner>
-                  </Menu.Portal>
-                </Menu.SubmenuRoot>
-                {/* Light submenu */}
-                <Menu.SubmenuRoot>
-                  <Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 rounded hover:bg-white/5">
-                    Light
-                  </Menu.SubmenuTrigger>
-                  <Menu.Portal>
-                    <Menu.Positioner sideOffset={6} className="z-90">
-                      <Menu.Popup className="z-90 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-40" style={{ zIndex: 10050 }}>
-                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addLight('directional')}>Directional</Menu.Item>
-                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addLight('spot')}>Spot</Menu.Item>
-                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addLight('point')}>Point</Menu.Item>
-                      </Menu.Popup>
-                    </Menu.Positioner>
-                  </Menu.Portal>
-                </Menu.SubmenuRoot>
-                {/* Camera submenu */}
-                <Menu.SubmenuRoot>
-                  <Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 rounded hover:bg-white/5">
-                    Camera
-                  </Menu.SubmenuTrigger>
-                  <Menu.Portal>
-                    <Menu.Positioner sideOffset={6} className="z-90">
-                      <Menu.Popup className="z-90 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-40" style={{ zIndex: 10050 }}>
-                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addCamera('perspective')}>Perspective</Menu.Item>
-                        <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={() => addCamera('orthographic')}>Orthographic</Menu.Item>
-                      </Menu.Popup>
-                    </Menu.Positioner>
-                  </Menu.Portal>
-                </Menu.SubmenuRoot>
-              </Menu.Popup>
-            </Menu.Positioner>
-          </Menu.Portal>
-        </Menu.Root>
+        <AddObjectMenu
+          portalContainer={portalContainer}
+          controlledOpen={menuOpen}
+          onOpenChange={setMenuOpen}
+          triggerLabel={"Add"}
+          triggerClassName={"px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5 data-[open]:bg-white/10 data-[open]:text-white"}
+          onCreateShape={beginShape}
+          onAddLight={addLight}
+          onAddCamera={addCamera}
+          onAddForce={addForce}
+          onAddParticleSystem={addParticleSystem}
+          onAddFluidSystem={() => { /* top toolbar: no fluid UI, create via scene API */ const id = scene.createFluidSystemObject('Fluid System'); scene.selectObject(id); if (selection.viewMode === 'object') selectionActions.selectObjects([id]); setMenuOpen(false); }}
+        />
       </Pill>
     </div>
   );
