@@ -43,12 +43,6 @@ export const lengthVec3 = (v: Vector3): number => {
   return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 };
 
-// UV helpers for handling seam wrapping when duplicating pole/corner loops
-const wrap01 = (u: number) => {
-  u = u % 1; if (u < 0) u += 1; return u;
-};
-const adjustWrap = (uv: Vector2): Vector2 => ({ x: wrap01(uv.x), y: uv.y });
-
 // Geometry creation utilities
 export const createVertex = (
   position: Vector3,

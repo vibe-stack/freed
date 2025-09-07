@@ -1,10 +1,10 @@
-import type { Mesh, Face, Vertex } from '@/types/geometry';
+import type { Mesh, Face } from '@/types/geometry';
 import type { Island } from './types';
 
 // Local helpers
 const edgeKey = (a: string, b: string) => (a < b ? `${a}-${b}` : `${b}-${a}`);
 
-function unwrapQuadIsland(mesh: Mesh, island: Island, faces: Face[], vmap: Map<string, Vertex>) {
+function unwrapQuadIsland(mesh: Mesh, island: Island, faces: Face[]) {
   if (faces.length === 0) return;
 
   if (faces.length === 1) {
@@ -27,7 +27,7 @@ export function unwrapIsland(mesh: Mesh, island: Island) {
   if (!faces.length) return;
 
   if (faces.every(f => f.vertexIds.length === 4)) {
-    unwrapQuadIsland(mesh, island, faces, vmap);
+    unwrapQuadIsland(mesh, island, faces);
     return;
   }
 

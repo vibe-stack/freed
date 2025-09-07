@@ -76,6 +76,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
             uvSel.clearSelection();
             lastMeshIdRef.current = currentId;
         }
+        //eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mesh?.id]);
 
     // Mirror global edit vertex selection into UV editor when applicable
@@ -85,6 +86,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
                 uvSel.setSelection(selection.vertexIds);
             }
         }
+        //eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selection.viewMode, selection.meshId, selection.vertexIds, mesh?.id, mesh]);
 
     // r3f handles rendering; keep refs for interaction math that still uses screenToUV
@@ -292,7 +294,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         if (xform && e.button === 0) setXform(null);
         if (marquee && canvasRef.current && mesh) {
             const { start, current, additive } = marquee;
-            
+
             // Use screenToUV for consistent coordinate conversion
             const startUV = screenToUV(canvasRef.current, start.x + canvasRef.current.getBoundingClientRect().left, start.y + canvasRef.current.getBoundingClientRect().top);
             const currentUV = screenToUV(canvasRef.current, current.x + canvasRef.current.getBoundingClientRect().left, current.y + canvasRef.current.getBoundingClientRect().top);
@@ -410,16 +412,16 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
                 }
             }
             const origin = { x: n ? sx / n : 0, y: n ? sy / n : 0 };
-            
+
             // Store original UVs for both vertices and face loops
             const uv0 = new Map<string, { x: number; y: number }>();
             const faceUV0 = new Map<string, { x: number; y: number }[]>(); // faceId -> array of UVs
-            
+
             // We still store vertex UVs for potential compatibility, but they won't be displayed
             for (const v of mesh.vertices) {
                 if (effectiveSelection.has(v.id)) uv0.set(v.id, { x: v.uv.x, y: v.uv.y });
             }
-            
+
             for (const f of mesh.faces) {
                 if (f.uvs) {
                     // Store all face loop UVs for restoration if transform is cancelled

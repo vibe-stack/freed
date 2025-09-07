@@ -42,11 +42,11 @@ const DirectionalLightBare: React.FC<{ color: Color; intensity: number }> = ({ c
     if (!l) return;
     l.castShadow = true;
     l.shadow.mapSize.set(2048, 2048);
-  // A tiny negative bias and a higher normalBias reduce self-shadowing (acne)
-  l.shadow.bias = -0.0001;
-  l.shadow.normalBias = 0.07;
-  // Slight blur for PCFSoft
-  l.shadow.radius = 2;
+    // A tiny negative bias and a higher normalBias reduce self-shadowing (acne)
+    l.shadow.bias = -0.0001;
+    l.shadow.normalBias = 0.07;
+    // Slight blur for PCFSoft
+    l.shadow.radius = 2;
     // Tighter shadow camera helps reduce acne and peter-panning
     const cam = l.shadow.camera as any;
     if (cam) {
@@ -94,9 +94,9 @@ const SpotLightBare: React.FC<{
     if (!l) return;
     l.castShadow = true;
     l.shadow.mapSize.set(2048, 2048);
-  l.shadow.bias = -0.0001;
-  l.shadow.normalBias = 0.07;
-  l.shadow.radius = 2;
+    l.shadow.bias = -0.0001;
+    l.shadow.normalBias = 0.07;
+    l.shadow.radius = 2;
     const cam = l.shadow.camera as any;
     if (cam) {
       cam.near = 0.1;
@@ -121,8 +121,8 @@ const SpotLightBare: React.FC<{
 const PointLightNode: React.FC<{ color: Color; intensity: number; distance: number; decay: number }>
   = ({ color, intensity, distance, decay }) => {
     const ref = useRef<PointLight>(null!);
-  // @ts-expect-error helper typing is overly strict in our env
-  useHelper(ref as unknown as never, PointLightHelper as unknown as never);
+    // @ts-expect-error helper typing is overly strict in our env
+    useHelper(ref as unknown as never, PointLightHelper as unknown as never);
     return <pointLight ref={ref} color={color} intensity={intensity} distance={distance} decay={decay} />;
   };
 
@@ -134,9 +134,9 @@ const PointLightBare: React.FC<{ color: Color; intensity: number; distance: numb
       if (!l) return;
       l.castShadow = true;
       l.shadow.mapSize.set(1024, 1024);
-  l.shadow.bias = -0.0002;
-  l.shadow.normalBias = 0.05;
-  l.shadow.radius = 2;
+      l.shadow.bias = -0.0002;
+      l.shadow.normalBias = 0.05;
+      l.shadow.radius = 2;
     }, []);
     return <pointLight ref={ref} color={color} intensity={intensity} distance={distance} decay={decay} castShadow />;
   };
@@ -183,8 +183,8 @@ const PerspectiveCameraNode: React.FC<{ objectId?: string; fov: number; near: nu
       (c as PerspectiveCamera).filmOffset = filmOffset;
       c.updateProjectionMatrix();
     }, [fov, near, far, zoom, focus, filmGauge, filmOffset]);
-  // @ts-expect-error helper typing is overly strict in our env
-  useHelper(ref as unknown as never, CameraHelper as unknown as never);
+    // @ts-expect-error helper typing is overly strict in our env
+    useHelper(ref as unknown as never, CameraHelper as unknown as never);
     return <perspectiveCamera ref={ref} fov={fov} near={near} far={far} zoom={zoom} focus={focus} filmGauge={filmGauge} filmOffset={filmOffset} />;
   };
 
@@ -233,8 +233,8 @@ const OrthographicCameraNode: React.FC<{ objectId?: string; left: number; right:
       c.zoom = zoom;
       c.updateProjectionMatrix();
     }, [left, right, top, bottom, near, far, zoom]);
-  // @ts-expect-error helper typing is overly strict in our env
-  useHelper(ref as unknown as never, CameraHelper as unknown as never);
+    // @ts-expect-error helper typing is overly strict in our env
+    useHelper(ref as unknown as never, CameraHelper as unknown as never);
     return <orthographicCamera ref={ref} left={left} right={right} top={top} bottom={bottom} near={near} far={far} zoom={zoom} />;
   };
 
@@ -366,23 +366,23 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
   // While playing, only skip transform props if animation is actively driving this object.
   // Otherwise, keep applying the scene transform so non-animated objects don't reset.
   const transformProps = (playing && isDrivenByAnim)
-    ? { }
+    ? {}
     : {
-        position: [t.position.x, t.position.y, t.position.z] as [number, number, number],
-        rotation: [t.rotation.x, t.rotation.y, t.rotation.z] as [number, number, number],
-        scale: [t.scale.x, t.scale.y, t.scale.z] as [number, number, number],
-      };
+      position: [t.position.x, t.position.y, t.position.z] as [number, number, number],
+      rotation: [t.rotation.x, t.rotation.y, t.rotation.z] as [number, number, number],
+      scale: [t.scale.x, t.scale.y, t.scale.z] as [number, number, number],
+    };
 
   return (
     <group ref={groupRef} visible={obj.visible} {...transformProps} userData={{ ...((groupRef.current?.userData as any) ?? {}), sceneObjectId: objectId }}>
-    {obj.type === 'mesh' && <MeshView objectId={objectId} noTransform />}
-    {obj.type === 'particles' && obj.particleSystemId && (
+      {obj.type === 'mesh' && <MeshView objectId={objectId} noTransform />}
+      {obj.type === 'particles' && obj.particleSystemId && (
         <ParticleSystemNode objectId={objectId} systemId={obj.particleSystemId} />
       )}
       {obj.type === 'fluid' && obj.fluidSystemId && (
-          <FluidSystemNode objectId={objectId} systemId={obj.fluidSystemId} />
-        )}
-  {obj.type === 'light' && obj.lightId && (() => {
+        <FluidSystemNode objectId={objectId} systemId={obj.fluidSystemId} />
+      )}
+      {obj.type === 'light' && obj.lightId && (() => {
         const light = scene.lights[obj.lightId!];
         if (!light) return null;
         const color = new Color(light.color.x, light.color.y, light.color.z);
@@ -429,10 +429,10 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
             );
         }
       })()}
-  {obj.type === 'camera' && obj.cameraId && (
+      {obj.type === 'camera' && obj.cameraId && (
         <CameraObjectNode objectId={objectId} cameraId={obj.cameraId!} isMaterial={(shading as unknown as string) === 'material'} />
       )}
-    {obj.type === 'force' && obj.forceFieldId && (
+      {obj.type === 'force' && obj.forceFieldId && (
         <ForceFieldNode fieldId={obj.forceFieldId} />
       )}
       {obj.children.map((cid) => (

@@ -1,14 +1,16 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BufferGeometry, Color, InstancedMesh, Material, Object3D, Quaternion, Vector3 as T3V, Euler, Box3, SphereGeometry, MeshBasicMaterial } from 'three/webgpu';
+import { BufferGeometry, Color, InstancedMesh, Material, Object3D, Quaternion, Vector3 as T3V, Euler, Box3, SphereGeometry, MeshBasicMaterial, DoubleSide } from 'three/webgpu';
 import { useFluidStore } from '@/stores/fluid-store';
 import { useAnimationStore } from '@/stores/animation-store';
 import { useSceneStore } from '@/stores/scene-store';
 import { getObject3D } from '@/features/viewport/hooks/object3d-registry';
 import { useFrame } from '@react-three/fiber';
 import { useViewportStore } from '@/stores/viewport-store';
-
+import { useGeometryStore } from '@/stores/geometry-store';
+import * as THREE from "three/webgpu";
+import { useMaterialNodes } from '@/features/materials/hooks/use-material-nodes';
 // Basic particle representation (CPU fallback / simplified) – placeholder until GPU MLS-MPM variant
 interface FluidParticle { alive: boolean; pos: T3V; vel: T3V; age: number; life: number; }
 
@@ -18,7 +20,7 @@ function makeParticle(): FluidParticle { return { alive: false, pos: new T3V(), 
 function makeRng(seed: number) { let t = seed >>> 0; return () => { t += 0x6D2B79F5; let r = Math.imul(t ^ (t >>> 15), 1 | t); r ^= r + Math.imul(r ^ (r >>> 7), 61 | r); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; }; }
 
 // Sample random point in unit cube then remap to bounds
-function randomInBox(rng: () => number, min: T3V, max: T3V, out: T3V) { out.set( min.x + (max.x-min.x)*rng(), min.y + (max.y-min.y)*rng(), min.z + (max.z-min.z)*rng() ); return out; }
+function randomInBox(rng: () => number, min: T3V, max: T3V, out: T3V) { out.set(min.x + (max.x - min.x) * rng(), min.y + (max.y - min.y) * rng(), min.z + (max.z - min.z) * rng()); return out; }
 
 // Derive world AABB from a volume object; fallback to centered unit cube around system object
 function computeVolumeBounds(volumeObj3D: any | null, systemObj3D: any | null): Box3 {
@@ -26,17 +28,17 @@ function computeVolumeBounds(volumeObj3D: any | null, systemObj3D: any | null): 
   if (volumeObj3D) {
     volumeObj3D.updateWorldMatrix(true, false);
     box.setFromObject(volumeObj3D);
-    if (!isFinite(box.min.x)) box.set(new T3V(-0.5,-0.5,-0.5), new T3V(0.5,0.5,0.5));
+    if (!isFinite(box.min.x)) box.set(new T3V(-0.5, -0.5, -0.5), new T3V(0.5, 0.5, 0.5));
     return box;
   }
   if (systemObj3D) {
-    systemObj3D.updateWorldMatrix(true,false);
+    systemObj3D.updateWorldMatrix(true, false);
     const p = systemObj3D.getWorldPosition(new T3V());
-    box.min.set(p.x-0.5,p.y-0.5,p.z-0.5);
-    box.max.set(p.x+0.5,p.y+0.5,p.z+0.5);
+    box.min.set(p.x - 0.5, p.y - 0.5, p.z - 0.5);
+    box.max.set(p.x + 0.5, p.y + 0.5, p.z + 0.5);
     return box;
   }
-  box.min.set(-0.5,-0.5,-0.5); box.max.set(0.5,0.5,0.5); return box;
+  box.min.set(-0.5, -0.5, -0.5); box.max.set(0.5, 0.5, 0.5); return box;
 }
 
 // Helper geometry cache
@@ -65,13 +67,17 @@ export const FluidSystemNode: React.FC<{ objectId: string; systemId: string }> =
   const shadingMode = useViewportStore((s) => s.shadingMode);
   const scene = useSceneStore();
   const { geom, material } = useSourceGeometry(fluidSys?.particleObjectId || null);
+  // Determine the materialId of the particle object (if it's a mesh resource) so we can prefer node-materials
+  const geometryStore = useGeometryStore();
+  const particleMeshId = fluidSys?.particleObjectId ? scene.objects[fluidSys.particleObjectId]?.meshId : undefined;
+  const particleMaterialId = particleMeshId ? geometryStore.meshes.get(particleMeshId)?.materialId : undefined;
+  const nodeMat = useMaterialNodes(particleMaterialId);
   const meshRef = useRef<InstancedMesh>(null!);
   const particlesRef = useRef<FluidParticle[]>([]);
   const deadRef = useRef<number[]>([]);
   const rngRef = useRef<() => number>(() => Math.random());
   const tempObj = useMemo(() => new Object3D(), []);
   const tmpV = useMemo(() => new T3V(), []);
-  const tmpV2 = useMemo(() => new T3V(), []);
   const tmpQ = useMemo(() => new Quaternion(), []);
   const volumeBoxRef = useRef<Box3>(new Box3());
   const lastSimFrameRef = useRef<number | null>(null);
@@ -84,6 +90,7 @@ export const FluidSystemNode: React.FC<{ objectId: string; systemId: string }> =
     deadRef.current = Array.from({ length: cap }, (_, i) => cap - 1 - i);
     rngRef.current = makeRng(fluidSys.seed);
     if (meshRef.current) { meshRef.current.count = 0; }
+    //eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fluidSys?.capacity, fluidSys?.seed, systemId]);
 
   // Simulation step (very simplified: gravity, damping, bounce in volume, optional lifetime)
@@ -91,12 +98,12 @@ export const FluidSystemNode: React.FC<{ objectId: string; systemId: string }> =
     if (!fluidSys) return;
     const cap = particlesRef.current.length;
     // Determine world box each batch
-  const volObj = fluidSys.volumeObjectId ? scene.objects[fluidSys.volumeObjectId] : null;
+    const volObj = fluidSys.volumeObjectId ? scene.objects[fluidSys.volumeObjectId] : null;
     const vol3D = volObj ? getObject3D(volObj.id) : null;
     const sysObj = scene.objects[objectId];
     const sys3D = sysObj ? getObject3D(sysObj.id) : null;
-  const emitterObj = fluidSys.emitterObjectId ? scene.objects[fluidSys.emitterObjectId] : null;
-  const emitter3D = emitterObj ? getObject3D(emitterObj.id) : sys3D;
+    const emitterObj = fluidSys.emitterObjectId ? scene.objects[fluidSys.emitterObjectId] : null;
+    const emitter3D = emitterObj ? getObject3D(emitterObj.id) : sys3D;
     volumeBoxRef.current = computeVolumeBounds(vol3D, sys3D);
     const box = volumeBoxRef.current;
     const gravity = new T3V(fluidSys.gravity.x, fluidSys.gravity.y, fluidSys.gravity.z).multiplyScalar(fluidSys.speed);
@@ -107,7 +114,7 @@ export const FluidSystemNode: React.FC<{ objectId: string; systemId: string }> =
     const rng = rngRef.current;
     for (let s = 0; s < steps; s++) {
       // Emit
-      let toEmit = Math.min(emitPerFrame, deadRef.current.length);
+      const toEmit = Math.min(emitPerFrame, deadRef.current.length);
       for (let n = 0; n < toEmit; n++) {
         const idx = deadRef.current.pop(); if (idx === undefined) break;
         const p = particlesRef.current[idx];
@@ -117,18 +124,18 @@ export const FluidSystemNode: React.FC<{ objectId: string; systemId: string }> =
           emitter3D.updateWorldMatrix(true, false);
           const epos = emitter3D.getWorldPosition(tmpV);
           p.pos.copy(epos);
-          p.pos.x += (rng()-0.5)*0.05;
-          p.pos.y += (rng()-0.5)*0.05;
-          p.pos.z += (rng()-0.5)*0.05;
+          p.pos.x += (rng() - 0.5) * 0.05;
+          p.pos.y += (rng() - 0.5) * 0.05;
+          p.pos.z += (rng() - 0.5) * 0.05;
         } else {
           randomInBox(rng, box.min, box.max, p.pos);
           p.pos.y = box.max.y - (box.max.y - box.min.y) * rng() * 0.2;
         }
         // Base initial velocity + small random spread
         p.vel.set(
-          fluidSys.initialVelocity.x + (rng()-0.5)*0.02,
-          fluidSys.initialVelocity.y + (rng()-0.5)*0.02,
-          fluidSys.initialVelocity.z + (rng()-0.5)*0.02
+          fluidSys.initialVelocity.x + (rng() - 0.5) * 0.02,
+          fluidSys.initialVelocity.y + (rng() - 0.5) * 0.02,
+          fluidSys.initialVelocity.z + (rng() - 0.5) * 0.02
         );
       }
       // Integrate
@@ -179,18 +186,18 @@ export const FluidSystemNode: React.FC<{ objectId: string; systemId: string }> =
     rngRef.current = makeRng(fluidSys.seed);
     stepSim(frame); // brute force to frame
     writeInstances();
+    //eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fluidSys, playing, playhead, fps]);
 
   function writeInstances() {
     const mesh = meshRef.current; if (!mesh) return;
-    const arr: any = (mesh as any).instanceMatrix?.array;
     let count = 0;
     const size = fluidSys?.size ?? 0.05;
     for (let i = 0; i < particlesRef.current.length; i++) {
       const p = particlesRef.current[i]; if (!p.alive) continue;
       tempObj.position.copy(p.pos);
-      tempObj.quaternion.copy(tmpQ.setFromEuler(new Euler(0,0,0)));
-      tempObj.scale.set(size,size,size);
+      tempObj.quaternion.copy(tmpQ.setFromEuler(new Euler(0, 0, 0)));
+      tempObj.scale.set(size, size, size);
       tempObj.updateMatrix();
       mesh.setMatrixAt(count, tempObj.matrix);
       count++;
@@ -202,7 +209,29 @@ export const FluidSystemNode: React.FC<{ objectId: string; systemId: string }> =
 
   // Helper: draw bounding box when in non-material shading
   const showHelper = shadingMode === 'wireframe' || shadingMode === 'solid';
-  const BoxHelper: React.FC = () => {
+
+  // Choose particle material: use the particle object's material when in 'material' shading,
+  // otherwise fall back to the simple helper material.
+  // Prefer node material when available and shading mode is 'material'. Fallback chain: nodeMat -> material -> helperMat
+  const particleMaterial = useMemo<Material>(() => {
+    if (shadingMode === 'material' && (nodeMat as Material | null)) return nodeMat as Material;
+    if (shadingMode === 'material' && material) return material;
+    // Ensure helper uses consistent side
+    (helperMat as any).side = DoubleSide;
+    return helperMat;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shadingMode, material, nodeMat]);
+
+  if (!fluidSys) return null;
+  return (
+    <group>
+      <instancedMesh ref={meshRef} args={[geom, particleMaterial, Math.min(particlesRef.current.length || fluidSys.capacity, fluidSys.capacity)]} frustumCulled={false} />
+      {showHelper && <BoxHelper volumeBoxRef={volumeBoxRef} />}
+    </group>
+  );
+};
+
+const BoxHelper = ({ volumeBoxRef }: { volumeBoxRef: React.RefObject<THREE.Box3> }) => {
     const [verts, setVerts] = useState<Float32Array>(() => new Float32Array(0));
     useEffect(() => {
       const box = volumeBoxRef.current;
@@ -221,26 +250,18 @@ export const FluidSystemNode: React.FC<{ objectId: string; systemId: string }> =
         [box.max.x, box.min.y, box.max.z], [box.max.x, box.max.y, box.max.z],
         [box.min.x, box.min.y, box.max.z], [box.min.x, box.max.y, box.max.z],
       ];
-      pts.forEach(p => v.push(p[0],p[1],p[2]));
+      pts.forEach(p => v.push(p[0], p[1], p[2]));
       setVerts(new Float32Array(v));
-    });
+    }, [volumeBoxRef]);
+
     return (
       <line>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[verts, 3]} count={verts.length/3} array={verts} itemSize={3} />
+          <bufferAttribute attach="attributes-position" args={[verts, 3]} count={verts.length / 3} array={verts} itemSize={3} />
         </bufferGeometry>
         <lineBasicMaterial color="#3399ff" linewidth={1} />
       </line>
     );
   };
-
-  if (!fluidSys) return null;
-  return (
-    <group>
-      <instancedMesh ref={meshRef} args={[geom, material, Math.min(particlesRef.current.length || fluidSys.capacity, fluidSys.capacity)]} frustumCulled={false} />
-      {showHelper && <BoxHelper />}
-    </group>
-  );
-};
 
 export default FluidSystemNode;

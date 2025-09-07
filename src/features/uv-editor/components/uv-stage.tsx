@@ -83,6 +83,7 @@ function MeshUV({ mesh, selected, zoom, revision }: { mesh?: MeshType; selected:
       }
     }
     return new Float32Array(verts);
+    //eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mesh, revision]);
 
   // Deduplicate multiple loop UVs that reference the same vertex id (common after introducing per-loop UVs) by
@@ -111,6 +112,7 @@ function MeshUV({ mesh, selected, zoom, revision }: { mesh?: MeshType; selected:
       (a.selected ? sel : rest).push(x, y, 0);
     });
     return { sel: new Float32Array(sel), rest: new Float32Array(rest) };
+    //eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mesh, selected, revision]);
 
   return (
@@ -172,7 +174,7 @@ export const UVStageInner: React.FC<Omit<StageProps, 'className' | 'style'>> = (
   // Position UV origin at canvas center, add pan offset, apply zoom
   const groupX = size.width / 2 + pan.x;
   const groupY = size.height / 2 + pan.y;
-  
+
   return (
     <group position={[groupX, groupY, 0]} scale={[zoom, zoom, 1]}>
       <TextureTiled fileId={textureFileId} />

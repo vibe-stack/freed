@@ -3,9 +3,9 @@ import { animationTimer, animationFps } from '@/utils/shader-tsl/animation-timer
 
 export const timeResolvers = {
   // Built-in time sources (fallback to timerLocal/time if available)
-  time: () => (TSL).timerLocal?.() ?? (TSL).time ?? null,
-  timeSine: () => (TSL).timerLocal?.().sin() ?? null,
-  timeCos: () => (TSL).timerLocal?.().cos() ?? null,
+  time: () => (TSL).time ?? (TSL).time ?? null,
+  timeSine: () => (TSL).time.sin() ?? null,
+  timeCos: () => (TSL).time.cos() ?? null,
   // Animation-driven timers: shared uniforms updated from the animation system
   animTime: () => animationTimer,
   animFrame: () => {

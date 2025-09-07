@@ -341,7 +341,7 @@ const FluidSystemSection: React.FC<{ systemId: string }> = ({ systemId }) => {
     <div className="bg-white/5 border border-white/10 rounded p-2 space-y-2">
       <Label label="Emitter Object">
         <select className="w-full bg-transparent text-xs border border-white/10 rounded p-1" value={sys.emitterObjectId ?? ''} onChange={(e) => update({ emitterObjectId: e.target.value || null })}>
-          <option value="">Use this object's transform</option>
+          <option value="">Use this object&apos;s transform</option>
           {allIds.map(id => <option key={id} value={id}>{scene.objects[id]?.name || id}</option>)}
         </select>
       </Label>

@@ -5,7 +5,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Environment } from '@react-three/drei';
 // Postprocessing is not WebGPU compatible in this setup; disable for now
 import * as THREE from 'three/webgpu';
-import { useBloom, useDoF, useEnvironment, useFog, useRendererSettings } from '@/stores/world-store';
+import { useBloom, useEnvironment, useFog, useRendererSettings } from '@/stores/world-store';
 import { useShadingMode } from '@/stores/viewport-store';
 // three WebGPU postprocessing via TSL
 import { pass } from 'three/tsl';
@@ -113,6 +113,7 @@ export const WorldEffects: React.FC = () => {
       bloomRef.current = null;
       scenePassColorRef.current = null;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gl, scene, camera, bloom.enabled, shading]);
 
   // React to bloom parameter changes

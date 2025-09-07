@@ -6,6 +6,7 @@ import { useSelection, useSelectionStore } from '@/stores/selection-store';
 import { Eye, EyeOff, Lock, Unlock, Camera, CameraOff, Folder, FolderOpen, Shapes, Trash2, Copy, Scissors, ClipboardPaste, FolderPlus } from 'lucide-react';
 import { useClipboardStore } from '@/stores/clipboard-store';
 import { ContextMenu } from '@base-ui-components/react/context-menu';
+import { SceneObject } from '@/types/geometry';
 
 const Panel: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = '', children, ...rest }) => (
 	<div className={`bg-black/40 backdrop-blur-md border border-white/10 rounded-lg shadow-lg shadow-black/30 w-64 h-full ${className}`} {...rest}>
@@ -19,7 +20,7 @@ type RowProps = {
 	depth: number;
 	visible: boolean;
 	locked: boolean;
-	type: 'mesh' | 'light' | 'camera' | 'group' | 'particles' | 'force';
+	type: SceneObject["type"];
 	render: boolean;
 	renamingId: string | null;
 	draftName: string;
