@@ -12,18 +12,20 @@ type StageProps = {
   pan: { x: number; y: number };
   zoom: number; // pixels per UV unit
   textureFileId?: string;
+  // Incrementing number to force recomputation of memoized buffers when geometry mutates in-place
+  revision?: number;
   className?: string;
   style?: React.CSSProperties;
 };
 
 function OrthoSizer() {
   const { camera, size } = useThree((s) => ({ camera: s.camera as THREE.OrthographicCamera, size: s.size }));
-  // Configure camera to pixel space so 1 world unit == 1 CSS pixel
+  // Configure camera to match CSS coordinates: Y+ down, origin at top-left
   if ((camera as any).isOrthographicCamera) {
-    camera.left = -size.width / 2;
-    camera.right = size.width / 2;
-    camera.top = size.height / 2;
-    camera.bottom = -size.height / 2;
+    camera.left = 0;
+    camera.right = size.width;
+    camera.top = 0;
+    camera.bottom = size.height;
     camera.near = -1000;
     camera.far = 1000;
     camera.position.set(0, 0, 10);
@@ -65,38 +67,51 @@ function GridLines({ zoom }: { zoom: number }) {
   );
 }
 
-function MeshUV({ mesh, selected, zoom }: { mesh?: MeshType; selected: Set<string>; zoom: number }) {
+function MeshUV({ mesh, selected, zoom, revision }: { mesh?: MeshType; selected: Set<string>; zoom: number; revision?: number }) {
+  // Edge lines still use face-loop ordering so seams remain visible
   const linesPos = useMemo(() => {
     if (!mesh) return new Float32Array();
     const verts: number[] = [];
-    // Use face loop UVs to draw edges per face to show seams accurately
     for (const f of mesh.faces) {
+      if (!f.uvs) continue;
       const loopCount = f.vertexIds.length;
       for (let i = 0; i < loopCount; i++) {
-        const uvA = f.uvs ? f.uvs[i] : mesh.vertices.find(v=>v.id===f.vertexIds[i])!.uv;
+        const uvA = f.uvs[i];
         const ni = (i + 1) % loopCount;
-        const uvB = f.uvs ? f.uvs[ni] : mesh.vertices.find(v=>v.id===f.vertexIds[ni])!.uv;
+        const uvB = f.uvs[ni];
         verts.push(uvA.x, uvA.y, 0, uvB.x, uvB.y, 0);
       }
     }
     return new Float32Array(verts);
-  }, [mesh]);
+  }, [mesh, revision]);
 
+  // Deduplicate multiple loop UVs that reference the same vertex id (common after introducing per-loop UVs) by
+  // collapsing to a single representative point per vertex id (average of contributing loops). This matches
+  // Blender's default display where coincident UV loops share a location unless explicitly split by a seam.
   const points = useMemo(() => {
     if (!mesh) return { sel: new Float32Array(), rest: new Float32Array() };
-    const sel: number[] = [];
-    const rest: number[] = [];
-    // Display unique loop UVs: we map (faceId,index) to position; selection still vertex-based fallback
+    interface Acc { x: number; y: number; n: number; selected: boolean }
+    const acc = new Map<string, Acc>();
     for (const f of mesh.faces) {
+      if (!f.uvs) continue;
       for (let i = 0; i < f.vertexIds.length; i++) {
         const vid = f.vertexIds[i];
-        const luv = f.uvs ? f.uvs[i] : mesh.vertices.find(v=>v.id===vid)!.uv;
-        const arr = selected.has(vid) ? sel : rest;
-        arr.push(luv.x, luv.y, 0);
+        const uv = f.uvs[i];
+        const a = acc.get(vid);
+        if (a) {
+          a.x += uv.x; a.y += uv.y; a.n++; // keep selected flag if already selected
+        } else {
+          acc.set(vid, { x: uv.x, y: uv.y, n: 1, selected: selected.has(vid) });
+        }
       }
     }
+    const sel: number[] = []; const rest: number[] = [];
+    acc.forEach((a) => {
+      const x = a.x / a.n; const y = a.y / a.n;
+      (a.selected ? sel : rest).push(x, y, 0);
+    });
     return { sel: new Float32Array(sel), rest: new Float32Array(rest) };
-  }, [mesh, selected]);
+  }, [mesh, selected, revision]);
 
   return (
     <>
@@ -152,18 +167,20 @@ function TextureTiled({ fileId }: { fileId?: string }) {
   );
 }
 
-export const UVStageInner: React.FC<Omit<StageProps, 'className' | 'style'>> = ({ mesh, selected, pan, zoom, textureFileId }) => {
+export const UVStageInner: React.FC<Omit<StageProps, 'className' | 'style'>> = ({ mesh, selected, pan, zoom, textureFileId, revision }) => {
+  const { size } = useThree();
+  // Position UV origin at canvas center, add pan offset, apply zoom
+  const groupX = size.width / 2 + pan.x;
+  const groupY = size.height / 2 + pan.y;
+  
   return (
-    // Root in pixel space; child group maps UV units -> pixels and flips Y
-    <group position={[pan.x, pan.y, 0]} scale={[zoom, -zoom, 1]}>
+    <group position={[groupX, groupY, 0]} scale={[zoom, zoom, 1]}>
       <TextureTiled fileId={textureFileId} />
       <GridLines zoom={zoom} />
-      <MeshUV mesh={mesh} selected={selected} zoom={zoom} />
+      <MeshUV mesh={mesh} selected={selected} zoom={zoom} revision={revision} />
     </group>
   );
-};
-
-export const UVStage: React.FC<StageProps> = ({ mesh, selected, pan, zoom, textureFileId, className, style }) => {
+}; export const UVStage: React.FC<StageProps> = ({ mesh, selected, pan, zoom, textureFileId, revision, className, style }) => {
   return (
     <Canvas
       className={className}
@@ -171,10 +188,10 @@ export const UVStage: React.FC<StageProps> = ({ mesh, selected, pan, zoom, textu
       orthographic
       dpr={[1, 2]}
       gl={{ antialias: true, alpha: true }}
-      frameloop="always"
     >
+
       <OrthoSizer />
-      <UVStageInner mesh={mesh} selected={selected} pan={pan} zoom={zoom} textureFileId={textureFileId} />
+      <UVStageInner mesh={mesh} selected={selected} pan={pan} zoom={zoom} textureFileId={textureFileId} revision={revision} />
     </Canvas>
   );
 };

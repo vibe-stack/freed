@@ -28,7 +28,8 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         startMouse: { x: number; y: number }; // in canvas px
         startUV: { x: number; y: number }; // uv at mouse start
         origin: { x: number; y: number }; // pivot (median)
-        uv0: Map<string, { x: number; y: number }>; // original selection uv
+        uv0: Map<string, { x: number; y: number }>; // original vertex uv
+        faceUV0: Map<string, { x: number; y: number }[]>; // original face loop uvs
         axis: AxisMode;
     }>(null);
     const [marquee, setMarquee] = useState<null | { start: { x: number; y: number }; current: { x: number; y: number }; additive: boolean }>(null);
@@ -98,7 +99,10 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
             const cx = (e.clientX - rect.left);
             const cy = (e.clientY - rect.top);
             const uBefore = (cx - (el.clientWidth / 2 + pan.x)) / zoom;
-            const vBefore = - (cy - (el.clientHeight / 2 + pan.y)) / zoom;
+            // NOTE: Previously we inverted Y here (legacy when stage flipped Y). That caused incorrect
+            // pan math after zoom resulting in vertical offset so picking felt "shifted". We now use
+            // the same positive-down coordinate system as screenToUV.
+            const vBefore = (cy - (el.clientHeight / 2 + pan.y)) / zoom;
             const delta = Math.sign(e.deltaY);
             setZoom((z) => {
                 const newZ = Math.max(32, Math.min(4096, delta > 0 ? z * 0.9 : z * 1.1));
@@ -106,7 +110,8 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
                 const vAfterPx = vBefore * newZ;
                 const centerX = el.clientWidth / 2;
                 const centerY = el.clientHeight / 2;
-                setPan({ x: cx - (centerX + uAfterPx), y: cy - (centerY - vAfterPx) });
+                // Keep the point under cursor stable: cy = centerY + newPan.y + vAfterPx => newPan.y = cy - centerY - vAfterPx
+                setPan({ x: cx - (centerX + uAfterPx), y: cy - (centerY + vAfterPx) });
                 return newZ;
             });
         };
@@ -119,8 +124,8 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         const w = el.clientWidth; const h = el.clientHeight;
         const cx = (clientX - rect.left); const cy = (clientY - rect.top);
         const u = (cx - (w / 2 + pan.x)) / zoom;
-        // Stage scales Y by -zoom, so invert here to map screen pixels -> UV space correctly
-        const v = - (cy - (h / 2 + pan.y)) / zoom;
+        // No Y inversion needed since stage no longer flips Y
+        const v = (cy - (h / 2 + pan.y)) / zoom;
         return { x: u, y: v };
     }, [pan.x, pan.y, zoom]);
 
@@ -131,26 +136,37 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         // Do not start marquee or selection changes if currently transforming; LMB will confirm on release
         if (xform) return;
         const uv = screenToUV(canvasRef.current, e.clientX, e.clientY);
-        // hit test nearest vertex
-        let closest: { id: string; dist: number; uv0: { x: number; y: number } } | null = null;
-        for (const v of mesh.vertices) {
-            const d = Math.hypot(v.uv.x - uv.x, v.uv.y - uv.y);
-            if (!closest || d < closest.dist) closest = { id: v.id, dist: d, uv0: { x: v.uv.x, y: v.uv.y } };
+
+        // Hit test nearest vertex using per-loop UVs (not averaged) so seams/islands pick correctly.
+        // We still return the underlying geometry vertex id so current selection model works, but distance
+        // is measured to the closest loop instance to avoid the "midpoint between islands" bug.
+        let closestHit: { id: string; dist: number } | null = null;
+        for (const f of mesh.faces) {
+            if (!f.uvs) continue;
+            for (let i = 0; i < f.vertexIds.length; i++) {
+                const vid = f.vertexIds[i];
+                const luv = f.uvs[i];
+                const d = Math.hypot(luv.x - uv.x, luv.y - uv.y);
+                if (closestHit === null || d < closestHit.dist) {
+                    closestHit = { id: vid, dist: d };
+                }
+            }
         }
+
         // Left button: pick/drag or start marquee. Right handled in move.
         if (e.button === 0) {
             // Click selects (with shift for additive). Movement with LMB is marquee only (no immediate drag-move).
-            if (closest && closest.dist < 8 / zoom) {
+            if (closestHit !== null && closestHit.dist < 8 / zoom) {
                 if (e.shiftKey) {
-                    uvSel.toggleSelection(closest.id);
-                    // Also propagate to global selection if in edit mode
-                    if (selection.viewMode === 'edit' && mesh) {
-                        useSelectionStore.getState().toggleVertexSelection(mesh.id, closest.id);
+                    uvSel.toggleSelection(closestHit.id);
+                    if (selection.viewMode === 'edit') {
+                        useSelectionStore.getState().toggleVertexSelection(mesh.id, closestHit.id);
                     }
-                } else if (!uvSel.selection.has(closest.id)) {
-                    uvSel.setSelection([closest.id]);
-                    if (selection.viewMode === 'edit' && mesh) {
-                        useSelectionStore.getState().selectVertices(mesh.id, [closest.id], false);
+                } else if (!uvSel.selection.has(closestHit.id)) {
+                    const id = closestHit.id;
+                    uvSel.setSelection([id]);
+                    if (selection.viewMode === 'edit') {
+                        useSelectionStore.getState().selectVertices(mesh.id, [id], false);
                     }
                 }
                 // Do not start a move here; G/R/S will handle transforms.
@@ -175,13 +191,25 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         // If in a transform, update it instead of panning
         if (xform && mesh) {
             const uvNow = screenToUV(canvasRef.current, e.clientX, e.clientY);
-            const du = uvNow.x - xform.startUV.x; const dv = uvNow.y - xform.startUV.y;
+            const du = uvNow.x - xform.startUV.x; const dv = uvNow.y - xform.startUV.y; // No Y inversion needed
             useGeometryStore.getState().updateMesh(mesh.id, (m) => {
                 if (xform.mode === 'translate') {
                     const ax = xform.axis === 'y' ? 0 : 1; const ay = xform.axis === 'x' ? 0 : 1;
                     for (const v of m.vertices) {
                         const o = xform.uv0.get(v.id);
-                        if (o) v.uv = { x: o.x + du * ax, y: o.y - dv * ay };
+                        if (o) v.uv = { x: o.x + du * ax, y: o.y + dv * ay };
+                    }
+                    // Also update per-face loop UVs if they exist
+                    for (const f of m.faces) {
+                        if (f.uvs && xform.faceUV0.has(f.id)) {
+                            const originalUVs = xform.faceUV0.get(f.id)!;
+                            for (let i = 0; i < f.vertexIds.length; i++) {
+                                const vid = f.vertexIds[i];
+                                if (xform.uv0.has(vid)) {
+                                    f.uvs[i] = { x: originalUVs[i].x + du * ax, y: originalUVs[i].y + dv * ay };
+                                }
+                            }
+                        }
                     }
                 } else if (xform.mode === 'rotate') {
                     // Angle from origin based on mouse movement relative to origin
@@ -199,6 +227,22 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
                         if (xform.axis === 'x') ry = py; else if (xform.axis === 'y') rx = px;
                         v.uv = { x: xform.origin.x + rx, y: xform.origin.y + ry };
                     }
+                    // Also update per-face loop UVs if they exist
+                    for (const f of m.faces) {
+                        if (f.uvs && xform.faceUV0.has(f.id)) {
+                            const originalUVs = xform.faceUV0.get(f.id)!;
+                            for (let i = 0; i < f.vertexIds.length; i++) {
+                                const vid = f.vertexIds[i];
+                                if (xform.uv0.has(vid)) {
+                                    const px = originalUVs[i].x - xform.origin.x; const py = originalUVs[i].y - xform.origin.y;
+                                    let rx = px * cos - py * sin;
+                                    let ry = px * sin + py * cos;
+                                    if (xform.axis === 'x') ry = py; else if (xform.axis === 'y') rx = px;
+                                    f.uvs[i] = { x: xform.origin.x + rx, y: xform.origin.y + ry };
+                                }
+                            }
+                        }
+                    }
                 } else if (xform.mode === 'scale') {
                     // Scale factor based on mouse distance ratio from origin
                     const d0 = Math.hypot(xform.startUV.x - xform.origin.x, xform.startUV.y - xform.origin.y) || 1e-6;
@@ -212,13 +256,26 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
                         const px = o.x - xform.origin.x; const py = o.y - xform.origin.y;
                         v.uv = { x: xform.origin.x + px * sx, y: xform.origin.y + py * sy };
                     }
+                    // Also update per-face loop UVs if they exist
+                    for (const f of m.faces) {
+                        if (f.uvs && xform.faceUV0.has(f.id)) {
+                            const originalUVs = xform.faceUV0.get(f.id)!;
+                            for (let i = 0; i < f.vertexIds.length; i++) {
+                                const vid = f.vertexIds[i];
+                                if (xform.uv0.has(vid)) {
+                                    const px = originalUVs[i].x - xform.origin.x; const py = originalUVs[i].y - xform.origin.y;
+                                    f.uvs[i] = { x: xform.origin.x + px * sx, y: xform.origin.y + py * sy };
+                                }
+                            }
+                        }
+                    }
                 }
             });
             setUpdateTrigger(t => t + 1);
             return;
         }
-        if (e.buttons === 2) { // right-drag pan (invert Y so dragging down pans view down) when not transforming
-            setPan((p) => ({ x: p.x + e.movementX, y: p.y - e.movementY }));
+        if (e.buttons === 2) { // right-drag pan (match coordinate system - no Y inversion) when not transforming
+            setPan((p) => ({ x: p.x + e.movementX, y: p.y + e.movementY }));
             return;
         }
         if (marquee && e.buttons === 1) {
@@ -235,24 +292,25 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         if (xform && e.button === 0) setXform(null);
         if (marquee && canvasRef.current && mesh) {
             const { start, current, additive } = marquee;
-            // Convert local px directly to UV space without double conversion
-            const el = canvasRef.current;
-            const w = el.clientWidth; const h = el.clientHeight;
+            
+            // Use screenToUV for consistent coordinate conversion
+            const startUV = screenToUV(canvasRef.current, start.x + canvasRef.current.getBoundingClientRect().left, start.y + canvasRef.current.getBoundingClientRect().top);
+            const currentUV = screenToUV(canvasRef.current, current.x + canvasRef.current.getBoundingClientRect().left, current.y + canvasRef.current.getBoundingClientRect().top);
 
-            // Convert local coordinates to UV space directly
-            const startU = (start.x - (w / 2 + pan.x)) / zoom;
-            const startV = -(start.y - (h / 2 + pan.y)) / zoom;
-            const currentU = (current.x - (w / 2 + pan.x)) / zoom;
-            const currentV = -(current.y - (h / 2 + pan.y)) / zoom;
-
-            const minU = Math.min(startU, currentU), maxU = Math.max(startU, currentU);
-            const minV = Math.min(startV, currentV), maxV = Math.max(startV, currentV);
+            const minU = Math.min(startUV.x, currentUV.x), maxU = Math.max(startUV.x, currentUV.x);
+            const minV = Math.min(startUV.y, currentUV.y), maxV = Math.max(startUV.y, currentUV.y);
 
             const picked: string[] = [];
-            for (const v of mesh.vertices) {
-                const inside = v.uv.x + 1e-6 >= minU && v.uv.x - 1e-6 <= maxU && v.uv.y + 1e-6 >= minV && v.uv.y - 1e-6 <= maxV;
-                if (inside) {
-                    picked.push(v.id);
+            // Only check face loop UVs (Blender-like behavior)
+            for (const f of mesh.faces) {
+                if (!f.uvs) continue; // Skip faces without loop UVs
+                for (let i = 0; i < f.vertexIds.length; i++) {
+                    const vid = f.vertexIds[i];
+                    const luv = f.uvs[i];
+                    const inside = luv.x + 1e-6 >= minU && luv.x - 1e-6 <= maxU && luv.y + 1e-6 >= minV && luv.y - 1e-6 <= maxV;
+                    if (inside && !picked.includes(vid)) {
+                        picked.push(vid);
+                    }
                 }
             }
 
@@ -265,12 +323,16 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
                 // If marquee is essentially a click, fallback to nearest vertex pick for correctness
                 const isClick = Math.abs(current.x - start.x) < 2 && Math.abs(current.y - start.y) < 2;
                 if (isClick) {
-                    // Find nearest vertex to the click position
-                    const uvClick = { x: startU, y: startV }; // start position in UV space
+                    // Find nearest vertex to the click position using per-loop UVs (consistent with pointer down)
+                    const uvClick = { x: startUV.x, y: startUV.y };
                     let closest: { id: string; d: number } | null = null;
-                    for (const v of mesh.vertices) {
-                        const d = Math.hypot(v.uv.x - uvClick.x, v.uv.y - uvClick.y);
-                        if (!closest || d < closest.d) closest = { id: v.id, d };
+                    for (const f of mesh.faces) {
+                        if (!f.uvs) continue;
+                        for (let i = 0; i < f.vertexIds.length; i++) {
+                            const vid = f.vertexIds[i]; const luv = f.uvs[i];
+                            const d = Math.hypot(luv.x - uvClick.x, luv.y - uvClick.y);
+                            if (!closest || d < closest.d) closest = { id: vid, d };
+                        }
                     }
                     if (closest) {
                         uvSel.setSelection([closest.id]);
@@ -294,9 +356,19 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         // Right-click cancels current transform
         if (xform && mesh) {
             useGeometryStore.getState().updateMesh(mesh.id, (m) => {
+                // Restore vertex UVs
                 for (const v of m.vertices) {
                     const o = xform.uv0.get(v.id);
                     if (o) v.uv = { x: o.x, y: o.y };
+                }
+                // Restore face UVs
+                for (const f of m.faces) {
+                    if (f.uvs && xform.faceUV0.has(f.id)) {
+                        const originalUVs = xform.faceUV0.get(f.id)!;
+                        for (let i = 0; i < f.vertexIds.length; i++) {
+                            f.uvs[i] = { x: originalUVs[i].x, y: originalUVs[i].y };
+                        }
+                    }
                 }
             });
             setXform(null);
@@ -324,17 +396,39 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
             const my = rect.top + localY;
             const startUV = screenToUV(canvasRef.current, mx, my);
 
-            // Origin: median of selected UVs
+            // Origin: median of selected UVs using face loop UVs (Blender-like behavior)
             let sx = 0, sy = 0, n = 0;
-            for (const v of mesh.vertices) {
-                if (effectiveSelection.has(v.id)) {
-                    sx += v.uv.x; sy += v.uv.y; n++;
+            const seenVertices = new Set<string>(); // Avoid double counting vertices that appear in multiple faces
+            for (const f of mesh.faces) {
+                if (!f.uvs) continue;
+                for (let i = 0; i < f.vertexIds.length; i++) {
+                    const vid = f.vertexIds[i];
+                    if (effectiveSelection.has(vid) && !seenVertices.has(vid)) {
+                        seenVertices.add(vid);
+                        sx += f.uvs[i].x; sy += f.uvs[i].y; n++;
+                    }
                 }
             }
             const origin = { x: n ? sx / n : 0, y: n ? sy / n : 0 };
+            
+            // Store original UVs for both vertices and face loops
             const uv0 = new Map<string, { x: number; y: number }>();
+            const faceUV0 = new Map<string, { x: number; y: number }[]>(); // faceId -> array of UVs
+            
+            // We still store vertex UVs for potential compatibility, but they won't be displayed
             for (const v of mesh.vertices) {
                 if (effectiveSelection.has(v.id)) uv0.set(v.id, { x: v.uv.x, y: v.uv.y });
+            }
+            
+            for (const f of mesh.faces) {
+                if (f.uvs) {
+                    // Store all face loop UVs for restoration if transform is cancelled
+                    const originalUVs: { x: number; y: number }[] = [];
+                    for (let i = 0; i < f.vertexIds.length; i++) {
+                        originalUVs.push({ x: f.uvs[i].x, y: f.uvs[i].y });
+                    }
+                    faceUV0.set(f.id, originalUVs);
+                }
             }
 
             const init = {
@@ -343,6 +437,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
                 startUV,
                 origin,
                 uv0,
+                faceUV0,
                 axis: 'xy' as AxisMode
             };
             setXform(init);
@@ -364,9 +459,19 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
             if (key === 'escape') {
                 // cancel
                 useGeometryStore.getState().updateMesh(mesh.id, (m) => {
+                    // Restore vertex UVs
                     for (const v of m.vertices) {
                         const o = xform.uv0.get(v.id);
                         if (o) v.uv = { x: o.x, y: o.y };
+                    }
+                    // Restore face UVs
+                    for (const f of m.faces) {
+                        if (f.uvs && xform.faceUV0.has(f.id)) {
+                            const originalUVs = xform.faceUV0.get(f.id)!;
+                            for (let i = 0; i < f.vertexIds.length; i++) {
+                                f.uvs[i] = { x: originalUVs[i].x, y: originalUVs[i].y };
+                            }
+                        }
                     }
                 });
                 setXform(null);
@@ -504,7 +609,7 @@ const UVEditor: React.FC<Props> = ({ open, onOpenChange }) => {
                         role="application"
                         style={{ outline: 'none' }}
                     >
-                        <UVStage mesh={mesh} selected={uvSel.selection} pan={pan} zoom={zoom} textureFileId={textureFileId ?? undefined} style={{ width: '100%', height: '100%' }} />
+                        <UVStage mesh={mesh} selected={uvSel.selection} pan={pan} zoom={zoom} revision={updateTrigger} textureFileId={textureFileId ?? undefined} style={{ width: '100%', height: '100%' }} />
                         {xform && (
                             <div className="absolute left-2 top-2 text-[12px] text-gray-300 bg-black/40 px-2 py-1 rounded border border-white/10">
                                 {xform.mode === 'translate' ? 'Move' : xform.mode === 'rotate' ? 'Rotate' : 'Scale'} {xform.axis !== 'xy' ? `(${xform.axis.toUpperCase()} constrained)` : ''} — LMB: confirm • RMB/Esc: cancel • X/Y: constrain axis
