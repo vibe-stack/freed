@@ -99,6 +99,16 @@ const TopToolbar: React.FC = () => {
     setMenuOpen(false);
   };
 
+  const addFluidSystem = () => {
+    const fn: any = (scene as any).createFluidSystemObject;
+    if (typeof fn === 'function') {
+      const id = fn('Fluid');
+      scene.selectObject(id);
+      if (selection.viewMode === 'object') selectionActions.selectObjects([id]);
+      setMenuOpen(false);
+    }
+  };
+
   const addForce = (type: 'attractor'|'repulsor'|'vortex') => {
     const pretty = type.charAt(0).toUpperCase() + type.slice(1);
     const id = scene.createForceFieldObject(pretty, type);
@@ -166,6 +176,7 @@ const TopToolbar: React.FC = () => {
               <Menu.Popup className="pointer-events-auto z-90 bg-black/60 backdrop-blur-md border border-white/10 rounded-lg shadow-lg p-1 text-xs min-w-44" style={{ zIndex: 10050 }}>
                 {/* Quick actions */}
                 <Menu.Item className="px-3 py-1.5 rounded hover:bg-white/5" onClick={addParticleSystem}>Particle System</Menu.Item>
+                <Menu.Item className="px-3 py-1.5 rounded hover:bg-emerald-500/20 text-emerald-300" onClick={addFluidSystem}>Fluid System</Menu.Item>
                 <div className="my-1 h-px bg-white/10" />
                 {/* Force Field submenu */}
                 <Menu.SubmenuRoot>

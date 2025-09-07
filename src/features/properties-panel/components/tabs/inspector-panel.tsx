@@ -11,6 +11,7 @@ import { useAnimationStore, type PropertyPath } from '@/stores/animation-store';
 import { Diamond as DiamondIcon } from 'lucide-react';
 import { useParticlesStore } from '@/stores/particles-store';
 import { useForceFieldStore } from '@/stores/force-field-store';
+import { useFluidStore } from '@/stores/fluid-store';
 
 const Label: React.FC<{ label: string } & React.HTMLAttributes<HTMLDivElement>> = ({ label, children, className = '', ...rest }) => (
   <div className={`text-xs text-gray-400 ${className}`} {...rest}>
@@ -172,6 +173,12 @@ export const InspectorPanel: React.FC = () => {
           <ForceFieldSection fieldId={selected.forceFieldId} />
         </div>
       )}
+      {selected.type === 'fluid' && selected.fluidSystemId && (
+        <div>
+          <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Fluid System</div>
+          <FluidSystemSection systemId={selected.fluidSystemId} />
+        </div>
+      )}
     </div>
   );
 };
@@ -320,3 +327,83 @@ const ForceFieldSection: React.FC<{ fieldId: string }>
       </div>
     );
   };
+
+const FluidSystemSection: React.FC<{ systemId: string }> = ({ systemId }) => {
+  const scene = useSceneStore();
+  const store = useFluidStore();
+  const sys = useFluidStore((s) => s.systems[systemId]);
+  if (!sys) return null;
+  const update = (partial: Partial<typeof sys>) => store.updateSystem(systemId, partial);
+  const sceneObjects = Object.values(scene.objects);
+  const allIds = sceneObjects.map((o) => o.id);
+  const meshIds = sceneObjects.filter((o) => o.type === 'mesh' && o.meshId).map((o) => o.id);
+  return (
+    <div className="bg-white/5 border border-white/10 rounded p-2 space-y-2">
+      <Label label="Emitter Object">
+        <select className="w-full bg-transparent text-xs border border-white/10 rounded p-1" value={sys.emitterObjectId ?? ''} onChange={(e) => update({ emitterObjectId: e.target.value || null })}>
+          <option value="">Use this object</option>
+          {allIds.map((id) => (<option key={id} value={id}>{scene.objects[id]?.name || id}</option>))}
+        </select>
+      </Label>
+      <Label label="Volume Object (container)">
+        <select className="w-full bg-transparent text-xs border border-white/10 rounded p-1" value={sys.volumeObjectId ?? ''} onChange={(e) => update({ volumeObjectId: e.target.value || null })}>
+          <option value="">-- None --</option>
+          {meshIds.map((id) => (<option key={id} value={id}>{scene.objects[id]?.name || id}</option>))}
+        </select>
+      </Label>
+      <Label label="Particle Mesh">
+        <select className="w-full bg-transparent text-xs border border-white/10 rounded p-1" value={sys.particleObjectId ?? ''} onChange={(e) => update({ particleObjectId: e.target.value || null })}>
+          <option value="">-- Select --</option>
+          {meshIds.map((id) => (<option key={id} value={id}>{scene.objects[id]?.name || id}</option>))}
+        </select>
+      </Label>
+      <Label label="Capacity">
+        <DragInput compact value={sys.capacity} precision={0} step={256} onChange={(v) => update({ capacity: Math.max(1, Math.min(100000, Math.round(v))) })} />
+      </Label>
+      <Label label="Emission Rate (per frame)">
+        <DragInput compact value={sys.emissionRate} precision={0} step={10} onChange={(v) => update({ emissionRate: Math.max(0, Math.round(v)) })} />
+      </Label>
+      <div className="grid grid-cols-2 gap-2">
+        <Label label="Radius">
+          <DragInput compact value={sys.radius} precision={3} step={0.005} onChange={(v) => update({ radius: Math.max(0.001, v) })} />
+        </Label>
+        <Label label="Iterations">
+          <DragInput compact value={sys.solverIterations} precision={0} step={1} onChange={(v) => update({ solverIterations: Math.max(1, Math.round(v)) })} />
+        </Label>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Label label="Substeps">
+          <DragInput compact value={sys.substeps} precision={0} step={1} onChange={(v) => update({ substeps: Math.max(1, Math.round(v)) })} />
+        </Label>
+        <Label label="Rest Density">
+          <DragInput compact value={sys.restDensity} precision={3} step={0.01} onChange={(v) => update({ restDensity: Math.max(1e-6, v) })} />
+        </Label>
+      </div>
+      <Label label="Gravity Y">
+        <DragInput compact value={sys.gravity.y} precision={3} step={0.01} onChange={(v) => update({ gravity: { ...sys.gravity, y: v } })} />
+      </Label>
+      <div className="grid grid-cols-2 gap-2">
+        <Label label="Viscosity">
+          <DragInput compact value={sys.viscosity} precision={3} step={0.01} onChange={(v) => update({ viscosity: Math.max(0, v) })} />
+        </Label>
+        <Label label="Bounce">
+          <DragInput compact value={sys.bounce} precision={3} step={0.01} onChange={(v) => update({ bounce: Math.max(0, Math.min(1, v)) })} />
+        </Label>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Label label="Drag">
+          <DragInput compact value={sys.drag} precision={4} step={0.0005} onChange={(v) => update({ drag: Math.max(0, v) })} />
+        </Label>
+        <div className="flex items-center gap-2 mt-4">
+          <div className="text-gray-400 text-xs">Viscosity</div>
+          <Switch checked={sys.enableViscosity} onCheckedChange={(v) => update({ enableViscosity: !!v })} />
+          <div className="text-gray-400 text-xs">Drag</div>
+          <Switch checked={sys.enableDrag} onCheckedChange={(v) => update({ enableDrag: !!v })} />
+        </div>
+      </div>
+      <Label label="Seed">
+        <DragInput compact value={sys.seed} precision={0} step={1} onChange={(v) => update({ seed: Math.max(0, Math.round(v)) })} />
+      </Label>
+    </div>
+  );
+};

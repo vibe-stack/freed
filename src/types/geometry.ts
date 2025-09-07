@@ -92,7 +92,7 @@ export interface Selection {
 export interface SceneObject {
   id: string;
   name: string;
-  type: 'mesh' | 'light' | 'camera' | 'group' | 'particles' | 'force';
+  type: 'mesh' | 'light' | 'camera' | 'group' | 'particles' | 'force' | 'fluid';
   parentId: string | null;
   children: string[];
   transform: Transform;
@@ -108,6 +108,8 @@ export interface SceneObject {
   particleSystemId?: string; // For particle system objects
   // Force field component reference (for type === 'force')
   forceFieldId?: string;
+  // Fluid system reference (for type === 'fluid')
+  fluidSystemId?: string;
 }
 
 // Scene component data types

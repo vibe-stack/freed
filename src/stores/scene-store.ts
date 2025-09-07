@@ -48,6 +48,7 @@ interface SceneActions {
   createCameraObject: (name: string, type: CameraType) => string;
   createParticleSystemObject: (name: string) => string;
   createForceFieldObject: (name: string, type: 'attractor' | 'repulsor' | 'vortex') => string;
+  createFluidSystemObject: (name: string) => string;
   groupObjects: (objectIds: string[], name?: string) => string | null;
   ungroupObject: (groupId: string) => void;
   getObject: (objectId: string) => SceneObject | null;
@@ -132,6 +133,12 @@ export const useSceneStore = create<SceneStore>()(
                 try {
                   const { useForceFieldStore } = require('./force-field-store');
                   useForceFieldStore.getState().removeField((obj as any).forceFieldId);
+                } catch {}
+              }
+              if ((obj as any).fluidSystemId) {
+                try {
+                  const { useFluidStore } = require('./fluid-store');
+                  useFluidStore.getState().removeSystem((obj as any).fluidSystemId);
                 } catch {}
               }
               obj.children.forEach((childId: string) => removeRecursive(childId));
@@ -567,6 +574,28 @@ export const useSceneStore = create<SceneStore>()(
           locked: false,
           render: true,
           forceFieldId: fieldId,
+        } as any;
+        get().addObject(object);
+        return object.id;
+      },
+      createFluidSystemObject: (name: string) => {
+        const { useFluidStore } = require('./fluid-store');
+        const sysId: string = useFluidStore.getState().addSystem();
+        const object: SceneObject = {
+          id: nanoid(),
+          name,
+            type: 'fluid',
+          parentId: null,
+          children: [],
+          transform: {
+            position: vec3(0, 0, 0),
+            rotation: vec3(0, 0, 0),
+            scale: vec3(1, 1, 1),
+          },
+          visible: true,
+          locked: false,
+          render: true,
+          fluidSystemId: sysId,
         } as any;
         get().addObject(object);
         return object.id;
