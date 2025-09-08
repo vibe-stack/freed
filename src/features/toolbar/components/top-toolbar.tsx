@@ -10,6 +10,7 @@ import { useSceneStore } from '@/stores/scene-store';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { useShapeCreationStore } from '@/stores/shape-creation-store';
 import { useToolStore } from '@/stores/tool-store';
+import { SparklesIcon } from 'lucide-react';
 
 const Pill = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className = '', children, ...rest }, ref) => (
   <div
@@ -26,8 +27,8 @@ const SegButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { acti
   = ({ className = '', active = false, children, ...rest }) => (
     <button
       className={`px-3 py-1.5 text-xs rounded-md transition-colors ${active
-          ? 'bg-white/10 text-white'
-          : 'text-gray-300 hover:text-white hover:bg-white/5'
+        ? 'bg-white/10 text-white'
+        : 'text-gray-300 hover:text-white hover:bg-white/5'
         } ${className}`}
       {...rest}
     >
@@ -101,7 +102,7 @@ const TopToolbar: React.FC = () => {
     setMenuOpen(false);
   };
 
-  const addForce = (type: 'attractor'|'repulsor'|'vortex') => {
+  const addForce = (type: 'attractor' | 'repulsor' | 'vortex') => {
     const pretty = type.charAt(0).toUpperCase() + type.slice(1);
     const id = scene.createForceFieldObject(pretty, type);
     scene.selectObject(id);
@@ -158,7 +159,7 @@ const TopToolbar: React.FC = () => {
         </div>
       </Pill>
 
-  <Pill className="px-1 py-1 relative">
+      <Pill className="px-1 py-1 relative">
         <AddObjectMenu
           portalContainer={portalContainer}
           controlledOpen={menuOpen}
@@ -173,6 +174,10 @@ const TopToolbar: React.FC = () => {
           onAddParticleSystem={addParticleSystem}
           onAddFluidSystem={() => { /* top toolbar: no fluid UI, create via scene API */ const id = scene.createFluidSystemObject('Fluid System'); scene.selectObject(id); if (selection.viewMode === 'object') selectionActions.selectObjects([id]); setMenuOpen(false); }}
         />
+      </Pill>
+
+      <Pill className='px-2 py-1 relative'>
+        <SparklesIcon className='w-4 h-4 m-1 text-green-200' />
       </Pill>
     </div>
   );
