@@ -20,6 +20,7 @@ import Timeline from '@/features/animation/components/Timeline';
 import { useAnimationStore } from '@/stores/animation-store';
 import UVEditor from '@/features/uv-editor/components/uv-editor';
 import { useUVEditorStore } from '@/stores/uv-editor-store';
+import { AnimatePresence } from "motion/react"
 
 const EditorLayout: React.FC = () => {
   const shaderOpen = useShaderEditorStore((s) => s.open);
@@ -63,22 +64,26 @@ const EditorLayout: React.FC = () => {
           </div>
 
           {/* Left Scene Hierarchy Panel - shrink when timeline open */}
-          {!minimalUi && (
-            <div className="absolute left-4 z-20" style={{ top: timelineOpen ? 80 : 128 }}>
-              <div style={{ height: timelineOpen ? '44dvh' : '60dvh' }}>
-                <SceneHierarchyPanel />
+          <AnimatePresence>
+            {!minimalUi && (
+              <div className="absolute left-4 z-20" style={{ top: timelineOpen ? 80 : 128 }}>
+                <div style={{ height: timelineOpen ? '44dvh' : '60dvh' }}>
+                  <SceneHierarchyPanel />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </AnimatePresence>
 
           {/* Right Properties Panel - shrink when timeline open */}
-          {!minimalUi && (
-            <div className="absolute right-4 z-20" style={{ top: timelineOpen ? 80 : 128 }}>
-              <div style={{ height: timelineOpen ? '44dvh' : '60dvh' }}>
-                <PropertiesPanel />
+          <AnimatePresence>
+            {!minimalUi && (
+              <div className="absolute right-4 z-20" style={{ top: timelineOpen ? 80 : 128 }}>
+                <div style={{ height: timelineOpen ? '44dvh' : '60dvh' }}>
+                  <PropertiesPanel />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </AnimatePresence>
 
           {/* Tool Indicator - shows when tools are active */}
           <ToolIndicator />

@@ -8,6 +8,7 @@ import OutputPanel from './tabs/output-panel';
 import type { LucideIcon } from 'lucide-react';
 import { Wrench, Box, Layers, Globe, Sliders, Camera, HardDrive } from 'lucide-react';
 import ModifiersPanel from '@/features/properties-panel/components/tabs/modifiers-panel';
+import * as motion from "motion/react-client"
 
 type TabDef = { key: PropertiesTab; label: string; icon: LucideIcon };
 
@@ -26,7 +27,7 @@ export const PropertiesPanel: React.FC = () => {
   const { setActiveTab } = usePropertiesPanelStore();
 
   return (
-    <div className="bg-black/40 h-full backdrop-blur-md border border-white/10 rounded-lg shadow-lg shadow-black/30 w-80 flex flex-col text-[12px]">
+    <motion.div initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 50, opacity: 0 }} className="bg-black/40 h-full backdrop-blur-md border border-white/10 rounded-lg shadow-lg shadow-black/30 w-80 flex flex-col text-[12px]">
       <div className="border-b border-white/10">
         <div className="flex gap-1 px-2 py-0.5">
           {tabs.map(({ key, label, icon: Icon }) => (
@@ -43,17 +44,17 @@ export const PropertiesPanel: React.FC = () => {
         </div>
 
       </div>
-  <div className="flex-1 min-h-0 overflow-auto">
+      <div className="flex-1 min-h-0 overflow-auto">
         {active === 'inspector' && <InspectorPanel />}
         {active === 'world' && <WorldPanel />}
         {active === 'modifiers' && <ModifiersPanel />}
-  {active === 'output' && <OutputPanel />}
-  {active !== 'inspector' && active !== 'world' && active !== 'modifiers' && active !== 'output' && (
+        {active === 'output' && <OutputPanel />}
+        {active !== 'inspector' && active !== 'world' && active !== 'modifiers' && active !== 'output' && (
           <div className="p-2 text-[11px] text-gray-500">
             {tabs.find((t) => t.key === active)?.label} panel coming soon.
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };

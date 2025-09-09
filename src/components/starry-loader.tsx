@@ -23,8 +23,8 @@ type Shooting = {
   maxLife: number; // seconds
 };
 
-const MIN_DURATION = 3500; // ms
-const FADE_OUT_MS = 500; // ms
+const MIN_DURATION = 1500; // ms
+const FADE_OUT_MS = 200; // ms
 
 export const StarryLoader: React.FC<{ onDone?: () => void }> = ({ onDone }) => {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);

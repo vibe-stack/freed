@@ -8,11 +8,19 @@ import { useClipboardStore } from '@/stores/clipboard-store';
 import { ContextMenu } from '@base-ui-components/react/context-menu';
 import { SceneObject } from '@/types/geometry';
 import { useTextStore } from '@/stores/text-store';
+import * as motion from "motion/react-client"
+import { HTMLMotionProps } from 'motion/react';
 
-const Panel: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = '', children, ...rest }) => (
-	<div className={`bg-black/40 backdrop-blur-md border border-white/10 rounded-lg shadow-lg shadow-black/30 w-64 h-full ${className}`} {...rest}>
+const Panel = ({ className = '', children, ...rest }: HTMLMotionProps<"div">) => (
+	<motion.div initial={{
+		x: -50, opacity: 0,
+	}} animate={{
+		x: 0, opacity: 1
+	}} exit={{
+		x: -50, opacity: 0
+	}} className={`bg-black/40 backdrop-blur-md border border-white/10 rounded-lg shadow-lg shadow-black/30 w-64 h-full ${className}`} {...rest}>
 		{children}
-	</div>
+	</motion.div>
 );
 
 type RowProps = {
@@ -224,13 +232,13 @@ const Row: React.FC<RowProps>
 								</div>
 							</ContextMenu.Item>
 							<ContextMenu.Separator />
-						{type === 'text' && textRes && !textRes.rasterized && (
-							<ContextMenu.Item onClick={() => { if (scene.objects[id]?.textId) textStore.rasterizeText(scene.objects[id]!.textId!); }}>
-								<div className="flex items-center gap-2 px-2 py-1.5">
-									<span>Rasterize to Mesh</span>
-								</div>
-							</ContextMenu.Item>
-						)}
+							{type === 'text' && textRes && !textRes.rasterized && (
+								<ContextMenu.Item onClick={() => { if (scene.objects[id]?.textId) textStore.rasterizeText(scene.objects[id]!.textId!); }}>
+									<div className="flex items-center gap-2 px-2 py-1.5">
+										<span>Rasterize to Mesh</span>
+									</div>
+								</ContextMenu.Item>
+							)}
 							<ContextMenu.Item onClick={() => { if (type === 'group') scene.setVisibleRecursive(id, !visible); else scene.setVisible(id, !visible); }}>
 								<div className="flex items-center gap-2 px-2 py-1.5">
 									{visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
