@@ -53,7 +53,9 @@ const EditorLayout: React.FC = () => {
           <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-3 z-20 space-y-2 flex flex-col items-center">
             <TopToolbar />
             {/* Edit/Sculpt toolbars (only one visible based on palette) */}
-            {editPalette === 'sculpt' ? <SculptToolsToolbar /> : <EditToolsToolbar />}
+            <AnimatePresence mode="popLayout">
+              {editPalette === 'sculpt' ? <SculptToolsToolbar /> : <EditToolsToolbar />}
+            </AnimatePresence>
           </div>
 
           {/* Right slim camera switcher aligned with top toolbar */}

@@ -11,6 +11,8 @@ export function deleteVerticesInMesh(mesh: Mesh, vertexIds: string[]) {
   mesh.faces = mesh.faces.filter(f => !f.vertexIds.some(id => toDelete.has(id)));
   // Rebuild edges from remaining faces
   mesh.edges = buildEdgesFromFaces(mesh.vertices, mesh.faces);
+  // Try to repair any leftover topology issues
+  repairMeshTopology(mesh);
 }
 
 // Delete faces by ids and rebuild edges
@@ -19,6 +21,7 @@ export function deleteFacesInMesh(mesh: Mesh, faceIds: string[]) {
   const drop = new Set(faceIds);
   mesh.faces = mesh.faces.filter(f => !drop.has(f.id));
   mesh.edges = buildEdgesFromFaces(mesh.vertices, mesh.faces);
+  repairMeshTopology(mesh);
 }
 
 // Delete faces that contain any of the given topological edges (by vertex pair)
@@ -44,6 +47,7 @@ export function deleteEdgesInMesh(mesh: Mesh, edgeIds: string[]) {
   };
   mesh.faces = mesh.faces.filter(f => !dropFace(f.vertexIds));
   mesh.edges = buildEdgesFromFaces(mesh.vertices, mesh.faces);
+  repairMeshTopology(mesh);
 }
 
 // Merge selected vertices into a single vertex. By default, keep the first vertex id and move it to the centroid.
@@ -108,4 +112,74 @@ export function mergeVerticesInMesh(mesh: Mesh, vertexIds: string[], mode: 'cent
   mesh.faces = resultFaces;
   // Rebuild edges
   mesh.edges = buildEdgesFromFaces(mesh.vertices, mesh.faces);
+  // Ensure topology is consistent after merge
+  repairMeshTopology(mesh);
+}
+
+// Repair common topology issues after manual edits:
+// - Remove vertices not referenced by any face
+// - Remove degenerate faces (less than 3 unique vertices)
+// - Rebuild edges
+export function repairMeshTopology(mesh: Mesh) {
+  if (!mesh) return;
+  // Remove degenerate faces first
+  mesh.faces = mesh.faces.filter((f) => {
+    const rem = f.vertexIds.filter(Boolean);
+    const uniq = new Set(rem);
+    return rem.length >= 3 && uniq.size >= 3;
+  });
+
+  // Collect referenced vertex ids
+  const used = new Set<string>();
+  for (const f of mesh.faces) for (const id of f.vertexIds) used.add(id);
+
+  // Remove vertices that are not used by any face
+  mesh.vertices = mesh.vertices.filter((v) => used.has(v.id));
+
+  // Rebuild edges from faces
+  mesh.edges = buildEdgesFromFaces(mesh.vertices, mesh.faces);
+}
+
+// Merge selected vertices which are within `distance` of each other. Clusters are merged to their centroid.
+export function mergeVerticesByDistance(mesh: Mesh, vertexIds: string[], distance: number, mode: 'center' | 'first' = 'center') {
+  if (!mesh || vertexIds.length < 2) return;
+  const distSq = distance * distance;
+  // Map id -> vertex
+  const vertsById = new Map(mesh.vertices.map(v => [v.id, v] as const));
+  const selVerts = vertexIds.map(id => vertsById.get(id)).filter(Boolean) as typeof mesh.vertices;
+  const n = selVerts.length;
+  if (n < 2) return;
+
+  // Union-find for clustering
+  const parent: number[] = new Array(n).fill(0).map((_, i) => i);
+  const find = (a: number): number => (parent[a] === a ? a : (parent[a] = find(parent[a])));
+  const union = (a: number, b: number) => { const pa = find(a), pb = find(b); if (pa !== pb) parent[pa] = pb; };
+
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const a = selVerts[i].position;
+      const b = selVerts[j].position;
+      const dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
+      if (dx*dx + dy*dy + dz*dz <= distSq) union(i, j);
+    }
+  }
+
+  // Group indices by root
+  const groups = new Map<number, string[]>();
+  for (let i = 0; i < n; i++) {
+    const root = find(i);
+    const arr = groups.get(root) || [];
+    arr.push(selVerts[i].id);
+    groups.set(root, arr);
+  }
+
+  // Merge each group with size >= 2
+  const clusters = Array.from(groups.values()).filter(g => g.length >= 2);
+  for (const cluster of clusters) {
+    // Use existing merge routine which handles face remapping and degenerate removal
+    mergeVerticesInMesh(mesh, cluster, mode);
+  }
+
+  // Final repair pass
+  repairMeshTopology(mesh);
 }

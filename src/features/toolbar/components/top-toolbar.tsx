@@ -11,20 +11,72 @@ import { useShapeCreationStore } from '@/stores/shape-creation-store';
 import { useToolStore } from '@/stores/tool-store';
 import { Pill } from './pill';
 import { AIGeneratePopover } from './ai-generate-popover';
-
+import * as motion from "motion/react-client"
+import { AnimatePresence } from 'motion/react'
 
 const SegButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { active?: boolean }>
   = ({ className = '', active = false, children, ...rest }) => (
-    <button
-      className={`px-3 py-1.5 text-xs rounded-md transition-colors ${active
-        ? 'bg-white/10 text-white'
-        : 'text-gray-300 hover:text-white hover:bg-white/5'
-        } ${className}`}
-      {...rest}
+    <motion.div
+      layout
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+      className={`rounded-md ${className}`}
     >
-      {children}
-    </button>
+      <button
+        className={`px-3 py-1.5 text-xs rounded-md transition-colors ${active
+          ? 'bg-white/10 text-white'
+          : 'text-gray-300 hover:text-white hover:bg-white/5'
+          } w-full h-full`}
+        {...rest}
+      >
+        {children}
+      </button>
+    </motion.div>
   );
+
+// Small SVG icon set for shading modes — Blender-style orbs
+const IconWire: React.FC = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+    {/* outer sphere */}
+    <circle cx="12" cy="12" r="7.2" stroke="currentColor" strokeWidth="1.2" fill="none" />
+    {/* latitude (equator) and vertical ellipse */}
+    <ellipse cx="12" cy="12" rx="6.2" ry="2.8" stroke="currentColor" strokeWidth="0.9" fill="none" opacity="0.85" />
+    <ellipse cx="12" cy="12" rx="2.8" ry="6.2" stroke="currentColor" strokeWidth="0.9" fill="none" opacity="0.6" transform="rotate(90 12 12)" />
+    {/* meridian arcs (left / right) */}
+    <path d="M6.25 6.75C8 8 8 16 6.25 17.25" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" opacity="0.75" fill="none" />
+    <path d="M17.75 6.75C16 8 16 16 17.75 17.25" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" opacity="0.75" fill="none" />
+  </svg>
+)
+
+const IconSolid: React.FC = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+    {/* filled sphere with subtle rim and highlight */}
+    <circle cx="12" cy="12" r="7.2" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeWidth="0.6" />
+    {/* soft highlight */}
+    <circle cx="9.5" cy="9.2" r="2.8" fill="#ffffff" fillOpacity="0.12" />
+    {/* thin seam for depth */}
+    <ellipse cx="12" cy="12.6" rx="5.6" ry="1.9" fill="none" stroke="currentColor" strokeWidth="0.6" opacity="0.04" />
+  </svg>
+)
+
+const IconMaterial: React.FC = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+    {/* beach-ball style orb: three colored sectors with seams */}
+    <circle cx="12" cy="12" r="7.2" fill="#ffffff" stroke="currentColor" strokeWidth="0.6" />
+    {/* right (red) wedge */}
+    <path d="M12 12 L15.6 5.8 A7.2 7.2 0 0 1 15.6 18.24 Z" fill="#ef4444" />
+    {/* bottom (yellow) wedge */}
+    <path d="M12 12 L15.6 18.24 A7.2 7.2 0 0 1 4.8 12 Z" fill="#f59e0b" />
+    {/* left (blue) wedge */}
+    <path d="M12 12 L4.8 12 A7.2 7.2 0 0 1 15.6 5.8 Z" fill="#2563eb" />
+    {/* seams */}
+    <path d="M12 3a9 9 0 0 1 0 18" stroke="#ffffff" strokeWidth="0.8" strokeOpacity="0.9" fill="none" strokeLinecap="round" />
+    <path d="M4.8 12h14.4" stroke="#ffffff" strokeWidth="0.6" strokeOpacity="0.8" strokeLinecap="round" />
+    {/* small highlight */}
+    <circle cx="9.2" cy="8.8" r="1.3" fill="#ffffff" fillOpacity="0.9" />
+  </svg>
+)
 
 const TopToolbar: React.FC = () => {
   const selection = useSelection();
@@ -113,7 +165,7 @@ const TopToolbar: React.FC = () => {
   return (
     <div className="flex items-center gap-2">
       <Pill className="px-2 py-1">
-        <div className="flex items-center gap-1">
+        <motion.div layout className="flex items-center gap-1">
           <SegButton
             active={selection.viewMode === 'object'}
             onClick={() => {
@@ -131,21 +183,47 @@ const TopToolbar: React.FC = () => {
               <SegButton active={tools.editPalette === 'sculpt'} onClick={() => tools.setEditPalette('sculpt')}>Sculpt</SegButton>
             </div>
           )}
-          <div className="mx-1 w-px h-4 bg-white/10" />
-          <SegButton active={selection.selectionMode === 'vertex'} onClick={() => selectionActions.setSelectionMode('vertex')}>V</SegButton>
-          <SegButton active={selection.selectionMode === 'edge'} onClick={() => selectionActions.setSelectionMode('edge')}>E</SegButton>
-          <SegButton active={selection.selectionMode === 'face'} onClick={() => selectionActions.setSelectionMode('face')}>F</SegButton>
-        </div>
+          <AnimatePresence mode="popLayout">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mx-1 w-px h-4 bg-white/10" />
+            {selection.viewMode === 'edit' && (
+              <motion.div
+                key="selection-modes"
+                layout
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -6 }}
+                transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+                className="ml-1 flex items-center"
+                style={{ overflow: 'hidden', minWidth: 0 }}
+              >
+                <SegButton active={selection.selectionMode === 'vertex'} onClick={() => selectionActions.setSelectionMode('vertex')}>V</SegButton>
+                <SegButton active={selection.selectionMode === 'edge'} onClick={() => selectionActions.setSelectionMode('edge')}>E</SegButton>
+                <SegButton active={selection.selectionMode === 'face'} onClick={() => selectionActions.setSelectionMode('face')}>F</SegButton>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
       </Pill>
 
       <Pill className="px-2 py-1">
         <div className="flex items-center gap-1">
-          <SegButton active={viewport.showGrid} onClick={() => viewport.toggleGrid()}>Grid</SegButton>
-          <SegButton active={viewport.showAxes} onClick={() => viewport.toggleAxes()}>Axes</SegButton>
-          <div className="mx-1 w-px h-4 bg-white/10" />
-          <SegButton active={viewport.shadingMode === 'wireframe'} onClick={() => viewport.setShadingMode('wireframe')}>Wire</SegButton>
-          <SegButton active={viewport.shadingMode === 'solid'} onClick={() => viewport.setShadingMode('solid')}>Solid</SegButton>
-          <SegButton active={viewport.shadingMode === 'material'} onClick={() => viewport.setShadingMode('material')}>Mat</SegButton>
+          <div className="flex items-center gap-1">
+            <SegButton
+              aria-label="Wireframe"
+              active={viewport.shadingMode === 'wireframe'}
+              onClick={() => viewport.setShadingMode('wireframe')}
+            ><IconWire /></SegButton>
+            <SegButton
+              aria-label="Solid"
+              active={viewport.shadingMode === 'solid'}
+              onClick={() => viewport.setShadingMode('solid')}
+            ><IconSolid /></SegButton>
+            <SegButton
+              aria-label="Material"
+              active={viewport.shadingMode === 'material'}
+              onClick={() => viewport.setShadingMode('material')}
+            ><IconMaterial /></SegButton>
+          </div>
         </div>
       </Pill>
 
@@ -166,7 +244,9 @@ const TopToolbar: React.FC = () => {
         />
       </Pill>
 
-      <AIGeneratePopover />
+      <div className="ml-8 mt-1">
+        <AIGeneratePopover />
+      </div>
     </div>
   );
 };

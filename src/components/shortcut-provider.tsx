@@ -374,6 +374,30 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
       description: 'Merge vertices (M) — at center',
       preventDefault: true,
     },
+    // Merge by distance (Shift+M)
+    {
+      key: 'm',
+      shift: true,
+      action: () => {
+        const sel = useSelectionStore.getState().selection;
+        if (sel.viewMode !== 'edit' || sel.selectionMode !== 'vertex' || !sel.meshId) return;
+        if (sel.vertexIds.length < 2) return;
+        const input = window.prompt('Merge distance (units):', '0.001');
+        if (!input) return;
+        const val = parseFloat(input);
+        if (Number.isNaN(val) || val <= 0) return;
+        const geo = useGeometryStore.getState();
+        const meshId = sel.meshId;
+        geo.updateMesh(meshId, (mesh) => {
+          const ops = require('@/utils/edit-ops');
+          if (ops.mergeVerticesByDistance) ops.mergeVerticesByDistance(mesh, sel.vertexIds, val, 'center');
+        });
+        geo.recalculateNormals(meshId);
+        useSelectionStore.getState().selectVertices(meshId, []);
+      },
+      description: 'Merge vertices by distance (Shift+M)',
+      preventDefault: true,
+    },
     // Copy/Cut/Paste for Object Mode
     {
       key: 'c',
@@ -451,6 +475,7 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
 
   const handleKeyDown = (event: KeyboardEvent) => {
     const target = event.target as HTMLElement;
+    
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true') {
       return;
     }

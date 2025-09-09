@@ -2,6 +2,7 @@ import React from 'react';
 import { ContextMenu } from '@base-ui-components/react/context-menu';
 import { Html } from '@react-three/drei';
 import { useGeometryStore } from '@/stores/geometry-store';
+import { mergeVerticesByDistance } from '@/utils/edit-ops';
 import { useSelectionStore } from '@/stores/selection-store';
 import { deleteVerticesInMesh, deleteEdgesInMesh, deleteFacesInMesh, mergeVerticesInMesh } from '@/utils/edit-ops';
 
@@ -30,7 +31,7 @@ const EditModeContextMenu: React.FC<EditModeContextMenuProps> = ({
 	clearSeams,
 	unwrapBySeams,
 }) => {
-	const geometryStore = useGeometryStore();
+	// geometryStore intentionally unused here; operations use the geometry store singleton via getState()
 
 	const handleDeleteSelected = () => {
 		if (!meshId) return;
@@ -63,6 +64,25 @@ const EditModeContextMenu: React.FC<EditModeContextMenuProps> = ({
 		const m = useGeometryStore.getState().meshes.get(meshId);
 		const still = m?.vertices.some(v => v.id === kept) ? [kept] : [];
 		useSelectionStore.getState().selectVertices(meshId, still);
+		setCmOpen(false);
+	};
+
+	const handleMergeByDistance = async () => {
+		if (!meshId) return;
+		const sel = selection;
+		if (sel.selectionMode !== 'vertex' || sel.vertexIds.length < 2) return;
+		// Ask user for distance via prompt (simple, non-blocking)
+		const input = window.prompt('Merge distance (units):', '0.001');
+		if (!input) return;
+		const val = parseFloat(input);
+		if (Number.isNaN(val) || val <= 0) return;
+		const geo = useGeometryStore.getState();
+		geo.updateMesh(meshId, (m) => {
+			mergeVerticesByDistance(m, sel.vertexIds, val, 'center');
+		});
+		geo.recalculateNormals(meshId);
+		// After merge, clear selection
+		useSelectionStore.getState().selectVertices(meshId, []);
 		setCmOpen(false);
 	};
 
@@ -103,6 +123,9 @@ const EditModeContextMenu: React.FC<EditModeContextMenuProps> = ({
 								</ContextMenu.Item>
 								<ContextMenu.Item onClick={handleMergeVertices} disabled={!meshId || selection.selectionMode !== 'vertex' || selection.vertexIds.length < 2}>
 									<div className={`px-2 py-1.5 rounded ${!meshId || selection.selectionMode !== 'vertex' || selection.vertexIds.length < 2 ? 'text-gray-500' : 'hover:bg-white/10 cursor-default'}`}>Merge Vertices (Center)</div>
+								</ContextMenu.Item>
+								<ContextMenu.Item onClick={handleMergeByDistance} disabled={!meshId || selection.selectionMode !== 'vertex' || selection.vertexIds.length < 2}>
+									<div className={`px-2 py-1.5 rounded ${!meshId || selection.selectionMode !== 'vertex' || selection.vertexIds.length < 2 ? 'text-gray-500' : 'hover:bg-white/10 cursor-default'}`}>Merge Vertices (By Distance)</div>
 								</ContextMenu.Item>
 							</div>
 						</ContextMenu.Popup>
