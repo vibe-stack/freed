@@ -9,6 +9,8 @@ import { useSceneStore } from '@/stores/scene-store';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { useShapeCreationStore } from '@/stores/shape-creation-store';
 import { useToolStore } from '@/stores/tool-store';
+import { buildEdgesFromFaces, calculateVertexNormals, createCubeMesh, createPlaneMesh, createCylinderMesh, createConeMesh, createUVSphereMesh, createIcoSphereMesh, createTorusMesh } from '@/utils/geometry';
+import { nanoid } from 'nanoid';
 import { Pill } from './pill';
 import { AIGeneratePopover } from './ai-generate-popover';
 import * as motion from "motion/react-client"
@@ -91,6 +93,70 @@ const TopToolbar: React.FC = () => {
   React.useEffect(() => { setPortalContainer(document.body); }, []);
 
   const beginShape = (shape: 'cube' | 'plane' | 'cylinder' | 'cone' | 'uvsphere' | 'icosphere' | 'torus') => {
+    // If we're currently in edit mode, and there is an active mesh, merge the new mesh into
+    // the active mesh instead of creating a new scene object. This only applies for mesh->mesh.
+    if (selection.viewMode === 'edit' && selection.meshId) {
+      const targetMeshId = selection.meshId;
+      
+      // Create the new mesh geometry directly without adding to store
+      let newMesh;
+      switch (shape) {
+        case 'cube':
+          newMesh = createCubeMesh(1.5); break;
+        case 'plane':
+          newMesh = createPlaneMesh(2, 2, 1, 1); break;
+        case 'cylinder':
+          newMesh = createCylinderMesh(0.75, 0.75, 2, 24, 1); break;
+        case 'cone':
+          newMesh = createConeMesh(0.9, 2, 24, 1); break;
+        case 'uvsphere':
+          newMesh = createUVSphereMesh(1, 24, 16); break;
+        case 'icosphere':
+          newMesh = createIcoSphereMesh(1, 1); break;
+        case 'torus':
+          newMesh = createTorusMesh(1.2, 0.35, 16, 24); break;
+        default:
+          return;
+      }
+
+      // Store the vertex IDs that will be added so we can select them later
+      const newVertexIds: string[] = [];
+      
+      // Merge the new mesh into the target mesh
+      geometry.updateMesh(targetMeshId, (target) => {
+        // Build a mapping from new vertex id -> appended vertex id in target
+        const idMap = new Map<string, string>();
+        
+        for (const v of newMesh.vertices) {
+          // generate a fresh id to avoid collisions
+          const freshId = nanoid();
+          idMap.set(v.id, freshId);
+          newVertexIds.push(freshId);
+          target.vertices.push({ ...v, id: freshId });
+        }
+
+        // Append faces, remapping vertex ids
+        for (const f of newMesh.faces) {
+          const remapped = { ...f, id: nanoid() };
+          remapped.vertexIds = f.vertexIds.map((vid) => idMap.get(vid) || vid);
+          target.faces.push(remapped);
+        }
+
+        // Rebuild edges from faces to keep topology consistent
+        target.edges = buildEdgesFromFaces(target.vertices, target.faces);
+        target.vertices = calculateVertexNormals(target);
+      });
+
+      // After merging, select all the newly added vertices
+      selectionActions.selectVertices(targetMeshId, newVertexIds);
+      
+      // Start shape creation panel for the merged shape (pass target mesh id)
+      shapeCreation.start(shape, targetMeshId);
+      setMenuOpen(false);
+      return;
+    }
+
+    // Normal object mode behavior
     let id = '';
     let name = '';
     switch (shape) {
