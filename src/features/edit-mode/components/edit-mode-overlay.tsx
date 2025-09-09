@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useThree } from '@react-three/fiber';
-import { ContextMenu } from '@base-ui-components/react/context-menu';
 import { useSelectionStore } from '@/stores/selection-store';
 import { useToolStore } from '@/stores/tool-store';
 import { useGeometryStore } from '@/stores/geometry-store';
@@ -12,18 +11,17 @@ import { EdgeRenderer } from '@/features/edit-mode/components/edge-renderer';
 import { FaceRenderer } from '@/features/edit-mode/components/face-renderer';
 import { ToolHandler } from '@/features/edit-mode/components/tool-handler';
 import { Color, Vector3 } from 'three';
-import { Html } from '@react-three/drei';
 import { useSelectionVertices } from '@/features/edit-mode/hooks/use-selection-vertices';
 import { useSceneStore } from '@/stores/scene-store';
 import { useLoopcut } from '@/features/edit-mode/hooks/use-loopcut';
 // loopcut spans retained indirectly via existing hook usage (removed direct usage)
 import { SculptHandler } from '@/features/edit-mode/components/sculpt-handler';
 import { unwrapMeshBySeams } from '@/utils/uv-mapping';
-import { deleteVerticesInMesh, deleteEdgesInMesh, deleteFacesInMesh, mergeVerticesInMesh } from '@/utils/edit-ops';
 import { useEditModeContextMenu } from '@/features/edit-mode/hooks/use-edit-mode-context-menu';
 import { useMarqueeSelection } from '@/features/edit-mode/hooks/use-marquee-selection';
 import { useMarqueeOverlay } from '@/features/edit-mode/hooks/use-marquee-overlay';
 import { useEditModeSelection } from '@/features/edit-mode/hooks/use-edit-mode-selection';
+import EditModeContextMenu from '@/features/edit-mode/components/edit-mode-context-menu';
 
 // Loop / ring / face-loop selection logic moved to dedicated hooks & utils
 
@@ -106,76 +104,18 @@ const EditModeOverlay: React.FC = () => {
 			{(!meshId || !mesh) ? null : (
 				<>
 					{/* Context menu for seams */}
-					<Html>
-						<ContextMenu.Root open={cmOpen} onOpenChange={setCmOpen}>
-							<ContextMenu.Portal>
-								<ContextMenu.Positioner className="z-90">
-									<ContextMenu.Popup
-										className="z-[9999] min-w-48 rounded-md border border-white/10 bg-zinc-900/90 text-sm text-gray-200 shadow-lg shadow-black/40 relative overflow-hidden"
-										style={{
-											position: 'fixed',
-											zIndex: 9999,
-											left: (cmPos?.x ?? 0) + (cmFlipX ? -8 : 8),
-											top: (cmPos?.y ?? 0) + (cmFlipY ? -8 : 8),
-											transform: `translate(${cmFlipX ? '-100%' : '0'}, ${cmFlipY ? '-100%' : '0'})`
-										}}
-									>
-										<div className="p-1 max-h-72 overflow-y-auto overscroll-contain">
-											<div className="px-2 py-1.5 cursor-default select-none opacity-70">UV</div>
-											<ContextMenu.Item onClick={() => { markSeams(true); setCmOpen(false); }} disabled={selection.selectionMode !== 'edge' || selection.edgeIds.length === 0}>
-												<div className={`px-2 py-1.5 rounded ${selection.selectionMode !== 'edge' || selection.edgeIds.length === 0 ? 'text-gray-500' : 'hover:bg-white/10 cursor-default'}`}>Mark Seam (selected)</div>
-											</ContextMenu.Item>
-											<ContextMenu.Item onClick={() => { markSeams(false); setCmOpen(false); }} disabled={selection.selectionMode !== 'edge' || selection.edgeIds.length === 0}>
-												<div className={`px-2 py-1.5 rounded ${selection.selectionMode !== 'edge' || selection.edgeIds.length === 0 ? 'text-gray-500' : 'hover:bg-white/10 cursor-default'}`}>Clear Seam (selected)</div>
-											</ContextMenu.Item>
-											<ContextMenu.Separator />
-											<ContextMenu.Item onClick={() => { clearSeams(); setCmOpen(false); }}>
-												<div className="px-2 py-1.5 rounded hover:bg-white/10 cursor-default">Clear All Seams</div>
-											</ContextMenu.Item>
-											<ContextMenu.Item onClick={() => { unwrapBySeams(); setCmOpen(false); }}>
-												<div className="px-2 py-1.5 rounded hover:bg-white/10 cursor-default">Unwrap (Seams)</div>
-											</ContextMenu.Item>
-													<ContextMenu.Separator />
-													<div className="px-2 py-1.5 cursor-default select-none opacity-70">Edit</div>
-													<ContextMenu.Item onClick={() => {
-														if (!meshId) return; const sel = selection;
-														const geo = useGeometryStore.getState();
-														if (sel.selectionMode === 'vertex' && sel.vertexIds.length) {
-															geo.updateMesh(meshId, (m) => deleteVerticesInMesh(m, sel.vertexIds));
-															geo.recalculateNormals(meshId);
-															useSelectionStore.getState().selectVertices(meshId, []);
-														} else if (sel.selectionMode === 'edge' && sel.edgeIds.length) {
-															geo.updateMesh(meshId, (m) => deleteEdgesInMesh(m, sel.edgeIds));
-															geo.recalculateNormals(meshId);
-															useSelectionStore.getState().selectEdges(meshId, []);
-														} else if (sel.selectionMode === 'face' && sel.faceIds.length) {
-															geo.updateMesh(meshId, (m) => deleteFacesInMesh(m, sel.faceIds));
-															geo.recalculateNormals(meshId);
-															useSelectionStore.getState().selectFaces(meshId, []);
-														}
-														setCmOpen(false);
-													}} disabled={!meshId || (selection.selectionMode === 'vertex' ? selection.vertexIds.length === 0 : selection.selectionMode === 'edge' ? selection.edgeIds.length === 0 : selection.faceIds.length === 0)}>
-														<div className={`px-2 py-1.5 rounded ${!meshId ? 'text-gray-500' : 'hover:bg-white/10 cursor-default'}`}>Delete Selected</div>
-													</ContextMenu.Item>
-													<ContextMenu.Item onClick={() => {
-														if (!meshId) return; const sel = selection; if (sel.selectionMode !== 'vertex' || sel.vertexIds.length < 2) return;
-														const geo = useGeometryStore.getState();
-														geo.updateMesh(meshId, (m) => mergeVerticesInMesh(m, sel.vertexIds, 'center'));
-														geo.recalculateNormals(meshId);
-														const kept = sel.vertexIds[0];
-														const m = useGeometryStore.getState().meshes.get(meshId);
-														const still = m?.vertices.some(v => v.id === kept) ? [kept] : [];
-														useSelectionStore.getState().selectVertices(meshId, still);
-														setCmOpen(false);
-													}} disabled={!meshId || selection.selectionMode !== 'vertex' || selection.vertexIds.length < 2}>
-														<div className={`px-2 py-1.5 rounded ${!meshId || selection.selectionMode !== 'vertex' || selection.vertexIds.length < 2 ? 'text-gray-500' : 'hover:bg-white/10 cursor-default'}`}>Merge Vertices (Center)</div>
-													</ContextMenu.Item>
-										</div>
-									</ContextMenu.Popup>
-								</ContextMenu.Positioner>
-							</ContextMenu.Portal>
-						</ContextMenu.Root>
-					</Html>
+					<EditModeContextMenu
+						cmOpen={cmOpen}
+						setCmOpen={setCmOpen}
+						cmPos={cmPos}
+						cmFlipX={cmFlipX}
+						cmFlipY={cmFlipY}
+						selection={selection}
+						meshId={meshId}
+						markSeams={markSeams}
+						clearSeams={clearSeams}
+						unwrapBySeams={unwrapBySeams}
+					/>
 					{/* Loop Cut handler: preview only + wheel segments; LMB to commit later */}
 					<ToolHandler
 						meshId={meshId!}
