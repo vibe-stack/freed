@@ -19,6 +19,12 @@ export const applyLoopCut = (
             : computeEdgeLoopFaceSpans(m, hoverEdgeId);
         if (spans.length === 0) return;
 
+        // Debug logging
+        console.log(`Loop cut: ${N} segments, ${spans.length} spans`);
+        spans.forEach((span, i) => {
+            console.log(`Span ${i}: face ${span.faceId}`);
+        });
+
         const vmap = new Map(m.vertices.map((v) => [v.id, v] as const));
         const edgeSplit = new Map<string, string>(); // key: canonicalEdge|segIndex -> vertexId
 
@@ -27,6 +33,8 @@ export const applyLoopCut = (
     const avgBase = 0.5;
         const delta = slideT - avgBase;
         const tPositions = Array.from({ length: N }, (_v, i) => Math.max(0.001, Math.min(0.999, base(i + 1) + delta)));
+
+        console.log(`Cut positions:`, tPositions);
 
         const getOrCreateOnEdge = (edge: [string, string], t: number, segIndex: number) => {
             const va = vmap.get(edge[0])!;
@@ -59,10 +67,10 @@ export const applyLoopCut = (
                 high = vmap.get(maxId)!;
             }
 
-            // Canonical key (undirected, ID-sorted)
+            // Canonical key (undirected, ID-sorted) with EXACT t value to prevent sharing
             let a = edge[0], b = edge[1];
             if (a > b) { const tmp = a; a = b; b = tmp; }
-            const k = `${a}-${b}|${segIndex}`;
+            const k = `${a}-${b}|${segIndex}|${t.toFixed(6)}`;
 
             const found = edgeSplit.get(k);
             if (found) return found;
@@ -98,7 +106,7 @@ export const applyLoopCut = (
 
         for (const span of spans) {
             const face = m.faces.find((f) => f.id === span.faceId);
-            if (!face || face.vertexIds.length !== 4) continue; // only quads supported for now
+            if (!face || face.vertexIds.length < 3) continue;
 
             const [a0, a1] = span.parallelA;
             const [b0, b1] = span.parallelB;
@@ -111,12 +119,15 @@ export const applyLoopCut = (
             });
             Aseq.push(a1); Bseq.push(b1);
 
+            console.log(`Face ${span.faceId}: Aseq length=${Aseq.length}, Bseq length=${Bseq.length}`);
+
             // Maintain CCW: [Ak, Ak+1, Bk+1, Bk]
             for (let k = 0; k < Aseq.length - 1; k++) {
                 newFaces.push(createFace([Aseq[k], Aseq[k + 1], Bseq[k + 1], Bseq[k]]));
             }
         }
 
+        console.log(`Removing ${facesToRemove.size} faces, adding ${newFaces.length} faces`);
         m.faces = m.faces.filter((f) => !facesToRemove.has(f.id));
         m.faces.push(...newFaces);
         m.edges = buildEdgesFromFaces(m.vertices, m.faces);

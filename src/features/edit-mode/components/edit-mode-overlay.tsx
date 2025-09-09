@@ -194,7 +194,7 @@ const EditModeOverlay: React.FC = () => {
 										<lineBasicMaterial color={new Color(1, 1, 0)} depthTest={false} depthWrite={false} transparent opacity={0.8} />
 									</lineSegments>
 								)}
-								
+
 								{/* Hover preview line from last point to cursor */}
 								{toolStore.localData.hoverLine && (
 									<lineSegments>
@@ -213,7 +213,7 @@ const EditModeOverlay: React.FC = () => {
 										<lineBasicMaterial color={new Color(1, 1, 0)} depthTest={false} depthWrite={false} transparent opacity={0.6} />
 									</lineSegments>
 								)}
-								
+
 								{/* Cut points */}
 								{toolStore.localData.cutPoints.map((point, index) => (
 									<mesh key={index} position={[point.x, point.y, point.z]}>
