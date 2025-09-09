@@ -16,6 +16,7 @@ import { useSceneStore } from '@/stores/scene-store';
 import { useLoopcut } from '@/features/edit-mode/hooks/use-loopcut';
 // loopcut spans retained indirectly via existing hook usage (removed direct usage)
 import { SculptHandler } from '@/features/edit-mode/components/sculpt-handler';
+import { KnifeHandler } from '@/features/edit-mode/components/knife-handler';
 import { unwrapMeshBySeams } from '@/utils/uv-mapping';
 import { useEditModeContextMenu } from '@/features/edit-mode/hooks/use-edit-mode-context-menu';
 import { useMarqueeSelection } from '@/features/edit-mode/hooks/use-marquee-selection';
@@ -134,6 +135,16 @@ const EditModeOverlay: React.FC = () => {
 						/>
 					)}
 
+					{/* Knife handler for knife tool */}
+					{toolStore.isActive && toolStore.tool === 'knife' && (
+						<KnifeHandler
+							meshId={meshId!}
+							objectRotation={objTransform.rotation}
+							objectScale={objTransform.scale}
+							objectPosition={objTransform.position}
+						/>
+					)}
+
 					{/* Render all edit-mode visuals under the object's transform so object-space vertices appear in the right world position */}
 					<group
 						position={[objTransform.position.x, objTransform.position.y, objTransform.position.z]}
@@ -158,6 +169,59 @@ const EditModeOverlay: React.FC = () => {
 								</bufferGeometry>
 								<lineBasicMaterial color={new Color(1, 1, 0)} depthTest={false} depthWrite={false} transparent opacity={0.9} />
 							</lineSegments>
+						)}
+
+						{/* Knife cut lines */}
+						{toolStore.isActive && toolStore.tool === 'knife' && toolStore.localData?.kind === 'knife' && (
+							<>
+								{/* Existing cut lines */}
+								{toolStore.localData.previewPath.length > 0 && (
+									<lineSegments>
+										<bufferGeometry>
+											<bufferAttribute
+												attach="attributes-position"
+												args={[
+													new Float32Array(
+														toolStore.localData.previewPath.flatMap((line) => [
+															line.a.x, line.a.y, line.a.z,
+															line.b.x, line.b.y, line.b.z,
+														])
+													),
+													3,
+												]}
+											/>
+										</bufferGeometry>
+										<lineBasicMaterial color={new Color(1, 1, 0)} depthTest={false} depthWrite={false} transparent opacity={0.8} />
+									</lineSegments>
+								)}
+								
+								{/* Hover preview line from last point to cursor */}
+								{toolStore.localData.hoverLine && (
+									<lineSegments>
+										<bufferGeometry>
+											<bufferAttribute
+												attach="attributes-position"
+												args={[
+													new Float32Array([
+														toolStore.localData.hoverLine.a.x, toolStore.localData.hoverLine.a.y, toolStore.localData.hoverLine.a.z,
+														toolStore.localData.hoverLine.b.x, toolStore.localData.hoverLine.b.y, toolStore.localData.hoverLine.b.z,
+													]),
+													3,
+												]}
+											/>
+										</bufferGeometry>
+										<lineBasicMaterial color={new Color(1, 1, 0)} depthTest={false} depthWrite={false} transparent opacity={0.6} />
+									</lineSegments>
+								)}
+								
+								{/* Cut points */}
+								{toolStore.localData.cutPoints.map((point, index) => (
+									<mesh key={index} position={[point.x, point.y, point.z]}>
+										<sphereGeometry args={[0.02, 8, 8]} />
+										<meshBasicMaterial color={new Color(1, 1, 0)} depthTest={false} depthWrite={false} transparent opacity={0.9} />
+									</mesh>
+								))}
+							</>
 						)}
 						{selection.selectionMode === 'vertex' && !(toolStore.isActive && String(toolStore.tool).startsWith('sculpt-')) && (
 							<VertexRenderer

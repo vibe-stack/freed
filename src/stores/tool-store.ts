@@ -4,7 +4,7 @@ import type { Transform } from '@/types/geometry';
 export type ToolMode =
   | 'none'
   // Mesh editing transforms
-  | 'move' | 'rotate' | 'scale' | 'extrude' | 'inset' | 'bevel' | 'loopcut'
+  | 'move' | 'rotate' | 'scale' | 'extrude' | 'inset' | 'bevel' | 'loopcut' | 'knife'
   // Sculpt brushes
   | 'sculpt-draw' | 'sculpt-clay' | 'sculpt-inflate' | 'sculpt-blob' | 'sculpt-crease'
   | 'sculpt-smooth' | 'sculpt-flatten' | 'sculpt-contrast' | 'sculpt-fill' | 'sculpt-deepen'
@@ -15,6 +15,7 @@ export type AxisLock = 'none' | 'x' | 'y' | 'z';
 type LocalData =
   | { kind: 'object-transform'; transforms: Record<string, Transform> }
   | { kind: 'loopcut'; objectId: string; meshId: string; faceId: string; edge: [string, string]; segments: number }
+  | { kind: 'knife'; meshId: string; cutPoints: Array<{ x: number; y: number; z: number; faceId: string }>; previewPath: Array<{ a: { x: number; y: number; z: number }; b: { x: number; y: number; z: number } }>; hoverLine?: { a: { x: number; y: number; z: number }; b: { x: number; y: number; z: number } } }
   | null;
 
 interface ToolState {

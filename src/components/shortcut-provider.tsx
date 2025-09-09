@@ -261,6 +261,20 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
       description: 'Loop Cut (Ctrl+R) — preview: hover shows yellow ticks, mouse wheel sets segments',
       preventDefault: true,
     },
+    {
+      key: 'k',
+      shift: true,
+      action: () => {
+        const selection = useSelectionStore.getState().selection;
+        const tool = useToolStore.getState();
+        if (tool.isActive) return;
+        if (selection.viewMode === 'edit') {
+          useToolStore.getState().startOperation('knife', null);
+        }
+      },
+      description: 'Knife tool (Shift+K) — click to add cut points, Enter to confirm',
+      preventDefault: true,
+    },
     // Delete selected objects in Object Mode
     {
       key: 'Delete',

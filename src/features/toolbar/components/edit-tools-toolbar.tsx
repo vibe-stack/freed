@@ -5,7 +5,7 @@ import { useSelection } from '@/stores/selection-store';
 import { useToolStore } from '@/stores/tool-store';
 
 type Btn = {
-  id: 'move' | 'rotate' | 'scale' | 'extrude' | 'inset' | 'bevel' | 'loopcut';
+  id: 'move' | 'rotate' | 'scale' | 'extrude' | 'inset' | 'bevel' | 'loopcut' | 'knife';
   label: string;
   tip: string;
   icon: string;
@@ -20,6 +20,7 @@ const buttons: Btn[] = [
   { id: 'inset', label: 'Inset', tip: 'Inset faces (I)', icon: '⬒', shortcut: 'I' },
   { id: 'bevel', label: 'Bevel', tip: 'Bevel (Ctrl+B / Ctrl+Shift+B)', icon: '◠', shortcut: 'Ctrl+B' },
   { id: 'loopcut', label: 'Loop Cut', tip: 'Loop Cut (Ctrl+R)', icon: '╱╲', shortcut: 'Ctrl+R' },
+  { id: 'knife', label: 'Knife', tip: 'Knife tool (Shift+K)', icon: '🔪', shortcut: 'Shift+K' },
 ];
 
 export const EditToolsToolbar: React.FC = () => {
@@ -59,6 +60,11 @@ export const EditToolsToolbar: React.FC = () => {
       tool.startOperation(id, null);
       return;
     }
+    if (id === 'knife') {
+      if (selection.viewMode !== 'edit') return;
+      tool.startOperation(id, null);
+      return;
+    }
     // Unimplemented tools: no-op for now
     console.info(`[EditTools] ${id} is not implemented yet`);
   };
@@ -75,6 +81,7 @@ export const EditToolsToolbar: React.FC = () => {
             b.id === 'inset' ? selection.faceIds.length === 0 :
             b.id === 'bevel' ? selection.faceIds.length === 0 :
             b.id === 'loopcut' ? selection.viewMode !== 'edit' :
+            b.id === 'knife' ? selection.viewMode !== 'edit' :
             true;
           return (
             <button

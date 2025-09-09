@@ -16,6 +16,7 @@ const ToolIndicator: React.FC = () => {
   case 'inset': return '⬒';
   case 'bevel': return '◠';
   case 'loopcut': return '╱╲';
+  case 'knife': return '🔪';
       default: return '🔧';
     }
   };
@@ -29,6 +30,7 @@ const ToolIndicator: React.FC = () => {
   case 'inset': return 'Inset';
   case 'bevel': return 'Bevel';
   case 'loopcut': return 'Loop Cut';
+  case 'knife': return 'Knife';
       default: return 'Tool';
     }
   };
