@@ -11,6 +11,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^2.0.27",
     "@ai-sdk/react": "^2.0.37",
+    "@ai-sdk/xai": "^2.0.16",
     "@base-ui-components/react": "^1.0.0-beta.2",
     "@react-three/drei": "^10.6.1",
     "@react-three/fiber": "^9.3.0",

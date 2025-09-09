@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Menu } from '@base-ui-components/react/menu';
 import AddObjectMenu from '@/features/shared/add-object-menu';
 import { useTextStore } from '@/stores/text-store';
 import { useSelection, useSelectionStore } from '@/stores/selection-store';
@@ -10,18 +9,9 @@ import { useSceneStore } from '@/stores/scene-store';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { useShapeCreationStore } from '@/stores/shape-creation-store';
 import { useToolStore } from '@/stores/tool-store';
-import { SparklesIcon } from 'lucide-react';
+import { Pill } from './pill';
+import { AIGeneratePopover } from './ai-generate-popover';
 
-const Pill = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className = '', children, ...rest }, ref) => (
-  <div
-    ref={ref}
-    className={`pointer-events-auto bg-black/40 backdrop-blur-md border border-white/10 rounded-xl shadow-lg shadow-black/30 ${className}`}
-    {...rest}
-  >
-    {children}
-  </div>
-));
-Pill.displayName = 'Pill';
 
 const SegButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { active?: boolean }>
   = ({ className = '', active = false, children, ...rest }) => (
@@ -176,11 +166,11 @@ const TopToolbar: React.FC = () => {
         />
       </Pill>
 
-      <Pill className='px-2 py-1 relative'>
-        <SparklesIcon className='w-4 h-4 m-1 text-green-200' />
-      </Pill>
+      <AIGeneratePopover />
     </div>
   );
 };
 
 export default TopToolbar;
+
+

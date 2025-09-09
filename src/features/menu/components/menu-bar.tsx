@@ -11,7 +11,7 @@ import { useShapeCreationStore } from '@/stores/shape-creation-store';
 import { WorkspaceData, exportToT3D } from '@/utils/t3d-exporter';
 import { openImportDialog } from '@/utils/t3d-importer';
 import { openGLTFImportDialog, type ImportSummary } from '@/utils/gltf-importer';
-import { Box, Download, FolderOpen, Save, Heart, Check, Orbit } from 'lucide-react';
+import { Box, Download, FolderOpen, Save, Heart, Check, Minimize2 } from 'lucide-react';
 import DonateDialog from '@/components/donate-dialog';
 import { useUVEditorStore } from '@/stores/uv-editor-store';
 import ExportDialog from '@/features/export/components/export-dialog';
@@ -449,13 +449,13 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 			</div>
 
 			<div className="ml-auto flex items-center gap-2 text-[11px] text-gray-400">
-				{/* Auto Orbit toggle (cycles 0 -> 1 -> 3 -> 5) */}
+				{/* Minimal UI toggle (no label, icon only) */}
 				<button
 					className="inline-flex items-center rounded p-1 text-gray-400 hover:text-gray-200 hover:bg-white/5"
-					onClick={() => useViewportStore.getState().toggleAutoOrbitInterval()}
-					title="Auto orbit"
+					onClick={() => useWorkspaceStore.getState().toggleMinimalUi?.()}
+					title="Toggle minimal UI"
 				>
-					<Orbit className="w-4 h-4" />
+					<Minimize2 className="w-4 h-4" />
 				</button>
 				{/* SPONSORING AREA */}
 				<button
