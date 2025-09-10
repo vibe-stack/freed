@@ -13,6 +13,7 @@ import { useParticlesStore } from '@/stores/particles-store';
 import { useForceFieldStore } from '@/stores/force-field-store';
 import { useFluidStore } from '@/stores/fluid-store';
 import { useTextStore, useTextResource } from '@/stores/text-store';
+import { useMetaballStore } from '@/stores/metaball-store';
 
 const Label: React.FC<{ label: string } & React.HTMLAttributes<HTMLDivElement>> = ({ label, children, className = '', ...rest }) => (
   <div className={`text-xs text-gray-400 ${className}`} {...rest}>
@@ -178,6 +179,12 @@ export const InspectorPanel: React.FC = () => {
         <div>
           <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Fluid System</div>
           <FluidSystemSection systemId={selected.fluidSystemId} />
+        </div>
+      )}
+    {selected.type === 'metaball' && selected.metaballId && (
+        <div>
+          <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Metaballs</div>
+      <MetaballSection metaballId={selected.metaballId} />
         </div>
       )}
       {selected.type === 'text' && selected.textId && (
@@ -412,6 +419,34 @@ const FluidSystemSection: React.FC<{ systemId: string }> = ({ systemId }) => {
         <Label label="Size">
           <DragInput compact value={sys.size} precision={3} step={0.005} onChange={(v) => update({ size: Math.max(0.001, v) })} />
         </Label>
+      </div>
+    </div>
+  );
+};
+
+// Metaball inspector section (single metaball + global settings)
+const MetaballSection: React.FC<{ metaballId: string }> = ({ metaballId }) => {
+  const store = useMetaballStore();
+  const metaball = useMetaballStore((s) => s.metaballs[metaballId]);
+  const settings = useMetaballStore((s) => s.settings);
+  if (!metaball) return null;
+  return (
+    <div className="bg-white/5 border border-white/10 rounded p-2 space-y-3">
+      <div className="grid grid-cols-3 gap-1">
+        <DragInput compact label="Radius" value={metaball.radius} precision={2} step={0.05} onChange={(v) => store.updateMetaball(metaballId, { radius: v })} />
+        <DragInput compact label="Strength" value={metaball.strength} precision={2} step={0.05} onChange={(v) => store.updateMetaball(metaballId, { strength: v })} />
+        <DragInput compact label="Hue" value={metaball.color.x} precision={2} step={0.05} onChange={(v) => store.updateMetaball(metaballId, { color: { ...metaball.color, x: v } })} />
+      </div>
+      <div className="p-1.5 rounded bg-white/5 space-y-1 border border-white/10">
+        <div className="text-[10px] uppercase tracking-wide text-gray-400">Global</div>
+        <div className="grid grid-cols-3 gap-1">
+          <DragInput compact label="Res" value={settings.resolution} min={8} max={160} step={1} onChange={(v) => store.setSettings({ resolution: Math.max(8, Math.min(256, Math.round(v))) })} />
+          <DragInput compact label="Iso" value={settings.isoLevel} precision={2} step={0.02} onChange={(v) => store.setSettings({ isoLevel: v })} />
+          <div className="flex items-center gap-1 text-[10px]">
+            <span>Smooth</span>
+            <Switch checked={settings.smoothNormals} onCheckedChange={(v) => store.setSettings({ smoothNormals: v })} />
+          </div>
+        </div>
       </div>
     </div>
   );

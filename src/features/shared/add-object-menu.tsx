@@ -19,6 +19,7 @@ type Props = {
   onAddForce: (type: 'attractor' | 'repulsor' | 'vortex') => void;
   onAddParticleSystem: () => void;
   onAddFluidSystem?: () => void;
+  onAddMetaball?: () => void;
 };
 
 const AddObjectMenu: React.FC<Props> = ({
@@ -35,6 +36,7 @@ const AddObjectMenu: React.FC<Props> = ({
   onAddForce,
   onAddParticleSystem,
   onAddFluidSystem,
+  onAddMetaball,
 }) => {
   const closeIfControlled = () => { if (typeof onOpenChange === 'function') onOpenChange(false); };
 
@@ -50,6 +52,9 @@ const AddObjectMenu: React.FC<Props> = ({
             )}
             {onAddFluidSystem && (
               <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onAddFluidSystem(); closeIfControlled(); }}>Fluid System</Menu.Item>
+            )}
+            {onAddMetaball && (
+              <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onAddMetaball(); closeIfControlled(); }}>Metaballs</Menu.Item>
             )}
             <Menu.Separator className="my-1 h-px bg-white/10" />
 

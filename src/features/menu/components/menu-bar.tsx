@@ -388,6 +388,11 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 						onAddForce={addForce}
 						onAddParticleSystem={handleCreateParticleSystem}
 						onAddFluidSystem={handleCreateFluidSystem}
+						onAddMetaball={() => {
+							const id = sceneStore.createMetaballObject('Metaballs');
+							sceneStore.selectObject(id);
+							if (useSelectionStore.getState().selection.viewMode === 'object') useSelectionStore.getState().selectObjects([id]);
+						}}
 					/>
 
 				{/* View (placeholders) */}

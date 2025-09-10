@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import type { Mesh as MeshType } from '@/types/geometry';
 import { getOrCreateDownloadUrl } from '@/stores/files-store';
 

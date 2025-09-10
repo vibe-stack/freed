@@ -9,6 +9,7 @@ import { useViewMode } from '@/stores/selection-store';
 import ObjectNode from './object-node';
 import EditModeOverlay from '@/features/edit-mode/components/edit-mode-overlay';
 import ObjectToolHandler from './object-tool-handler';
+import MetaballSurface from './metaball-surface';
 
 const SceneContent: React.FC = () => {
   const scene = useSceneStore();
@@ -37,6 +38,7 @@ const SceneContent: React.FC = () => {
       {scene.rootObjects.map((id) => (
         <ObjectNode key={id} objectId={id} />
       ))}
+      <MetaballSurface />
       {viewMode === 'edit' && <EditModeOverlay />}
     </>
   );

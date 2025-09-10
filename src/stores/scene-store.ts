@@ -26,13 +26,13 @@ interface SceneActions {
   setParent: (childId: string, parentId: string | null) => void;
   moveObject: (objectId: string, newParentId: string | null, index?: number) => void;
   reset: () => void;
-  
+
   // Transform operations
   setTransform: (objectId: string, transform: Partial<Transform>) => void;
   translateObject: (objectId: string, delta: [number, number, number]) => void;
   rotateObject: (objectId: string, delta: [number, number, number]) => void;
   scaleObject: (objectId: string, delta: [number, number, number]) => void;
-  
+
   // Visibility and locking
   setVisible: (objectId: string, visible: boolean) => void;
   setLocked: (objectId: string, locked: boolean) => void;
@@ -40,7 +40,7 @@ interface SceneActions {
   setVisibleRecursive: (objectId: string, visible: boolean) => void;
   setLockedRecursive: (objectId: string, locked: boolean) => void;
   setRenderRecursive: (objectId: string, render: boolean) => void;
-  
+
   // Utility functions
   createMeshObject: (name: string, meshId: string) => string;
   createGroupObject: (name: string) => string;
@@ -49,6 +49,7 @@ interface SceneActions {
   createParticleSystemObject: (name: string) => string;
   createForceFieldObject: (name: string, type: 'attractor' | 'repulsor' | 'vortex') => string;
   createFluidSystemObject: (name: string) => string;
+  createMetaballObject: (name: string) => string;
   groupObjects: (objectIds: string[], name?: string) => string | null;
   ungroupObject: (groupId: string) => void;
   getObject: (objectId: string) => SceneObject | null;
@@ -67,13 +68,13 @@ export const useSceneStore = create<SceneStore>()(
       objects: {},
       rootObjects: [],
       selectedObjectId: null,
-  lights: {},
-      
+      lights: {},
+
       // Actions
       addObject: (object: SceneObject) => {
         set((state) => {
           state.objects[object.id] = object;
-          
+
           if (object.parentId === null) {
             state.rootObjects.push(object.id);
           } else {
@@ -84,12 +85,12 @@ export const useSceneStore = create<SceneStore>()(
           }
         });
       },
-      
+
       removeObject: (objectId: string) => {
         set((state) => {
           const object = state.objects[objectId];
           if (!object) return;
-          
+
           // Remove from parent's children or root objects
           if (object.parentId === null) {
             const index = state.rootObjects.indexOf(objectId);
@@ -105,7 +106,7 @@ export const useSceneStore = create<SceneStore>()(
               }
             }
           }
-          
+
           // Recursively remove children
           const removeRecursive = (id: string) => {
             const obj = state.objects[id];
@@ -114,47 +115,53 @@ export const useSceneStore = create<SceneStore>()(
               try {
                 const { useAnimationStore } = require('./animation-store');
                 useAnimationStore.getState().removeTracksForTarget(id);
-              } catch {}
+              } catch { }
               // Clean up component references
               if (obj.lightId) delete state.lights[obj.lightId];
               if (obj.cameraId) {
                 // Remove camera resource from geometry store
                 try {
                   useGeometryStore.getState().removeCamera(obj.cameraId);
-                } catch {}
+                } catch { }
               }
               if ((obj as any).particleSystemId) {
                 try {
                   const { useParticlesStore } = require('./particles-store');
                   useParticlesStore.getState().removeSystem((obj as any).particleSystemId);
-                } catch {}
+                } catch { }
               }
               if ((obj as any).forceFieldId) {
                 try {
                   const { useForceFieldStore } = require('./force-field-store');
                   useForceFieldStore.getState().removeField((obj as any).forceFieldId);
-                } catch {}
+                } catch { }
               }
               if ((obj as any).fluidSystemId) {
                 try {
                   const { useFluidStore } = require('./fluid-store');
                   useFluidStore.getState().removeSystem((obj as any).fluidSystemId);
-                } catch {}
+                } catch { }
+              }
+              if ((obj as any).metaballId) {
+                try {
+                  const { useMetaballStore } = require('./metaball-store');
+                  useMetaballStore.getState().removeMetaball((obj as any).metaballId);
+                } catch { }
               }
               obj.children.forEach((childId: string) => removeRecursive(childId));
               delete state.objects[id];
             }
           };
-          
+
           removeRecursive(objectId);
-          
+
           // Clear selection if this object was selected
           if (state.selectedObjectId === objectId) {
             state.selectedObjectId = null;
           }
         });
       },
-      
+
       updateObject: (objectId: string, updater: (object: SceneObject) => void) => {
         set((state) => {
           const object = state.objects[objectId];
@@ -163,7 +170,7 @@ export const useSceneStore = create<SceneStore>()(
           }
         });
       },
-      
+
       selectObject: (objectId: string | null) => {
         set((state) => {
           state.selectedObjectId = objectId;
@@ -202,12 +209,12 @@ export const useSceneStore = create<SceneStore>()(
           }
         });
       },
-      
+
       setParent: (childId: string, parentId: string | null) => {
         set((state) => {
           const child = state.objects[childId];
           if (!child) return;
-          
+
           // Remove from old parent
           if (child.parentId === null) {
             const index = state.rootObjects.indexOf(childId);
@@ -223,7 +230,7 @@ export const useSceneStore = create<SceneStore>()(
               }
             }
           }
-          
+
           // Add to new parent
           child.parentId = parentId;
           if (parentId === null) {
@@ -236,11 +243,11 @@ export const useSceneStore = create<SceneStore>()(
           }
         });
       },
-      
+
       moveObject: (objectId: string, newParentId: string | null, index?: number) => {
         // First set the parent
         get().setParent(objectId, newParentId);
-        
+
         // Then move to specific index if provided
         if (index !== undefined) {
           set((state) => {
@@ -263,7 +270,7 @@ export const useSceneStore = create<SceneStore>()(
           });
         }
       },
-      
+
       // Transform operations
       setTransform: (objectId: string, transform: Partial<Transform>) => {
         set((state) => {
@@ -282,20 +289,20 @@ export const useSceneStore = create<SceneStore>()(
           const t = a.playhead;
           const fps = a.fps || 30;
           const frameT = Math.round(t * fps) / fps;
-          const toKey: Array<{ prop: 'position'|'rotation'|'scale'; value: any }> = [];
+          const toKey: Array<{ prop: 'position' | 'rotation' | 'scale'; value: any }> = [];
           if (transform.position) toKey.push({ prop: 'position', value: transform.position });
           if (transform.rotation) toKey.push({ prop: 'rotation', value: transform.rotation });
           if (transform.scale) toKey.push({ prop: 'scale', value: transform.scale });
           toKey.forEach(({ prop, value }) => {
-            (['x','y','z'] as const).forEach((axis) => {
+            (['x', 'y', 'z'] as const).forEach((axis) => {
               if (value[axis] === undefined) return;
               const trackId = a.ensureTrack(objectId, `${prop}.${axis}`);
               a.insertKey(trackId, frameT, value[axis], 'linear');
             });
           });
-        } catch {}
+        } catch { }
       },
-      
+
       translateObject: (objectId: string, delta: [number, number, number]) => {
         set((state) => {
           const object = state.objects[objectId];
@@ -315,13 +322,13 @@ export const useSceneStore = create<SceneStore>()(
           const t = a.playhead; const fps = a.fps || 30; const frameT = Math.round(t * fps) / fps;
           const obj = useSceneStore.getState().objects[objectId];
           if (!obj) return;
-          (['x','y','z'] as const).forEach((axis) => {
+          (['x', 'y', 'z'] as const).forEach((axis) => {
             const trackId = a.ensureTrack(objectId, `position.${axis}`);
             a.insertKey(trackId, frameT, (obj.transform.position as any)[axis], 'linear');
           });
-        } catch {}
+        } catch { }
       },
-      
+
       rotateObject: (objectId: string, delta: [number, number, number]) => {
         set((state) => {
           const object = state.objects[objectId];
@@ -340,13 +347,13 @@ export const useSceneStore = create<SceneStore>()(
           const t = a.playhead; const fps = a.fps || 30; const frameT = Math.round(t * fps) / fps;
           const obj = useSceneStore.getState().objects[objectId];
           if (!obj) return;
-          (['x','y','z'] as const).forEach((axis) => {
+          (['x', 'y', 'z'] as const).forEach((axis) => {
             const trackId = a.ensureTrack(objectId, `rotation.${axis}`);
             a.insertKey(trackId, frameT, (obj.transform.rotation as any)[axis], 'linear');
           });
-        } catch {}
+        } catch { }
       },
-      
+
       scaleObject: (objectId: string, delta: [number, number, number]) => {
         set((state) => {
           const object = state.objects[objectId];
@@ -365,13 +372,13 @@ export const useSceneStore = create<SceneStore>()(
           const t = a.playhead; const fps = a.fps || 30; const frameT = Math.round(t * fps) / fps;
           const obj = useSceneStore.getState().objects[objectId];
           if (!obj) return;
-          (['x','y','z'] as const).forEach((axis) => {
+          (['x', 'y', 'z'] as const).forEach((axis) => {
             const trackId = a.ensureTrack(objectId, `scale.${axis}`);
             a.insertKey(trackId, frameT, (obj.transform.scale as any)[axis], 'linear');
           });
-        } catch {}
+        } catch { }
       },
-      
+
       // Visibility and locking
       setVisible: (objectId: string, visible: boolean) => {
         set((state) => {
@@ -381,7 +388,7 @@ export const useSceneStore = create<SceneStore>()(
           }
         });
       },
-      
+
       setLocked: (objectId: string, locked: boolean) => {
         set((state) => {
           const object = state.objects[objectId];
@@ -431,7 +438,7 @@ export const useSceneStore = create<SceneStore>()(
           update(objectId);
         });
       },
-      
+
       // Utility functions
       createMeshObject: (name: string, meshId: string) => {
         const object: SceneObject = {
@@ -450,7 +457,7 @@ export const useSceneStore = create<SceneStore>()(
           render: true,
           meshId,
         };
-        
+
         get().addObject(object);
         return object.id;
       },
@@ -473,7 +480,7 @@ export const useSceneStore = create<SceneStore>()(
         get().addObject(object);
         return object.id;
       },
-  createLightObject: (name: string, type: LightType) => {
+      createLightObject: (name: string, type: LightType) => {
         const id = nanoid();
         const light: Light = {
           id,
@@ -483,7 +490,7 @@ export const useSceneStore = create<SceneStore>()(
           ...(type === 'spot' ? { angle: Math.PI / 6, penumbra: 0.2, distance: 0, decay: 2 } : {}),
           ...(type === 'point' ? { distance: 0, decay: 2 } : {}),
         };
-  set((state) => { state.lights[id] = light; });
+        set((state) => { state.lights[id] = light; });
         const object: SceneObject = {
           id: nanoid(),
           name,
@@ -600,6 +607,28 @@ export const useSceneStore = create<SceneStore>()(
         get().addObject(object);
         return object.id;
       },
+      createMetaballObject: (name: string) => {
+        const { useMetaballStore } = require('./metaball-store');
+        const blobId: string = useMetaballStore.getState().addMetaball();
+        const object: SceneObject = {
+          id: nanoid(),
+          name,
+          type: 'metaball',
+          parentId: null,
+          children: [],
+          transform: {
+            position: vec3(0, 0, 0),
+            rotation: vec3(0, 0, 0),
+            scale: vec3(1, 1, 1),
+          },
+          visible: true,
+          locked: false,
+          render: true,
+          metaballId: blobId,
+        } as any;
+        get().addObject(object);
+        return object.id;
+      },
       groupObjects: (objectIds: string[], name: string = 'Group') => {
         const state = get();
         if (objectIds.length === 0) return null;
@@ -635,21 +664,21 @@ export const useSceneStore = create<SceneStore>()(
         // Remove the group
         get().removeObject(groupId);
       },
-      
+
       getObject: (objectId: string) => {
         return get().objects[objectId] || null;
       },
-      
+
       getChildren: (parentId: string | null) => {
         const state = get();
         const childIds = parentId === null ? state.rootObjects : state.objects[parentId]?.children || [];
         return childIds.map(id => state.objects[id]).filter(Boolean) as SceneObject[];
       },
-      
+
       getHierarchy: () => {
         const state = get();
         const result: SceneObject[] = [];
-        
+
         const addWithChildren = (objectId: string, depth: number = 0) => {
           const object = state.objects[objectId];
           if (object) {
@@ -657,11 +686,11 @@ export const useSceneStore = create<SceneStore>()(
             object.children.forEach(childId => addWithChildren(childId, depth + 1));
           }
         };
-        
+
         state.rootObjects.forEach(id => addWithChildren(id));
         return result;
       },
-      
+
       getSelectedObject: () => {
         const state = get();
         return state.selectedObjectId ? state.objects[state.selectedObjectId] || null : null;
@@ -710,7 +739,7 @@ export const useRootObjects = () => {
 export const useSelectedObject = () => {
   const selectedObjectId = useSceneStore((state) => state.selectedObjectId);
   const objects = useSceneStore((state) => state.objects);
-  return useMemo(() => 
+  return useMemo(() =>
     selectedObjectId ? objects[selectedObjectId] || null : null,
     [selectedObjectId, objects]
   );
@@ -726,7 +755,7 @@ export const useSceneHierarchy = () => {
   const objects = useSceneStore((state) => state.objects);
   return useMemo(() => {
     const result: SceneObject[] = [];
-    
+
     const addWithChildren = (objectId: string) => {
       const object = objects[objectId];
       if (object) {
@@ -734,7 +763,7 @@ export const useSceneHierarchy = () => {
         object.children.forEach(childId => addWithChildren(childId));
       }
     };
-    
+
     rootObjects.forEach(id => addWithChildren(id));
     return result;
   }, [rootObjects, objects]);

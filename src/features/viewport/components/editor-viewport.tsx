@@ -51,6 +51,7 @@ const EditorViewport: React.FC = () => {
             }
           } catch { }
           // Fallback to WebGL if WebGPU is unavailable
+          console.log("USING WEBGL")
           return new WebGLRenderer(props as any);
         }}
         shadows={renderer.shadows && shadingMode === 'material'}
@@ -94,7 +95,7 @@ const EditorViewport: React.FC = () => {
           autoRotateSpeed={autoOrbitIntervalSec ? 60 / autoOrbitIntervalSec : 0}
         />
         <SceneContent />
-        <WorldEffects />
+        {/* <WorldEffects /> */}
         <AnimationSampler />
       </Canvas>
     </div>

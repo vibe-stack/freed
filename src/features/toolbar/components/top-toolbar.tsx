@@ -223,6 +223,8 @@ const TopToolbar: React.FC = () => {
       const objId = selection.objectIds[0];
       const meshId = scene.objects[objId]?.meshId;
       const locked = scene.objects[objId]?.locked;
+  const type = scene.objects[objId]?.type;
+  if (type === 'metaball') return; // metaballs not editable in edit mode
       if (locked) return;
       if (meshId) selectionActions.enterEditMode(meshId);
     }
@@ -307,6 +309,7 @@ const TopToolbar: React.FC = () => {
           onAddForce={addForce}
           onAddParticleSystem={addParticleSystem}
           onAddFluidSystem={() => { /* top toolbar: no fluid UI, create via scene API */ const id = scene.createFluidSystemObject('Fluid System'); scene.selectObject(id); if (selection.viewMode === 'object') selectionActions.selectObjects([id]); setMenuOpen(false); }}
+          onAddMetaball={() => { const id = (scene as any).createMetaballObject?.('Metaballs'); if (id) { scene.selectObject(id); if (selection.viewMode === 'object') selectionActions.selectObjects([id]); } setMenuOpen(false); }}
         />
       </Pill>
 

@@ -3,7 +3,7 @@ import { useThree } from '@react-three/fiber';
 import { useSelectionStore } from '@/stores/selection-store';
 import { useToolStore } from '@/stores/tool-store';
 import { useGeometryStore } from '@/stores/geometry-store';
-import { Vector3, Matrix4, Quaternion, Euler } from 'three';
+import { Vector3, Matrix4, Quaternion, Euler } from 'three/webgpu';
 
 export const useMarqueeSelection = (objTransform: any) => {
   const { gl, camera, size } = useThree();

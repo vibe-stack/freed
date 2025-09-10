@@ -27,6 +27,8 @@ import { registerCamera, unregisterCamera } from '../hooks/camera-registry';
 import { registerObject3D, unregisterObject3D } from '../hooks/object3d-registry';
 import { useAnimationStore } from '@/stores/animation-store';
 import ForceFieldNode from './force-field-node';
+// Metaball rendering (GPU Marching Cubes placeholder)
+import { useMetaballStore } from '@/stores/metaball-store';
 // Light helper wrappers
 const DirectionalLightNode: React.FC<{ color: Color; intensity: number }> = ({ color, intensity }) => {
   const ref = useRef<DirectionalLight>(null!);
@@ -441,5 +443,6 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
     </group>
   );
 };
+
 
 export default ObjectNode;
