@@ -11,6 +11,7 @@ import { useShapeCreationStore } from '@/stores/shape-creation-store';
 import { WorkspaceData, exportToT3D } from '@/utils/t3d-exporter';
 import { openImportDialog } from '@/utils/t3d-importer';
 import { openGLTFImportDialog, type ImportSummary } from '@/utils/gltf-importer';
+import { openOBJImportDialog, type OBJImportSummary } from '@/utils/obj-importer';
 import { Box, Download, FolderOpen, Save, Heart, Check, Minimize2 } from 'lucide-react';
 import DonateDialog from '@/components/donate-dialog';
 import { useUVEditorStore } from '@/stores/uv-editor-store';
@@ -163,6 +164,20 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 				useSceneStore.getState().selectObject(summary.rootGroupId);
 			},
 			(err: Error) => console.error('GLB import failed', err)
+		);
+	}, []);
+
+	const handleImportOBJ = useCallback(() => {
+		openOBJImportDialog(
+			(summary: OBJImportSummary) => {
+				// Focus the newly imported group
+				useSceneStore.getState().selectObject(summary.rootGroupId);
+				// Select objects if in object mode
+				if (useSelectionStore.getState().selection.viewMode === 'object') {
+					useSelectionStore.getState().selectObjects(summary.createdObjectIds);
+				}
+			},
+			(err: Error) => console.error('OBJ import failed', err)
 		);
 	}, []);
 	const handleNewScene = useCallback(() => {
@@ -345,7 +360,9 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleImportGLB}>
 									<span className="inline-flex items-center gap-2"><FolderOpen className="w-4 h-4" /> GLB/GLTF…</span>
 								</Menu.Item>
-								<Menu.Item disabled className="w-full text-left px-3 py-1.5 text-gray-500">OBJ… (soon)</Menu.Item>
+								<Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={handleImportOBJ}>
+									<span className="inline-flex items-center gap-2"><FolderOpen className="w-4 h-4" /> OBJ…</span>
+								</Menu.Item>
 								<Menu.Item disabled className="w-full text-left px-3 py-1.5 text-gray-500">FBX… (soon)</Menu.Item>
 							</Menu.Popup>
 						</Menu.Positioner>
