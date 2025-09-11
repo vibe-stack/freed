@@ -2,6 +2,7 @@
 
 import React from 'react';
 import AddObjectMenu from '@/features/shared/add-object-menu';
+import { useTerrainStore } from '@/stores/terrain-store';
 import { useTextStore } from '@/stores/text-store';
 import { useSelection, useSelectionStore } from '@/stores/selection-store';
 import { useViewportStore } from '@/stores/viewport-store';
@@ -310,6 +311,14 @@ const TopToolbar: React.FC = () => {
           onAddParticleSystem={addParticleSystem}
           onAddFluidSystem={() => { /* top toolbar: no fluid UI, create via scene API */ const id = scene.createFluidSystemObject('Fluid System'); scene.selectObject(id); if (selection.viewMode === 'object') selectionActions.selectObjects([id]); setMenuOpen(false); }}
           onAddMetaball={() => { const id = (scene as any).createMetaballObject?.('Metaballs'); if (id) { scene.selectObject(id); if (selection.viewMode === 'object') selectionActions.selectObjects([id]); } setMenuOpen(false); }}
+          onCreateTerrain={() => {
+            const res = useTerrainStore.getState().createTerrain();
+            if (res?.objectId) {
+              scene.selectObject(res.objectId);
+              if (selection.viewMode === 'object') selectionActions.selectObjects([res.objectId]);
+            }
+            setMenuOpen(false);
+          }}
         />
       </Pill>
 

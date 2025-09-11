@@ -23,6 +23,7 @@ import { useRegisterShortcuts } from '@/components/shortcut-provider';
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
 import AddObjectMenu from '@/features/shared/add-object-menu';
 import { useTextStore } from '@/stores/text-store';
+import { useTerrainStore } from '@/stores/terrain-store';
 
 type Props = { onOpenShaderEditor?: () => void };
 const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
@@ -392,6 +393,14 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 							const id = sceneStore.createMetaballObject('Metaballs');
 							sceneStore.selectObject(id);
 							if (useSelectionStore.getState().selection.viewMode === 'object') useSelectionStore.getState().selectObjects([id]);
+						}}
+						onCreateTerrain={() => {
+							const res = useTerrainStore.getState().createTerrain();
+							// createTerrain returns { terrainId, objectId }
+							if (res?.objectId) {
+								sceneStore.selectObject(res.objectId);
+								if (useSelectionStore.getState().selection.viewMode === 'object') useSelectionStore.getState().selectObjects([res.objectId]);
+							}
 						}}
 					/>
 

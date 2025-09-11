@@ -4,6 +4,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import { useMemo } from 'react';
 import { Mesh, Material, CameraResource } from '../types/geometry';
 import type { ShaderGraph } from '@/types/shader';
+import type { TerrainGraph } from '@/types/terrain';
 import { nanoid } from 'nanoid';
 import { useSceneStore } from './scene-store';
 import { applyModifiersToMesh, type ModifierStackItem, type ModifierType, createDefaultSettings } from '../utils/modifiers';
@@ -28,6 +29,8 @@ interface GeometryState {
   materials: Map<string, Material>;
   // Material shader graphs
   shaderGraphs: Map<string, ShaderGraph>; // key: materialId
+  // Terrain node graphs (keyed by terrainId)
+  terrainGraphs: Map<string, TerrainGraph>;
   selectedMeshId: string | null;
   // Map objectId -> array stack top-to-bottom
   modifierStacks: Record<string, ModifierStackItem[]>;
@@ -56,6 +59,11 @@ interface GeometryActions {
   setShaderGraph: (materialId: string, graph: ShaderGraph) => void;
   updateShaderGraph: (materialId: string, updater: (graph: ShaderGraph) => void) => void;
   removeShaderGraph: (materialId: string) => void;
+
+  // Terrain graph operations (by terrain resource id)
+  setTerrainGraph: (terrainId: string, graph: TerrainGraph) => void;
+  updateTerrainGraph: (terrainId: string, updater: (graph: TerrainGraph) => void) => void;
+  removeTerrainGraph: (terrainId: string) => void;
 
   // Utility operations
   createCube: (size?: number) => string;
@@ -93,6 +101,7 @@ export const useGeometryStore = create<GeometryStore>()(
         meshes: new Map(),
         materials: new Map(),
         shaderGraphs: new Map(),
+  terrainGraphs: new Map(),
         selectedMeshId: null,
         modifierStacks: {},
         cameras: {},
@@ -250,6 +259,23 @@ export const useGeometryStore = create<GeometryStore>()(
         },
         removeShaderGraph: (materialId: string) => {
           set((state) => { state.shaderGraphs.delete(materialId); });
+        },
+
+        // Terrain graph operations
+        setTerrainGraph: (terrainId: string, graph: TerrainGraph) => {
+          set((state) => { state.terrainGraphs.set(terrainId, graph); });
+        },
+        updateTerrainGraph: (terrainId: string, updater: (graph: TerrainGraph) => void) => {
+          set((state) => {
+            const g = state.terrainGraphs.get(terrainId);
+            if (!g) return;
+            const next = { ...g, nodes: g.nodes.slice(), edges: g.edges.slice() } as TerrainGraph;
+            updater(next);
+            state.terrainGraphs.set(terrainId, next);
+          });
+        },
+        removeTerrainGraph: (terrainId: string) => {
+          set((state) => { state.terrainGraphs.delete(terrainId); });
         },
 
         // Utility operations
@@ -486,6 +512,7 @@ export const useGeometryStore = create<GeometryStore>()(
         meshes: state.meshes,
         materials: state.materials,
         shaderGraphs: state.shaderGraphs,
+        terrainGraphs: state.terrainGraphs,
         selectedMeshId: state.selectedMeshId,
         modifierStacks: state.modifierStacks,
         cameras: state.cameras,

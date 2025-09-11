@@ -22,6 +22,9 @@ import UVEditor from '@/features/uv-editor/components/uv-editor';
 import { useUVEditorStore } from '@/stores/uv-editor-store';
 import { AnimatePresence } from "motion/react"
 
+import TerrainEditor from '@/features/terrain/components/terrain-editor'
+import { useTerrainEditorStore } from '@/stores/terrain-editor-store';
+
 const EditorLayout: React.FC = () => {
   const shaderOpen = useShaderEditorStore((s) => s.open);
   const setShaderOpen = useShaderEditorStore((s) => s.setOpen);
@@ -99,6 +102,9 @@ const EditorLayout: React.FC = () => {
           <ShaderEditor open={shaderOpen} onOpenChange={setShaderOpen} />
           {/* UV Editor Panel */}
           <UVEditor open={uvOpen} onOpenChange={setUVOpen} />
+
+          <TerrainEditor open={useTerrainEditorStore((s) => s.open)} onOpenChange={() => { }} />
+
 
           {/* Timeline overlays inside the viewport region */}
           {timelineOpen && <Timeline />}

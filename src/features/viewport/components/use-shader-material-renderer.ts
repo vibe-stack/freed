@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { MeshStandardMaterial, Color, DoubleSide, Material } from 'three/webgpu';
 import { useMaterialNodes } from '@/features/materials/hooks/use-material-nodes';
+import { useTerrainStore } from '@/stores/terrain-store';
+import { createNormalDataTexture } from '@/utils/terrain/three-texture';
 
 type MeshRes = any;
 
@@ -14,6 +16,7 @@ type Params = {
 export function useShaderMaterialRenderer({ displayMesh, shading, isSelected, materials }: Params): Material {
   // Get node material (hook must be called at top-level)
   const nodeMaterial = useMaterialNodes(shading === 'material' ? displayMesh?.materialId : undefined) as unknown as Material | undefined;
+  const terrains = useTerrainStore((s) => s.terrains);
 
   // Build a standard material or prefer a node material when available.
   const mat = useMemo<Material>(() => {
@@ -62,7 +65,27 @@ export function useShaderMaterialRenderer({ displayMesh, shading, isSelected, ma
       }
     }
 
-    return (nodeMaterial ?? std) as Material;
+    // Apply terrain normal map on top (except in wireframe)
+    const mat: any = (nodeMaterial ?? std);
+    if (shading !== 'wireframe' && displayMesh?.id) {
+      // Find a terrain that uses this mesh
+      const terrain = Object.values(terrains).find((t: any) => t.meshId === displayMesh.id);
+      const nrm = terrain?.maps?.normal;
+      const texW = terrain?.textureResolution?.width;
+      const texH = terrain?.textureResolution?.height;
+      if (nrm && texW && texH) {
+        try {
+          const nrmTex = createNormalDataTexture(nrm, texW, texH);
+          mat.normalMap = nrmTex;
+          // Scale can be set later from UI; default 1 is fine for now
+          mat.normalScale = (mat.normalScale ?? { set: (x: number, y: number) => { (mat as any).normalScale = { x, y }; } });
+        } catch {
+          // ignore if material type doesn't support normalMap
+        }
+      }
+    }
+
+    return mat as Material;
   }, [displayMesh, shading, isSelected, materials, nodeMaterial]);
 
   return mat;

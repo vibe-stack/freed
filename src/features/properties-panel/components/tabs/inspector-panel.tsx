@@ -14,6 +14,7 @@ import { useForceFieldStore } from '@/stores/force-field-store';
 import { useFluidStore } from '@/stores/fluid-store';
 import { useTextStore, useTextResource } from '@/stores/text-store';
 import { useMetaballStore } from '@/stores/metaball-store';
+import { useTerrainStore } from '@/stores/terrain-store';
 
 const Label: React.FC<{ label: string } & React.HTMLAttributes<HTMLDivElement>> = ({ label, children, className = '', ...rest }) => (
   <div className={`text-xs text-gray-400 ${className}`} {...rest}>
@@ -31,6 +32,8 @@ export const InspectorPanel: React.FC = () => {
   const selected = useSelectedObject();
   const scene = useSceneStore();
   const activeClipId = useAnimationStore((s) => s.activeClipId);
+  const terrains = useTerrainStore();
+
 
   if (!selected) {
     return <div className="p-3 text-xs text-gray-500">No object selected.</div>;
@@ -147,6 +150,14 @@ export const InspectorPanel: React.FC = () => {
         <div>
           <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Object Data</div>
           <ObjectDataSection objectId={selected.id} />
+          <div className="mt-2">
+            <button
+              className="px-2 py-1 rounded border border-white/10 hover:bg-white/10 text-xs"
+              onClick={() => terrains.createTerrain({ name: 'Terrain' })}
+            >
+              Create Terrain
+            </button>
+          </div>
         </div>
       )}
 

@@ -20,6 +20,7 @@ type Props = {
   onAddParticleSystem: () => void;
   onAddFluidSystem?: () => void;
   onAddMetaball?: () => void;
+  onCreateTerrain?: () => void;
 };
 
 const AddObjectMenu: React.FC<Props> = ({
@@ -37,6 +38,7 @@ const AddObjectMenu: React.FC<Props> = ({
   onAddParticleSystem,
   onAddFluidSystem,
   onAddMetaball,
+  onCreateTerrain,
 }) => {
   const closeIfControlled = () => { if (typeof onOpenChange === 'function') onOpenChange(false); };
 
@@ -82,6 +84,7 @@ const AddObjectMenu: React.FC<Props> = ({
                   <Menu.Popup className="min-w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
                     <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onCreateShape('cube'); closeIfControlled(); }}>Cube</Menu.Item>
                     <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onCreateShape('plane'); closeIfControlled(); }}>Plane</Menu.Item>
+                    <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { if (onCreateTerrain) onCreateTerrain(); closeIfControlled(); }}>Terrain</Menu.Item>
                     <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onCreateShape('cylinder'); closeIfControlled(); }}>Cylinder</Menu.Item>
                     <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onCreateShape('cone'); closeIfControlled(); }}>Cone</Menu.Item>
                     <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onCreateShape('uvsphere'); closeIfControlled(); }}>UV Sphere</Menu.Item>
