@@ -4,15 +4,12 @@
 import React, { useMemo } from 'react';
 import { useMetaballStore } from '@/stores/metaball-store';
 import { useSceneStore } from '@/stores/scene-store';
-import { useThree } from '@react-three/fiber';
 import { WebGPUOptimizedMarchingCubesField } from './metaball-surface/webgpu-optimized-marchingcubes-field';
-import { WebGPURenderer } from 'three/webgpu';
 
 const MetaballSurface: React.FC = () => {
     const metaballs = useMetaballStore((s) => s.metaballs);
     const settings = useMetaballStore((s) => s.settings);
     const sceneObjects = useSceneStore((s) => s.objects);
-    const { gl } = useThree();
 
     // Aggregate all systems keyed by material (currently materialId may be undefined => group default)
     const groups = useMemo(() => {

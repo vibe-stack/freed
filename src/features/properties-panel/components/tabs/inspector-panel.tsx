@@ -463,11 +463,11 @@ const MetaballSection: React.FC<{ metaballId: string }> = ({ metaballId }) => {
   );
 };
 
-const Text3DSection: React.FC<{ textId: string; objectId: string }> = ({ textId, objectId }) => {
+const Text3DSection: React.FC<{ textId: string; objectId: string }> = ({ textId }) => {
   const text = useTextResource(textId);
   const { updateText, rasterizeText } = useTextStore();
   // Prepare hooks BEFORE conditional early return
-  const commonFonts = ['Inter','Arial','Helvetica','Times New Roman','Courier New','Georgia','Verdana','Tahoma','Trebuchet MS','Impact','Monaco','Menlo'];
+  const commonFonts = React.useMemo(() => ['Inter','Arial','Helvetica','Times New Roman','Courier New','Georgia','Verdana','Tahoma','Trebuchet MS','Impact','Monaco','Menlo'], []);
   const [available, setAvailable] = React.useState<Record<string, boolean>>({});
   React.useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -488,7 +488,7 @@ const Text3DSection: React.FC<{ textId: string; objectId: string }> = ({ textId,
     const res: Record<string, boolean> = {};
     commonFonts.forEach(f => { try { res[f] = detect(f); } catch { res[f] = false; } });
     setAvailable(res);
-  }, []); // commonFonts static
+  }, [commonFonts]);
   if (!text) return null;
   const update = (fn: (t: any) => void) => updateText(textId, fn);
   return (

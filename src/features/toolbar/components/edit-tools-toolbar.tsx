@@ -4,7 +4,7 @@ import React, { ReactNode } from 'react';
 import { useSelection } from '@/stores/selection-store';
 import { useToolStore } from '@/stores/tool-store';
 import * as motion from 'motion/react-client';
-import { Move3DIcon, MoveIcon, Rotate3DIcon, Scale3DIcon } from 'lucide-react';
+import { Move3DIcon, Rotate3DIcon, Scale3DIcon } from 'lucide-react';
 
 // Small, lucide-style inline icons for edit tools that previously used emojis.
 export const ExtrudeIcon: React.FC<{ className?: string }> = ({ className }) => (

@@ -8,13 +8,15 @@ import { ShadingSection } from './shading-section';
 import { useTerrainStore } from '@/stores/terrain-store';
 import { useTerrainEditorStore } from '@/stores/terrain-editor-store';
 import { DragInput } from '@/components/drag-input';
-import Switch from '@/components/switch';
 
 type Props = { objectId: string };
 
 export const ObjectDataSection: React.FC<Props> = ({ objectId }) => {
   const scene = useSceneStore();
   const geo = useGeometryStore();
+  const tStore = useTerrainStore();
+  const te = useTerrainEditorStore();
+  
   const obj = scene.objects[objectId];
   if (!obj) return null;
 
@@ -29,9 +31,7 @@ export const ObjectDataSection: React.FC<Props> = ({ objectId }) => {
   };
 
   // Determine if this mesh belongs to a terrain resource
-  const tStore = useTerrainStore();
   const terrainEntry = Object.values(tStore.terrains).find((t) => t.meshId === obj.meshId);
-  const te = useTerrainEditorStore();
 
   return (
     <div className="space-y-2">

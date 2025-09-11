@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ReactFlow, Background, Controls, MiniMap, ReactFlowProvider, NodeTypes, ConnectionMode, Handle, Position } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useTerrainEditorStore } from '@/stores/terrain-editor-store';
@@ -99,11 +99,10 @@ const BaseNode: React.FC<any> = ({ id, data, selected }) => {
   );
 };
 
-export const TerrainEditor: React.FC<Props> = ({ open, onOpenChange }) => {
+export const TerrainEditor: React.FC<Props> = ({ open }) => {
   const teOpen = useTerrainEditorStore((s) => s.open);
   const setTeOpen = useTerrainEditorStore((s) => s.setOpen);
   const teTerrainId = useTerrainEditorStore((s) => s.terrainId);
-  const setTeTerrainId = useTerrainEditorStore((s) => s.setTerrainId);
   const effectiveOpen = teOpen ?? open;
 
   const { updateGraph } = useTerrainStore();

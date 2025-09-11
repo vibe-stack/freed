@@ -1,17 +1,7 @@
 import type { TerrainNode } from '@/types/terrain';
 
-// Simple seeded PRNG (xorshift32)
-function rng(seed: number) {
-  let s = seed >>> 0;
-  return () => {
-    s ^= s << 13; s ^= s >>> 17; s ^= s << 5;
-    return ((s >>> 0) / 4294967296);
-  };
-}
-
 // 2D Perlin-like value noise with multiple octaves
 function perlin2D(x: number, y: number, seed: number, octaves: number, persistence: number, lacunarity: number): number {
-  const rnd = rng(seed);
   // Precompute gradients for integer grid cells via seeded hash
   const grad = new Map<string, { x: number; y: number }>();
   const gradient = (ix: number, iy: number) => {

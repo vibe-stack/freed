@@ -8,7 +8,6 @@ export async function evaluateTerrainGraphToHeightmap(graph: TerrainGraph, texW:
   const nodes = graph.nodes.slice();
   const edges = graph.edges.slice();
   const input = nodes.find((n) => n.type === 'input');
-  const output = nodes.find((n) => n.type === 'output');
   // Build a simple next-map
   const nextBy = new Map<string, TerrainNode[]>();
   for (const e of edges) {
