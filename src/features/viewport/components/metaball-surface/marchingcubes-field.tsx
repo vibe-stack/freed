@@ -6,7 +6,6 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three'; // use core three for examples compatibility
 import { useFrame } from '@react-three/fiber';
-// @ts-ignore examples path
 import { MarchingCubes } from 'three/examples/jsm/objects/MarchingCubes.js';
 
 interface CPUBlob { worldPos: { x: number; y: number; z: number }; radius: number; strength: number; color?: string | number; }

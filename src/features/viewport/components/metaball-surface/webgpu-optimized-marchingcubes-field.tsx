@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useMemo } from 'react';
 import * as THREE from 'three';
-// @ts-ignore examples path
 import { MarchingCubes } from 'three/examples/jsm/objects/MarchingCubes.js';
 
 interface CPUBlob { 
