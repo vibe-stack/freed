@@ -95,7 +95,7 @@ const EditorViewport: React.FC = () => {
           autoRotateSpeed={autoOrbitIntervalSec ? 60 / autoOrbitIntervalSec : 0}
         />
         <SceneContent />
-        {/* <WorldEffects /> */}
+        <WorldEffects />
         <AnimationSampler />
       </Canvas>
     </div>

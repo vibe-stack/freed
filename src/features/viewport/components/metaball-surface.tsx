@@ -13,7 +13,6 @@ const MetaballSurface: React.FC = () => {
     const settings = useMetaballStore((s) => s.settings);
     const sceneObjects = useSceneStore((s) => s.objects);
     const { gl } = useThree();
-    const supportsCompute = (gl as unknown as WebGPURenderer).isWebGPURenderer;
 
     // Aggregate all systems keyed by material (currently materialId may be undefined => group default)
     const groups = useMemo(() => {
@@ -26,7 +25,7 @@ const MetaballSurface: React.FC = () => {
             const g = (map[key] ||= { blobs: [], resolution: settings.resolution, iso: settings.isoLevel, smooth: settings.smoothNormals });
             g.blobs.push({ worldPos: { x: o.transform.position.x, y: o.transform.position.y, z: o.transform.position.z }, radius: m.radius, strength: m.strength, color: m.color });
         });
-        // console.log('MetaballSurface groups:', Object.keys(map).length, 'total blobs:', Object.values(map).reduce((sum, g) => sum + g.blobs.length, 0));
+
         return map;
     }, [metaballs, sceneObjects, settings]);
 
