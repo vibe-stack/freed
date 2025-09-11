@@ -40,7 +40,7 @@ const defaultMetaball = (): Metaball => ({
 
 export const useMetaballStore = create<MetaballStore>()(
   subscribeWithSelector(
-    immer((set, get) => ({
+    immer((set) => ({
       metaballs: {},
       settings: { resolution: 32, isoLevel: 0.5, smoothNormals: true },
       addMetaball: (partial) => {

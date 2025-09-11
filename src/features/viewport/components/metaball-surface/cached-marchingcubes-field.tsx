@@ -24,7 +24,7 @@ export const CachedMarchingCubesField: React.FC<Props> = ({
   blobs,
   resolution,
   iso,
-  smooth
+  smooth // eslint-disable-line @typescript-eslint/no-unused-vars
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh | null>(null);
@@ -88,11 +88,12 @@ export const CachedMarchingCubesField: React.FC<Props> = ({
     
     meshRef.current = mesh;
     groupRef.current.add(mesh);
-  }, [cacheKey, blobs]);
+  }, [cacheKey, blobs, iso, resolution]);
 
   return <group ref={groupRef} />;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function generateMetaballGeometry(blobs: CPUBlob[], resolution: number, iso: number): THREE.BufferGeometry {
   // Instead of using MarchingCubes class, generate geometry manually
   // This avoids WebGPU buffer update overhead

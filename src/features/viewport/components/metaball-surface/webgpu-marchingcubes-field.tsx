@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useCallback } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
 
 interface CPUBlob { 
   worldPos: { x: number; y: number; z: number }; 
@@ -127,7 +126,7 @@ export const WebGPUMarchingCubesField: React.FC<Props> = ({
   blobs,
   resolution,
   iso,
-  smooth
+  smooth // eslint-disable-line @typescript-eslint/no-unused-vars
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh | null>(null);
@@ -217,14 +216,7 @@ export const WebGPUMarchingCubesField: React.FC<Props> = ({
     };
   }, [blobs]);
 
-  // Update surface when inputs change
-  useEffect(() => {
-    if (!deviceRef.current || !pipelineRef.current || !blobs.length) return;
-    
-    computeSurface();
-  }, [blobs, bounds, resolution, iso]);
-
-  const computeSurface = async () => {
+  const computeSurface = useCallback(async () => {
     const device = deviceRef.current;
     const pipeline = pipelineRef.current;
     if (!device || !pipeline) return;
@@ -326,14 +318,21 @@ export const WebGPUMarchingCubesField: React.FC<Props> = ({
 
       // Read back results (simplified - in practice you'd stream this)
       // This is just a placeholder - full implementation would be more complex
-      updateMeshFromBuffers(vertexBuffer, indexBuffer, counterBuffer, device);
+      updateMeshFromBuffers();
 
     } catch (error) {
       console.error('WebGPU compute failed:', error);
     }
-  };
+  }, [blobs, bounds, iso]);
 
-  const updateMeshFromBuffers = async (vertexBuffer: GPUBuffer, indexBuffer: GPUBuffer, counterBuffer: GPUBuffer, device: GPUDevice) => {
+  // Update surface when inputs change
+  useEffect(() => {
+    if (!deviceRef.current || !pipelineRef.current || !blobs.length) return;
+    
+    computeSurface();
+  }, [blobs, bounds, resolution, iso, computeSurface]);
+
+  const updateMeshFromBuffers = async () => {
     // This would read back the compute results and update the mesh
     // Placeholder implementation
     if (!groupRef.current) return;

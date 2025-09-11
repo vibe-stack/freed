@@ -6,7 +6,6 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three'; // use core three for examples compatibility
 import { useFrame } from '@react-three/fiber';
-// @ts-ignore examples path
 import { MarchingCubes } from 'three/examples/jsm/objects/MarchingCubes.js';
 
 interface CPUBlob { worldPos: { x: number; y: number; z: number }; radius: number; strength: number; color?: string | number; }
@@ -31,11 +30,11 @@ export const MarchingCubesField: React.FC<Props> = ({
   blobs,
   resolution,
   iso,
-  smooth, // eslint keeps param unused safe
+  smooth, // eslint-disable-line @typescript-eslint/no-unused-vars
   maxUpdatesPerSecond = 2,
   autoLOD = true,
   minResolution = 6,
-  maxResolution,
+  maxResolution, // eslint-disable-line @typescript-eslint/no-unused-vars
   targetFrameMS = 60,
   hysteresisMS = 4
 }) => {

@@ -20,7 +20,7 @@ export const ResponsiveMarchingCubesField: React.FC<Props> = ({
   blobs,
   resolution,
   iso,
-  smooth
+  smooth // eslint-disable-line @typescript-eslint/no-unused-vars
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh | null>(null);
@@ -100,6 +100,7 @@ export const ResponsiveMarchingCubesField: React.FC<Props> = ({
   return <group ref={groupRef} />;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function generateMetaballGeometry(blobs: CPUBlob[], resolution: number, iso: number): THREE.BufferGeometry {
   if (!blobs.length) {
     return new THREE.SphereGeometry(0.1, 8, 8);

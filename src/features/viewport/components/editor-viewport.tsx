@@ -10,7 +10,6 @@ import { useViewportStore } from '@/stores/viewport-store';
 import CalmBg from './calm-bg';
 import SceneContent from './scene-content';
 import CameraController from './camera-controller';
-import WorldEffects from './world-effects';
 import { useRendererSettings } from '@/stores/world-store';
 import AutoOrbitController from './auto-orbit-controller';
 import { useSelectionStore } from '@/stores/selection-store';

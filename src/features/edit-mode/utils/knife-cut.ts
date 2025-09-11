@@ -1,7 +1,6 @@
 import { Mesh, Vertex, Edge, Face } from '@/types/geometry';
-import { createVertex, createEdge, createFace, buildEdgesFromFaces } from '@/utils/geometry';
+import { createVertex, createFace, buildEdgesFromFaces } from '@/utils/geometry';
 import { Vector3 } from 'three/webgpu';
-import { nanoid } from 'nanoid';
 
 interface CutPoint {
   x: number;
@@ -10,6 +9,7 @@ interface CutPoint {
   faceId: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface CutLine {
   a: { x: number; y: number; z: number };
   b: { x: number; y: number; z: number };
@@ -51,6 +51,7 @@ export function applyKnifeCut(mesh: Mesh, cutPoints: CutPoint[]): void {
   if (cutPoints.length < 2) return;
   
   const newVertices: Vertex[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const newEdges: Edge[] = [];
   const newFaces: Face[] = [];
   

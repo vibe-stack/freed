@@ -16,7 +16,7 @@ export const useEditModeSelection = ({ meshId, toolActive }: Params) => {
   const lastAltEdgeRef = useRef<string | null>(null);
   const boundaryClickCountRef = useRef<number>(0);
 
-  const getMesh = (): Mesh | null => (meshId ? geo.meshes.get(meshId) || null : null);
+  const getMesh = useCallback((): Mesh | null => (meshId ? geo.meshes.get(meshId) || null : null), [meshId, geo.meshes]);
 
   const handleVertexClick = useCallback((vertexId: string, e: ThreeEvent<PointerEvent>) => {
     if (toolActive || !meshId) return;

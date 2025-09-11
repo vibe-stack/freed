@@ -69,9 +69,9 @@ export const KnifeHandler: React.FC<KnifeHandlerProps> = ({
   const geometryStore = useGeometryStore();
   
   const [cutPoints, setCutPoints] = useState<CutPoint[]>([]);
-  const [previewPath, setPreviewPath] = useState<CutLine[]>([]);
-  const [hoverPoint, setHoverPoint] = useState<{ x: number; y: number; z: number; faceId: string } | null>(null);
-  const [hoverPreviewLine, setHoverPreviewLine] = useState<CutLine | null>(null);
+  const [, setPreviewPath] = useState<CutLine[]>([]);
+  const [, setHoverPoint] = useState<{ x: number; y: number; z: number; faceId: string } | null>(null);
+  const [, setHoverPreviewLine] = useState<CutLine | null>(null);
   
   const mesh = geometryStore.meshes.get(meshId);
   
@@ -276,7 +276,7 @@ export const KnifeHandler: React.FC<KnifeHandlerProps> = ({
     
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [toolStore, cutPoints]);
+  }, [toolStore, cutPoints, geometryStore, meshId]);
 
   // Clean up when tool becomes inactive
   useEffect(() => {

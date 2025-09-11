@@ -32,7 +32,7 @@ export const WebWorkerMarchingCubesField: React.FC<Props> = ({
   blobs,
   resolution,
   iso,
-  smooth
+  smooth // eslint-disable-line @typescript-eslint/no-unused-vars
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
@@ -43,34 +43,6 @@ export const WebWorkerMarchingCubesField: React.FC<Props> = ({
     roughness: 0.25, 
     metalness: 0.05 
   }));
-
-  // Initialize worker
-  useEffect(() => {
-    workerRef.current = new Worker(
-      new URL('./metaball-worker.ts', import.meta.url),
-      { type: 'module' }
-    );
-
-    workerRef.current.onmessage = (event: MessageEvent<WorkerResult>) => {
-      const result = event.data;
-      
-      if (result.id !== pendingRequestId.current) {
-        return; // Ignore stale results
-      }
-
-      if (result.error) {
-        console.error('Worker error:', result.error);
-        return;
-      }
-
-      updateMesh(result);
-      pendingRequestId.current = null;
-    };
-
-    return () => {
-      workerRef.current?.terminate();
-    };
-  }, []);
 
   const updateMesh = useCallback((result: WorkerResult) => {
     if (!groupRef.current) return;
@@ -103,6 +75,34 @@ export const WebWorkerMarchingCubesField: React.FC<Props> = ({
     meshRef.current = mesh;
     groupRef.current.add(mesh);
   }, []);
+
+  // Initialize worker
+  useEffect(() => {
+    workerRef.current = new Worker(
+      new URL('./metaball-worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+
+    workerRef.current.onmessage = (event: MessageEvent<WorkerResult>) => {
+      const result = event.data;
+      
+      if (result.id !== pendingRequestId.current) {
+        return; // Ignore stale results
+      }
+
+      if (result.error) {
+        console.error('Worker error:', result.error);
+        return;
+      }
+
+      updateMesh(result);
+      pendingRequestId.current = null;
+    };
+
+    return () => {
+      workerRef.current?.terminate();
+    };
+  }, [updateMesh]);
 
   // Compute bounds
   const bounds = useMemo(() => {

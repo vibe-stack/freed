@@ -2,8 +2,6 @@
 
 import React, { useEffect, useRef, useMemo } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
-// @ts-ignore examples path
 import { MarchingCubes } from 'three/examples/jsm/objects/MarchingCubes.js';
 
 interface CPUBlob { 
@@ -24,7 +22,7 @@ export const OptimizedMarchingCubesField: React.FC<Props> = ({
   blobs,
   resolution,
   iso,
-  smooth
+  smooth // eslint-disable-line @typescript-eslint/no-unused-vars
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const mcRef = useRef<typeof MarchingCubes.prototype | null>(null);

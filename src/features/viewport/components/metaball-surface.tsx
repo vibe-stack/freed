@@ -13,6 +13,7 @@ const MetaballSurface: React.FC = () => {
     const settings = useMetaballStore((s) => s.settings);
     const sceneObjects = useSceneStore((s) => s.objects);
     const { gl } = useThree();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const supportsCompute = (gl as unknown as WebGPURenderer).isWebGPURenderer;
 
     // Aggregate all systems keyed by material (currently materialId may be undefined => group default)

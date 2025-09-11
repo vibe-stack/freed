@@ -452,7 +452,7 @@ const MetaballSection: React.FC<{ metaballId: string }> = ({ metaballId }) => {
   );
 };
 
-const Text3DSection: React.FC<{ textId: string; objectId: string }> = ({ textId, objectId }) => {
+const Text3DSection: React.FC<{ textId: string; objectId: string }> = ({ textId }) => {
   const text = useTextResource(textId);
   const { updateText, rasterizeText } = useTextStore();
   // Prepare hooks BEFORE conditional early return
@@ -477,7 +477,7 @@ const Text3DSection: React.FC<{ textId: string; objectId: string }> = ({ textId,
     const res: Record<string, boolean> = {};
     commonFonts.forEach(f => { try { res[f] = detect(f); } catch { res[f] = false; } });
     setAvailable(res);
-  }, []); // commonFonts static
+  }, [commonFonts]); // Add commonFonts to dependencies
   if (!text) return null;
   const update = (fn: (t: any) => void) => updateText(textId, fn);
   return (

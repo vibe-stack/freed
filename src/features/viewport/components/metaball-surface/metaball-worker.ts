@@ -99,8 +99,11 @@ class MarchingCubesWorker {
     const indices: number[] = [];
     const normals: number[] = [];
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const dx = (bounds.max[0] - bounds.min[0]) / (this.resolution - 1);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const dy = (bounds.max[1] - bounds.min[1]) / (this.resolution - 1);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const dz = (bounds.max[2] - bounds.min[2]) / (this.resolution - 1);
 
     // This is a placeholder - you'd implement full marching cubes here
