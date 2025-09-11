@@ -86,7 +86,7 @@ export function useShaderMaterialRenderer({ displayMesh, shading, isSelected, ma
     }
 
     return mat as Material;
-  }, [displayMesh, shading, isSelected, materials, nodeMaterial]);
+  }, [displayMesh, shading, isSelected, materials, nodeMaterial, terrains]);
 
   return mat;
 }

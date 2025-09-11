@@ -1,5 +1,4 @@
 import { streamObject } from 'ai';
-import { openai } from '@ai-sdk/openai';
 import { xai } from "@ai-sdk/xai"
 import { z } from 'zod';
 
@@ -68,7 +67,7 @@ Rules:
 User's request: ${userPrompt}
 `;
 
-    const { partialObjectStream, } = await streamObject({
+    const { partialObjectStream, } = streamObject({
         model: model,
         schema: meshSchema,
         prompt: systemInstructions,

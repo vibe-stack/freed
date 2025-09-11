@@ -219,7 +219,6 @@ export const FluidSystemNode: React.FC<{ objectId: string; systemId: string }> =
     // Ensure helper uses consistent side
     (helperMat as any).side = DoubleSide;
     return helperMat;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shadingMode, material, nodeMat]);
 
   if (!fluidSys) return null;

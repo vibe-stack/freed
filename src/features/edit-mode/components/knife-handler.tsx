@@ -69,9 +69,6 @@ export const KnifeHandler: React.FC<KnifeHandlerProps> = ({
   const geometryStore = useGeometryStore();
   
   const [cutPoints, setCutPoints] = useState<CutPoint[]>([]);
-  const [previewPath, setPreviewPath] = useState<CutLine[]>([]);
-  const [hoverPoint, setHoverPoint] = useState<{ x: number; y: number; z: number; faceId: string } | null>(null);
-  const [hoverPreviewLine, setHoverPreviewLine] = useState<CutLine | null>(null);
   
   const mesh = geometryStore.meshes.get(meshId);
   
@@ -150,8 +147,6 @@ export const KnifeHandler: React.FC<KnifeHandlerProps> = ({
   // Update preview path when hovering
   const updatePreviewPath = useCallback((mousePoint: { x: number; y: number; z: number; faceId: string } | null) => {
     if (!mousePoint || cutPoints.length === 0) {
-      setPreviewPath([]);
-      setHoverPreviewLine(null);
       return;
     }
     
@@ -159,15 +154,8 @@ export const KnifeHandler: React.FC<KnifeHandlerProps> = ({
     const lastPos = new Vector3(lastPoint.x, lastPoint.y, lastPoint.z);
     const currentPos = new Vector3(mousePoint.x, mousePoint.y, mousePoint.z);
     
-    // Set hover preview line from last cut point to current hover point
-    setHoverPreviewLine({
-      a: { x: lastPoint.x, y: lastPoint.y, z: lastPoint.z },
-      b: { x: mousePoint.x, y: mousePoint.y, z: mousePoint.z }
-    });
-    
     if (mesh) {
-      const path = findFacePath(mesh, lastPoint.faceId, mousePoint.faceId, lastPos, currentPos);
-      setPreviewPath(path);
+      findFacePath(mesh, lastPoint.faceId, mousePoint.faceId, lastPos, currentPos);
     }
   }, [cutPoints, mesh]);
 
@@ -177,7 +165,6 @@ export const KnifeHandler: React.FC<KnifeHandlerProps> = ({
     
     const handleMouseMove = (e: MouseEvent) => {
       const point = raycastFace(e.clientX, e.clientY);
-      setHoverPoint(point);
       updatePreviewPath(point);
       
       // Update tool store with hover line if we have cut points
@@ -262,29 +249,22 @@ export const KnifeHandler: React.FC<KnifeHandlerProps> = ({
           // End the operation
           toolStore.endOperation(true);
           setCutPoints([]);
-          setPreviewPath([]);
-          setHoverPoint(null);
         }
       } else if (e.key === 'Escape') {
         // Cancel knife operation
         toolStore.endOperation(false);
         setCutPoints([]);
-        setPreviewPath([]);
-        setHoverPoint(null);
       }
     };
     
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [toolStore, cutPoints]);
+  }, [toolStore, cutPoints, geometryStore, meshId]);
 
   // Clean up when tool becomes inactive
   useEffect(() => {
     if (!toolStore.isActive || toolStore.tool !== 'knife') {
       setCutPoints([]);
-      setPreviewPath([]);
-      setHoverPoint(null);
-      setHoverPreviewLine(null);
     }
   }, [toolStore.isActive, toolStore.tool]);
 

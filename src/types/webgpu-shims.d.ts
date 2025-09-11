@@ -2,7 +2,6 @@
 // These are intentionally loose (any) – the runtime objects are provided by three / browser WebGPU.
 // REMOVE once upstream typings expose these.
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 declare module 'three/webgpu' {
   interface WebGPURenderer {
     device?: GPUDevice; // three r165+ might expose internal device

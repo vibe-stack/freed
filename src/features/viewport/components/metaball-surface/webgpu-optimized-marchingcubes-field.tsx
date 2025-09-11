@@ -21,8 +21,7 @@ interface Props {
 export const WebGPUOptimizedMarchingCubesField: React.FC<Props> = ({
   blobs,
   resolution,
-  iso,
-  smooth
+  iso
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const mcRef = useRef<typeof MarchingCubes.prototype | null>(null);

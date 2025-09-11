@@ -1,7 +1,6 @@
 import { Mesh, Vertex, Edge, Face } from '@/types/geometry';
-import { createVertex, createEdge, createFace, buildEdgesFromFaces } from '@/utils/geometry';
+import { createVertex, createFace, buildEdgesFromFaces } from '@/utils/geometry';
 import { Vector3 } from 'three/webgpu';
-import { nanoid } from 'nanoid';
 
 interface CutPoint {
   x: number;
@@ -10,10 +9,6 @@ interface CutPoint {
   faceId: string;
 }
 
-interface CutLine {
-  a: { x: number; y: number; z: number };
-  b: { x: number; y: number; z: number };
-}
 
 // Find where a line segment intersects with a mesh edge
 function lineIntersectsEdge(
@@ -51,7 +46,6 @@ export function applyKnifeCut(mesh: Mesh, cutPoints: CutPoint[]): void {
   if (cutPoints.length < 2) return;
   
   const newVertices: Vertex[] = [];
-  const newEdges: Edge[] = [];
   const newFaces: Face[] = [];
   
   // For now, implement a simple version that cuts along straight lines between points

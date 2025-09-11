@@ -105,7 +105,7 @@ export const AIGeneratePopover: React.FC = () => {
             } catch {/* ignore parse errors until more arrives */}
         }
       }
-    } catch (e) {
+    } catch {
       // aborted or failed
     } finally {
       resetState();
