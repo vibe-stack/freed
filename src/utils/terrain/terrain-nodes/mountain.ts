@@ -3,7 +3,7 @@ import type { TerrainNode } from '@/types/terrain';
 // Radial mountain profile with falloff and roughness
 // h = peak * (1 - r^sharpness)^falloff + ridges
 function fbm(x: number, y: number, seed: number, octaves: number, gain: number, lacunarity: number) {
-  let sum = 0; let amp = 0.5; let freq = 1; let s = seed;
+  let sum = 0; let amp = 0.5; let freq = 1; const s = seed;
   const hash = (ix: number, iy: number) => {
     const h = Math.sin((ix * 374761393 + iy * 668265263) ^ s) * 43758.5453;
     return h - Math.floor(h);
