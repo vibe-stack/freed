@@ -17,7 +17,7 @@ type TerrainEditorStore = TerrainEditorState & TerrainEditorActions;
 
 export const useTerrainEditorStore = create<TerrainEditorStore>()(
   subscribeWithSelector((set) => ({
-    open: true,
+    open: false,
     terrainId: undefined,
     setOpen: (open) => set({ open }),
     openFor: (terrainId) => set({ open: true, terrainId }),

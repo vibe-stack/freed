@@ -10,6 +10,7 @@ import type { TerrainNodeType } from '@/types/terrain';
 import { nanoid } from 'nanoid';
 import { ContextMenu } from '@base-ui-components/react/context-menu';
 import { DragInput } from '@/components/drag-input';
+import { useShaderEditorHotkeys } from '@/features/materials/components/shader-editor/hooks/useShaderEditorHotkeys';
 
 type Props = { open: boolean; onOpenChange: (v: boolean) => void };
 
@@ -91,6 +92,44 @@ const BaseNode: React.FC<any> = ({ id, data, selected }) => {
             </div>
           </div>
         )}
+        {n.type === 'mountain' && (
+          <div className="space-y-1">
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Center X</span><DragInput compact value={(n as any).data?.centerX ?? 0.5} step={0.01} precision={2} onChange={(v) => setData({ centerX: Math.max(0, Math.min(1, v)) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Center Y</span><DragInput compact value={(n as any).data?.centerY ?? 0.5} step={0.01} precision={2} onChange={(v) => setData({ centerY: Math.max(0, Math.min(1, v)) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Radius</span><DragInput compact value={(n as any).data?.radius ?? 0.35} step={0.01} precision={3} onChange={(v) => setData({ radius: Math.max(0.01, v) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Peak</span><DragInput compact value={(n as any).data?.peak ?? 1.0} step={0.05} precision={2} onChange={(v) => setData({ peak: Math.max(0, v) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Falloff</span><DragInput compact value={(n as any).data?.falloff ?? 2.0} step={0.05} precision={2} onChange={(v) => setData({ falloff: Math.max(0.1, v) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Sharpness</span><DragInput compact value={(n as any).data?.sharpness ?? 1.5} step={0.05} precision={2} onChange={(v) => setData({ sharpness: Math.max(0.1, v) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Ridges</span><DragInput compact value={(n as any).data?.ridges ?? 0.2} step={0.02} precision={2} onChange={(v) => setData({ ridges: Math.max(0, v) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Octaves</span><DragInput compact value={(n as any).data?.octaves ?? 4} step={1} precision={0} onChange={(v) => setData({ octaves: Math.max(1, Math.round(v)) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Gain</span><DragInput compact value={(n as any).data?.gain ?? 0.5} step={0.05} precision={2} onChange={(v) => setData({ gain: Math.max(0.01, Math.min(1, v)) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Lacunarity</span><DragInput compact value={(n as any).data?.lacunarity ?? 2.0} step={0.05} precision={2} onChange={(v) => setData({ lacunarity: Math.max(1.0, v) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Op</span>
+              <select className="bg-black/40 border border-white/10 rounded px-1 py-0.5" value={(n as any).data?.operation ?? 'add'} onChange={(e) => setData({ operation: e.target.value })}>
+                {['add','mix','max','min','replace'].map((op) => <option key={op} value={op}>{op}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Amount</span><DragInput compact value={(n as any).data?.amount ?? 1} step={0.05} precision={2} onChange={(v) => setData({ amount: Math.max(0, Math.min(1, v)) })} /></div>
+          </div>
+        )}
+        {n.type === 'crater' && (
+          <div className="space-y-1">
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Center X</span><DragInput compact value={(n as any).data?.centerX ?? 0.5} step={0.01} precision={2} onChange={(v) => setData({ centerX: Math.max(0, Math.min(1, v)) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Center Y</span><DragInput compact value={(n as any).data?.centerY ?? 0.5} step={0.01} precision={2} onChange={(v) => setData({ centerY: Math.max(0, Math.min(1, v)) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Radius</span><DragInput compact value={(n as any).data?.radius ?? 0.25} step={0.01} precision={3} onChange={(v) => setData({ radius: Math.max(0.01, v) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Depth</span><DragInput compact value={(n as any).data?.depth ?? 0.6} step={0.05} precision={2} onChange={(v) => setData({ depth: Math.max(0, v) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Rim Height</span><DragInput compact value={(n as any).data?.rimHeight ?? 0.2} step={0.02} precision={2} onChange={(v) => setData({ rimHeight: Math.max(0, v) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Rim Width</span><DragInput compact value={(n as any).data?.rimWidth ?? 0.1} step={0.01} precision={2} onChange={(v) => setData({ rimWidth: Math.max(0.01, Math.min(0.9, v)) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Floor</span><DragInput compact value={(n as any).data?.floor ?? 0.1} step={0.02} precision={2} onChange={(v) => setData({ floor: Math.max(0, v) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Smooth</span><DragInput compact value={(n as any).data?.smooth ?? 0.5} step={0.02} precision={2} onChange={(v) => setData({ smooth: Math.max(0, Math.min(1, v)) })} /></div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Op</span>
+              <select className="bg-black/40 border border-white/10 rounded px-1 py-0.5" value={(n as any).data?.operation ?? 'add'} onChange={(e) => setData({ operation: e.target.value })}>
+                {['add','mix','max','min','replace'].map((op) => <option key={op} value={op}>{op}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-1 items-center"><span className="text-gray-400">Amount</span><DragInput compact value={(n as any).data?.amount ?? 1} step={0.05} precision={2} onChange={(v) => setData({ amount: Math.max(0, Math.min(1, v)) })} /></div>
+          </div>
+        )}
         {(n as any).data?.seed != null && (
           <div className="text-[10px] text-gray-500">seed: {(n as any).data.seed}</div>
         )}
@@ -115,13 +154,57 @@ export const TerrainEditor: React.FC<Props> = ({ open }) => {
   const [cmFlipY, setCmFlipY] = useState(false);
   useEffect(() => { setPortalContainer(document.body); }, []);
 
-  const nodeTypes = useMemo(() => ({ default: BaseNode, input: BaseNode, output: BaseNode, perlin: BaseNode, voronoi: BaseNode } as unknown as NodeTypes), []);
+  const nodeTypes = useMemo(() => ({ default: BaseNode, input: BaseNode, output: BaseNode, perlin: BaseNode, voronoi: BaseNode, mountain: BaseNode, crater: BaseNode } as unknown as NodeTypes), []);
 
   const defaultNodes = useMemo(() => (graph?.nodes ?? []).map((n: any) => ({ id: n.id, type: n.type as any, position: n.position as any, data: { terrainId: teTerrainId }, dragHandle: '.rf-drag', draggable: true })), [graph?.nodes, teTerrainId]);
   const defaultEdges = useMemo(() => (graph?.edges ?? []).map((e: any) => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle })), [graph?.edges]);
   const defaultEdgeOptions = useMemo(() => ({ animated: true }), []);
 
   const [rf, setRf] = useState<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const deleteSelection = () => {
+    if (!teTerrainId || !graph) return;
+    const nodes = rf?.getNodes() ?? [];
+    const edges = rf?.getEdges() ?? [];
+    const selNodeIds = new Set(nodes.filter((n: any) => (n as any).selected).map((n: any) => n.id));
+    const selEdgeIds = new Set(edges.filter((e: any) => (e as any).selected).map((e: any) => e.id));
+    if (selNodeIds.size === 0 && selEdgeIds.size === 0) return;
+
+    updateGraph(teTerrainId, (g) => {
+      if (selEdgeIds.size) {
+        g.edges = g.edges.filter((e: any) => !selEdgeIds.has(e.id));
+      }
+      if (selNodeIds.size) {
+        const canDelete = (n: any) => n.type !== 'input' && n.type !== 'output';
+        const removing = new Set(g.nodes.filter((n: any) => selNodeIds.has(n.id) && canDelete(n)).map((n: any) => n.id));
+        if (removing.size) {
+          g.nodes = g.nodes.filter((n: any) => !removing.has(n.id));
+          g.edges = g.edges.filter((e: any) => !removing.has(e.source) && !removing.has(e.target));
+        }
+      }
+    });
+
+    if (rf) {
+      if (selEdgeIds.size) rf.setEdges((eds: any) => eds.filter((e: any) => !selEdgeIds.has(e.id)) as any);
+      if (selNodeIds.size) rf.setNodes((nds: any) => nds.filter((n: any) => !selNodeIds.has(n.id)) as any);
+    }
+
+    const anyWin: any = globalThis;
+    const key = `__regen_graph_${teTerrainId}`;
+    if (anyWin[key]) clearTimeout(anyWin[key]);
+    anyWin[key] = setTimeout(() => { try { useTerrainStore.getState().regenerate(teTerrainId); } catch {} }, 200);
+  };
+
+  // Use the same hotkey handling as the shader editor so key events are captured at
+  // document capture phase and propagation is stopped (prevents global app handlers
+  // from receiving the Delete/Backspace event and deleting the 3D object).
+  useShaderEditorHotkeys(!!effectiveOpen, containerRef, {
+    copy: () => {},
+    cut: () => {},
+    paste: () => {},
+    del: () => deleteSelection(),
+  });
 
   const addNodeAt = (type: TerrainNodeType, clientPos?: { x: number; y: number } | null) => {
     if (!teTerrainId) return;
@@ -131,7 +214,11 @@ export const TerrainEditor: React.FC<Props> = ({ open }) => {
       ? { seed: Math.floor(Math.random() * 1e9), scale: 2, octaves: 4, persistence: 0.5, lacunarity: 2.0, amplitude: 1, operation: 'add', amount: 1 }
       : type === 'voronoi'
         ? { seed: Math.floor(Math.random() * 1e9), density: 4, jitter: 0.5, metric: 'euclidean', feature: 'f1', amplitude: 1, operation: 'add', amount: 1 }
-        : {};
+        : type === 'mountain'
+          ? { seed: Math.floor(Math.random() * 1e9), centerX: 0.5, centerY: 0.5, radius: 0.35, peak: 1.0, falloff: 2.0, sharpness: 1.5, ridges: 0.2, octaves: 4, gain: 0.5, lacunarity: 2.0, operation: 'add', amount: 1 }
+          : type === 'crater'
+            ? { centerX: 0.5, centerY: 0.5, radius: 0.25, depth: 0.6, rimHeight: 0.2, rimWidth: 0.1, floor: 0.1, smooth: 0.5, operation: 'add', amount: 1 }
+            : {};
     const node: any = { id, type, position: basePos, data };
     if (rf) rf.addNodes([{ id, type: type as any, position: basePos, data: { terrainId: teTerrainId }, dragHandle: '.rf-drag', draggable: true }]);
     updateGraph(teTerrainId, (g) => { g.nodes = [...g.nodes, node]; });
@@ -161,7 +248,7 @@ export const TerrainEditor: React.FC<Props> = ({ open }) => {
             <button className="px-2 py-1 rounded border border-white/10 hover:bg-white/10" onClick={() => setTeOpen(false)}>Close</button>
           </div>
         </div>
-        <div className="h-[calc(100%-36px)]">
+        <div className="h-[calc(100%-36px)]" ref={containerRef} tabIndex={0}>
           <ReactFlowProvider>
             <ContextMenu.Root open={cmOpen} onOpenChange={setCmOpen}>
               <div className="block h-full" onContextMenu={onPaneContextMenu}>
@@ -223,9 +310,16 @@ export const TerrainEditor: React.FC<Props> = ({ open }) => {
                     style={{ position: 'fixed', zIndex: 9999, left: (cmPos?.x ?? 0) + (cmFlipX ? -8 : 8), top: (cmPos?.y ?? 0) + (cmFlipY ? -8 : 8), transform: `translate(${cmFlipX ? '-100%' : '0'}, ${cmFlipY ? '-100%' : '0'})` }}
                   >
                     <div className="p-1 h-full max-h-72  overflow-y-auto overscroll-contain">
-                      <div>
-                        <button className="w-full text-left px-2 py-1 rounded hover:bg-white/10" onClick={() => { addNodeAt('perlin', cmPos); setCmOpen(false); }}>Add Perlin Noise</button>
-                        <button className="w-full text-left px-2 py-1 rounded hover:bg-white/10" onClick={() => { addNodeAt('voronoi', cmPos); setCmOpen(false); }}>Add Voronoi</button>
+                      {/* Submenu-like grouped sections */}
+                      <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-gray-500">Primitives</div>
+                      <div className="px-1 pb-1">
+                        <button className="w-full text-left px-2 py-1 rounded hover:bg-white/10" onClick={() => { addNodeAt('perlin', cmPos); setCmOpen(false); }}>Perlin Noise</button>
+                        <button className="w-full text-left px-2 py-1 rounded hover:bg-white/10" onClick={() => { addNodeAt('voronoi', cmPos); setCmOpen(false); }}>Voronoi</button>
+                      </div>
+                      <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-gray-500">Geoprimitives</div>
+                      <div className="px-1 pb-1">
+                        <button className="w-full text-left px-2 py-1 rounded hover:bg-white/10" onClick={() => { addNodeAt('mountain', cmPos); setCmOpen(false); }}>Mountain</button>
+                        <button className="w-full text-left px-2 py-1 rounded hover:bg-white/10" onClick={() => { addNodeAt('crater', cmPos); setCmOpen(false); }}>Crater</button>
                       </div>
                     </div>
                   </ContextMenu.Popup>

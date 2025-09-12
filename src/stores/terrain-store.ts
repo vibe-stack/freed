@@ -5,7 +5,7 @@ import type { TerrainGraph, TerrainResource } from '@/types/terrain';
 import { useGeometryStore } from './geometry-store';
 import { useSceneStore } from './scene-store';
 import { buildGridMesh, type GridBuildResult } from '@/utils/terrain/grid';
-import { evaluateTerrainGraphToHeightmap, bakeNormalMap } from '../utils/terrain/generate';
+import { evaluateTerrainGraphToHeightmap, bakeEnhancedNormalMap } from '../utils/terrain/generate';
 
 interface TerrainState {
   terrains: Record<string, TerrainResource>;
@@ -68,7 +68,7 @@ export const useTerrainStore = create<TerrainStore>()(immer((set, get) => ({
     const object = {
       id: nanoid(),
       name: tRes.name,
-      type: 'mesh',
+      type: 'terrain',
       parentId: null,
       children: [],
       transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } },
@@ -76,6 +76,7 @@ export const useTerrainStore = create<TerrainStore>()(immer((set, get) => ({
       locked: false,
       render: true,
       meshId: grid.mesh.id,
+      terrainId: id,
     } as any;
     scene.addObject(object);
     scene.selectObject(object.id);
@@ -131,7 +132,14 @@ export const useTerrainStore = create<TerrainStore>()(immer((set, get) => ({
     if (!t || !g) return;
     // Evaluate graph to heightmap
     const height = await evaluateTerrainGraphToHeightmap(g, t.textureResolution.width, t.textureResolution.height, t.width, t.height);
-    const normal = bakeNormalMap(height, t.textureResolution.width, t.textureResolution.height, (t.width / t.textureResolution.width), (t.height / t.textureResolution.height));
+    const normal = bakeEnhancedNormalMap(height, t.textureResolution.width, t.textureResolution.height, (t.width / t.textureResolution.width), (t.height / t.textureResolution.height), {
+      crackDensity: t.surfaceDetail?.crackDensity ?? 0.25,
+      crackDepth: t.surfaceDetail?.crackDepth ?? 0.4,
+      strataDensity: t.surfaceDetail?.strataDensity ?? 0.15,
+      strataDepth: t.surfaceDetail?.strataDepth ?? 0.25,
+      roughness: t.surfaceDetail?.roughness ?? 0.20,
+      seed: t.surfaceDetail?.seed ?? 42
+    });
     // Save maps
     set((state) => {
       const tt = state.terrains[terrainId];
@@ -146,9 +154,15 @@ export const useTerrainStore = create<TerrainStore>()(immer((set, get) => ({
     // Sample height at each vertex uv
     const w = t.textureResolution.width, h = t.textureResolution.height;
     const getHeight = (u: number, v: number) => {
-      const x = Math.max(0, Math.min(w - 1, Math.round(u * (w - 1))));
-      const y = Math.max(0, Math.min(h - 1, Math.round(v * (h - 1))));
-      return height[y * w + x];
+      const fx = u * (w - 1); const fy = v * (h - 1);
+      const x0 = Math.floor(fx); const y0 = Math.floor(fy);
+      const x1 = Math.min(w - 1, x0 + 1); const y1 = Math.min(h - 1, y0 + 1);
+      const tx = fx - x0; const ty = fy - y0;
+      const i00 = y0 * w + x0; const i10 = y0 * w + x1; const i01 = y1 * w + x0; const i11 = y1 * w + x1;
+      const h00 = height[i00]; const h10 = height[i10]; const h01 = height[i01]; const h11 = height[i11];
+      const hx0 = h00 * (1 - tx) + h10 * tx;
+      const hx1 = h01 * (1 - tx) + h11 * tx;
+      return hx0 * (1 - ty) + hx1 * ty;
     };
     const verts = mesh.vertices.map((vert) => {
       const u = vert.uv.x; const v = vert.uv.y;
@@ -158,6 +172,7 @@ export const useTerrainStore = create<TerrainStore>()(immer((set, get) => ({
       return { ...vert, position: { ...vert.position, y: elevation * heightScale } };
     });
     geom.replaceGeometry(meshId, verts as any, mesh.faces);
+    try { geom.recalculateNormals(meshId); } catch {}
   },
 })));
 

@@ -15,6 +15,7 @@ import { useFluidStore } from '@/stores/fluid-store';
 import { useTextStore, useTextResource } from '@/stores/text-store';
 import { useMetaballStore } from '@/stores/metaball-store';
 import { useTerrainStore } from '@/stores/terrain-store';
+import { TerrainSection } from '../terrain-section';
 
 const Label: React.FC<{ label: string } & React.HTMLAttributes<HTMLDivElement>> = ({ label, children, className = '', ...rest }) => (
   <div className={`text-xs text-gray-400 ${className}`} {...rest}>
@@ -202,6 +203,16 @@ export const InspectorPanel: React.FC = () => {
         <div>
           <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Text</div>
           <Text3DSection textId={selected.textId} objectId={selected.id} />
+        </div>
+      )}
+      {selected.type === 'terrain' && (selected as any).terrainId && (
+        <div>
+          <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Object Data</div>
+          <ObjectDataSection objectId={selected.id} />
+          <div className="mt-4">
+            <div className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Terrain Settings</div>
+            <TerrainSection terrainId={(selected as any).terrainId} objectId={selected.id} />
+          </div>
         </div>
       )}
     </div>

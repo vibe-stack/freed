@@ -6,7 +6,9 @@ export type TerrainNodeType =
   | 'input' // provides uv and initial height
   | 'output' // consumes final height
   | 'perlin' // noise-based height modifier
-  | 'voronoi'; // cellular noise-based modifier
+  | 'voronoi' // cellular noise-based modifier
+  | 'mountain' // geoprimitive
+  | 'crater'; // geoprimitive
 
 export interface TerrainNodeBase {
   id: string;
@@ -53,11 +55,46 @@ export interface TerrainVoronoiNode extends TerrainNodeBase {
   };
 }
 
+export interface TerrainMountainNode extends TerrainNodeBase {
+  type: 'mountain';
+  data: {
+    seed: number;
+    centerX: number; centerY: number; // in UV 0..1
+    radius: number; // UV scale
+    peak: number; // peak height
+    falloff: number; // radial falloff exponent
+    sharpness: number; // profile sharpness
+    ridges: number; // ridge amplitude
+    octaves: number;
+    gain: number;
+    lacunarity: number;
+    operation: 'add' | 'mix' | 'max' | 'min' | 'replace';
+    amount: number;
+  };
+}
+
+export interface TerrainCraterNode extends TerrainNodeBase {
+  type: 'crater';
+  data: {
+    centerX: number; centerY: number; // uv
+    radius: number; // uv
+    depth: number; // depression depth
+    rimHeight: number;
+    rimWidth: number; // 0..1 relative to radius
+    floor: number; // floor height relative
+    smooth: number; // 0..1
+    operation: 'add' | 'mix' | 'max' | 'min' | 'replace';
+    amount: number;
+  };
+}
+
 export type TerrainNode =
   | TerrainInputNode
   | TerrainOutputNode
   | TerrainPerlinNode
   | TerrainVoronoiNode
+  | TerrainMountainNode
+  | TerrainCraterNode
   | TerrainNodeBase;
 
 export interface TerrainEdge {
@@ -90,5 +127,14 @@ export interface TerrainResource {
   maps?: {
     height?: Float32Array; // textureResolution sized heightmap (0..1)
     normal?: Float32Array; // RGBA or XYZ per texel (packed as x,y,z,1)
+  };
+  // Surface detail parameters
+  surfaceDetail?: {
+    crackDensity?: number;
+    crackDepth?: number;
+    strataDensity?: number;
+    strataDepth?: number;
+    roughness?: number;
+    seed?: number;
   };
 }

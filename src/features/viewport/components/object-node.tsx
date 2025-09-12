@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { useSceneStore } from '@/stores/scene-store';
 import MeshView from './mesh-view';
+import TerrainView from '@/features/viewport/components/terrain-view';
 import ParticleSystemNode from '@/features/particles/components/particle-system-node';
 // Local relative import (avoids occasional path alias resolution issues in some build modes)
 import FluidSystemNode from './fluid-system-node';
@@ -375,7 +376,8 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
 
   return (
     <group ref={groupRef} visible={obj.visible} {...transformProps} userData={{ ...((groupRef.current?.userData as any) ?? {}), sceneObjectId: objectId }}>
-      { (obj.type === 'mesh' || obj.type === 'text') && <MeshView objectId={objectId} noTransform /> }
+  { (obj.type === 'mesh' || obj.type === 'text') && <MeshView objectId={objectId} noTransform /> }
+  { obj.type === 'terrain' && <TerrainView objectId={objectId} noTransform /> }
       {obj.type === 'particles' && obj.particleSystemId && (
         <ParticleSystemNode objectId={objectId} systemId={obj.particleSystemId} />
       )}

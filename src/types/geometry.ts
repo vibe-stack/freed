@@ -92,7 +92,7 @@ export interface Selection {
 export interface SceneObject {
   id: string;
   name: string;
-  type: 'mesh' | 'light' | 'camera' | 'group' | 'particles' | 'force' | 'fluid' | 'text' | 'metaball';
+  type: 'mesh' | 'light' | 'camera' | 'group' | 'particles' | 'force' | 'fluid' | 'text' | 'metaball' | 'terrain';
   parentId: string | null;
   children: string[];
   transform: Transform;
@@ -114,6 +114,8 @@ export interface SceneObject {
   textId?: string;
   // Metaball single blob reference (for type === 'metaball')
   metaballId?: string;
+  // Terrain component reference (for type === 'terrain')
+  terrainId?: string;
 }
 
 // Parametric Text3D resource (procedural until rasterized)
