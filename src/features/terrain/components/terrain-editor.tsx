@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlow, Background, Controls, MiniMap, ReactFlowProvider, NodeTypes, ConnectionMode, Handle, Position } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useTerrainEditorStore } from '@/stores/terrain-editor-store';
