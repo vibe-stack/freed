@@ -1,6 +1,14 @@
 import type { TerrainGraph, TerrainNode } from '@/types/terrain';
 import { evaluatePerlin, evaluateVoronoi, evaluateMountain, evaluateCrater } from './terrain-nodes';
 
+
+const evaluators: Record<string, (node: TerrainNode, u: number, v: number, worldW: number, worldH: number, currentH: number) => number> = {
+  perlin: evaluatePerlin,
+  voronoi: evaluateVoronoi,
+  mountain: evaluateMountain,
+  crater: evaluateCrater,
+};
+
 // Create a stable signature for a terrain graph that ignores node positions and transient ids
 // This allows us to cache expensive bakes when only UI positions move.
 export function computeTerrainGraphSignature(graph: TerrainGraph): string {
@@ -36,7 +44,7 @@ export async function evaluateTerrainGraphToHeightmap(
   texH: number,
   worldW: number,
   worldH: number,
-  options?: { yieldEveryRows?: number }
+  options?: { yieldEveryRows?: number; normalize?: boolean }
 ): Promise<Float32Array> {
   const result = new Float32Array(texW * texH);
   // Build topological order for a simple chain; assume nodes wired linearly for v1
@@ -60,14 +68,7 @@ export async function evaluateTerrainGraphToHeightmap(
     if (cur?.type === 'output') { chain.push(cur); break; }
   }
 
-  const evaluators: Record<string, (node: TerrainNode, u: number, v: number, worldW: number, worldH: number, currentH: number) => number> = {
-    perlin: evaluatePerlin,
-    voronoi: evaluateVoronoi,
-    mountain: evaluateMountain as any,
-    crater: evaluateCrater as any,
-  };
-
-  // Iterate pixels and track min/max for auto normalization (GAEA-like remap)
+  // Iterate pixels and track min/max if normalization is requested
   let minH = Infinity; let maxH = -Infinity;
   const yieldEvery = options?.yieldEveryRows ?? 0;
   for (let y = 0; y < texH; y++) {
@@ -84,18 +85,20 @@ export async function evaluateTerrainGraphToHeightmap(
         }
       }
       result[y * texW + x] = h;
-      if (h < minH) minH = h; if (h > maxH) maxH = h;
+      if (options?.normalize) { if (h < minH) minH = h; if (h > maxH) maxH = h; }
     }
     if (yieldEvery > 0 && y % yieldEvery === 0) {
       // Cooperative yield to keep the UI responsive
       await new Promise((r) => setTimeout(r, 0));
     }
   }
-  // Normalize to 0..1 using observed range, with small epsilon to avoid flat
-  const eps = 1e-6;
-  const range = Math.max(eps, maxH - minH);
-  for (let i = 0; i < result.length; i++) {
-    result[i] = Math.max(0, Math.min(1, (result[i] - minH) / range));
+  // Optionally normalize to 0..1 using observed range
+  if (options?.normalize) {
+    const eps = 1e-6;
+    const range = Math.max(eps, maxH - minH);
+    for (let i = 0; i < result.length; i++) {
+      result[i] = Math.max(0, Math.min(1, (result[i] - minH) / range));
+    }
   }
   return result;
 }

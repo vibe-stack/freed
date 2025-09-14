@@ -49,14 +49,16 @@ export function evaluatePerlin(node: TerrainNode, u: number, v: number, worldW: 
   const nx = (u * worldW) * freqScale;
   const ny = (v * worldH) * freqScale;
   const val = perlin2D(nx, ny, d.seed || 1, d.octaves || 4, d.persistence ?? 0.5, d.lacunarity ?? 2.0);
+  // Remap approximately -1..1 to 0..1 for stable additive composition
+  const val01 = (val * 0.5) + 0.5;
   const amp = d.amplitude ?? 1;
   const op = d.operation || 'add';
   const amt = d.amount ?? 1;
   let h = currentH;
-  if (op === 'add') h += val * amp;
-  else if (op === 'max') h = Math.max(h, val * amp);
-  else if (op === 'min') h = Math.min(h, val * amp);
-  else if (op === 'replace') h = val * amp;
-  else if (op === 'mix') h = h * (1 - amt) + (val * amp) * amt;
+  if (op === 'add') h += val01 * amp;
+  else if (op === 'max') h = Math.max(h, val01 * amp);
+  else if (op === 'min') h = Math.min(h, val01 * amp);
+  else if (op === 'replace') h = val01 * amp;
+  else if (op === 'mix') h = h * (1 - amt) + (val01 * amp) * amt;
   return h;
 }
