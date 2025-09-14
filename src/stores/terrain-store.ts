@@ -137,7 +137,7 @@ export const useTerrainStore = create<TerrainStore>()(immer((set, get) => ({
 
     // Create a stable signature of the computational graph. Moving nodes in the editor
     // should NOT trigger a rebake; only parameter or connectivity changes should.
-    const sig = computeTerrainGraphSignature(g) + `|tex:${t.textureResolution.width}x${t.textureResolution.height}|world:${t.width}x${t.height}|scale:${t.heightScale ?? 3}`;
+    const sig = computeTerrainGraphSignature(g, t.surfaceDetail) + `|tex:${t.textureResolution.width}x${t.textureResolution.height}|world:${t.width}x${t.height}|scale:${t.heightScale ?? 3}`;
 
     // Coalesce concurrent regenerations
     if (__inflight.has(terrainId)) {
@@ -193,13 +193,23 @@ export const useTerrainStore = create<TerrainStore>()(immer((set, get) => ({
     // Start a new bake and record inflight
     const p = (async () => {
       // Evaluate graph to heightmap (cooperative yielding to keep UI responsive)
-      const height = await evaluateTerrainGraphToHeightmap(g, t.textureResolution.width, t.textureResolution.height, t.width, t.height, { yieldEveryRows: 32 });
+      const height = await evaluateTerrainGraphToHeightmap(g, t.textureResolution.width, t.textureResolution.height, t.width, t.height, { 
+        yieldEveryRows: 32,
+        surfaceDetail: {
+          crackDensity: t.surfaceDetail?.crackDensity ?? 0.35,
+          crackDepth: t.surfaceDetail?.crackDepth ?? 0.4,
+          strataDensity: t.surfaceDetail?.strataDensity ?? 0.45,
+          strataDepth: t.surfaceDetail?.strataDepth ?? 0.6,
+          roughness: t.surfaceDetail?.roughness ?? 0.30,
+          seed: t.surfaceDetail?.seed ?? 42
+        }
+      });
       const normal = bakeEnhancedNormalMap(height, t.textureResolution.width, t.textureResolution.height, (t.width / t.textureResolution.width), (t.height / t.textureResolution.height), {
-        crackDensity: t.surfaceDetail?.crackDensity ?? 0.1,
-        crackDepth: t.surfaceDetail?.crackDepth ?? 0.2,
-        strataDensity: t.surfaceDetail?.strataDensity ?? 0.2,
-        strataDepth: t.surfaceDetail?.strataDepth ?? 0.25,
-        roughness: t.surfaceDetail?.roughness ?? 0.08,
+        crackDensity: t.surfaceDetail?.crackDensity ?? 0.35,
+        crackDepth: t.surfaceDetail?.crackDepth ?? 0.4,
+        strataDensity: t.surfaceDetail?.strataDensity ?? 0.45,
+        strataDepth: t.surfaceDetail?.strataDepth ?? 0.6,
+        roughness: t.surfaceDetail?.roughness ?? 0.30,
         seed: t.surfaceDetail?.seed ?? 42
       });
 

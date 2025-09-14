@@ -11,7 +11,10 @@ const evaluators: Record<string, (node: TerrainNode, u: number, v: number, world
 
 // Create a stable signature for a terrain graph that ignores node positions and transient ids
 // This allows us to cache expensive bakes when only UI positions move.
-export function computeTerrainGraphSignature(graph: TerrainGraph): string {
+export function computeTerrainGraphSignature(graph: TerrainGraph, surfaceDetail?: {
+  crackDensity?: number; crackDepth?: number; strataDensity?: number; 
+  strataDepth?: number; roughness?: number; seed?: number;
+}): string {
   try {
     // Sort nodes by id and edges by (source,target) for stability
     const nodes = graph.nodes
@@ -23,7 +26,18 @@ export function computeTerrainGraphSignature(graph: TerrainGraph): string {
         if (a.s !== b.s) return a.s < b.s ? -1 : 1;
         return a.t < b.t ? -1 : a.t > b.t ? 1 : 0;
       });
-    const payload = JSON.stringify({ nodes, edges });
+    const payload = JSON.stringify({ 
+      nodes, 
+      edges, 
+      surfaceDetail: {
+        crackDensity: surfaceDetail?.crackDensity ?? 0,
+        crackDepth: surfaceDetail?.crackDepth ?? 0,
+        strataDensity: surfaceDetail?.strataDensity ?? 0,
+        strataDepth: surfaceDetail?.strataDepth ?? 0,
+        roughness: surfaceDetail?.roughness ?? 0,
+        seed: surfaceDetail?.seed ?? 0
+      }
+    });
     // Simple fast FNV-1a 32-bit hash to keep the key small
     let h = 0x811c9dc5;
     for (let i = 0; i < payload.length; i++) {
@@ -44,7 +58,10 @@ export async function evaluateTerrainGraphToHeightmap(
   texH: number,
   worldW: number,
   worldH: number,
-  options?: { yieldEveryRows?: number; normalize?: boolean }
+  options?: { yieldEveryRows?: number; normalize?: boolean; surfaceDetail?: { 
+    crackDensity?: number; crackDepth?: number; strataDensity?: number; 
+    strataDepth?: number; roughness?: number; seed?: number; 
+  } }
 ): Promise<Float32Array> {
   const result = new Float32Array(texW * texH);
   // Build topological order for a simple chain; assume nodes wired linearly for v1
@@ -71,6 +88,46 @@ export async function evaluateTerrainGraphToHeightmap(
   // Iterate pixels and track min/max if normalization is requested
   let minH = Infinity; let maxH = -Infinity;
   const yieldEvery = options?.yieldEveryRows ?? 0;
+  
+  // Surface detail parameters
+  const surfaceDetail = options?.surfaceDetail;
+  const crackDensity = surfaceDetail?.crackDensity ?? 0;
+  const crackDepth = surfaceDetail?.crackDepth ?? 0;
+  const strataDensity = surfaceDetail?.strataDensity ?? 0;
+  const strataDepth = surfaceDetail?.strataDepth ?? 0;
+  const roughness = surfaceDetail?.roughness ?? 0;
+  const seed = surfaceDetail?.seed ?? 42;
+  
+  // Simple deterministic hash for surface details
+  const ihash = (x: number, y: number, s: number) => {
+    let h = x | 0;
+    h = Math.imul(h ^ ((y | 0) + 0x9e3779b9 + (h << 6) + (h >>> 2)), 0x85ebca6b);
+    h ^= s;
+    h ^= h >>> 15;
+    h = Math.imul(h, 0xc2b2ae35);
+    h ^= h >>> 16;
+    return (h >>> 0) / 4294967296; // 0..1
+  };
+
+  const valueNoise = (x: number, y: number, freq: number, oct: number, amp: number, s: number) => {
+    let sum = 0, a = amp, f = freq;
+    for (let i = 0; i < oct; i++) {
+      const xi = Math.floor(x * f);
+      const yi = Math.floor(y * f);
+      const tx = x * f - xi; const ty = y * f - yi;
+      const h00 = ihash(xi, yi, s + i);
+      const h10 = ihash(xi + 1, yi, s + i);
+      const h01 = ihash(xi, yi + 1, s + i);
+      const h11 = ihash(xi + 1, yi + 1, s + i);
+      const hx0 = h00 * (1 - tx) + h10 * tx;
+      const hx1 = h01 * (1 - tx) + h11 * tx;
+      sum += (hx0 * (1 - ty) + hx1 * ty) * (a * 2 - a); // remap 0..1 to -a..a
+      a *= 0.5;
+      f *= 2;
+    }
+    return sum;
+  };
+  
   for (let y = 0; y < texH; y++) {
     const v = y / (texH - 1);
     for (let x = 0; x < texW; x++) {
@@ -84,6 +141,31 @@ export async function evaluateTerrainGraphToHeightmap(
           h = evaluator(n, u, v, worldW, worldH, h);
         }
       }
+      
+      // Apply surface details directly to heightmap for dramatic realism
+      if (surfaceDetail && h > 0.01) { // Only apply to areas with some elevation
+        // Strata: horizontal bands that follow elevation contours
+        if (strataDensity > 0 && strataDepth > 0) {
+          const strataFreq = 20 * strataDensity; // More frequency = more bands
+          const strata = Math.sin(h * strataFreq) * strataDepth * 0.02; // Scale for heightmap
+          h += strata;
+        }
+        
+        // Cracks: sparse negative features in valleys and steep areas
+        if (crackDensity > 0 && crackDepth > 0) {
+          const crackNoise = valueNoise(u + 100, v - 200, 30, 2, 1, seed + 123);
+          const crackMask = crackNoise > 0.6 ? (crackNoise - 0.6) / 0.4 : 0; // 0..1
+          const crack = crackMask * crackDepth * crackDensity * 0.05; // Scale for heightmap
+          h -= crack;
+        }
+        
+        // Roughness: fine surface variation
+        if (roughness > 0) {
+          const roughDetail = valueNoise(u * 50, v * 50, 60, 3, roughness, seed + 456);
+          h += roughDetail * 0.01; // Small scale variation
+        }
+      }
+      
       result[y * texW + x] = h;
       if (options?.normalize) { if (h < minH) minH = h; if (h > maxH) maxH = h; }
     }

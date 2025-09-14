@@ -20,11 +20,11 @@ export function bakeEnhancedNormalMap(
   } = {}
 ): Float32Array {
   const {
-    crackDensity = 0.04,
-    crackDepth = 0.15,
-    strataDensity = 0.2, // density along height, not XY
-    strataDepth = 0.25,
-    roughness = 0.08,
+    crackDensity = 0.25, // Increased from 0.04
+    crackDepth = 0.4,    // Increased from 0.15
+    strataDensity = 0.4, // Increased from 0.2
+    strataDepth = 0.6,   // Increased from 0.25
+    roughness = 0.15,    // Increased from 0.08
     seed = 12345,
   } = options;
 
@@ -93,32 +93,56 @@ export function bakeEnhancedNormalMap(
       const v = y / Math.max(1, texH - 1);
       const { wx, wy } = warp(u, v);
       const warpedHeight = get(
-        Math.round(x + wx * (texW - 1) * 0.02),
-        Math.round(y + wy * (texH - 1) * 0.02)
+        Math.round(x + wx * (texW - 1) * 0.04), // Increased warp influence
+        Math.round(y + wy * (texH - 1) * 0.04)
       );
-      // Bands along height with variable frequency; mod 1 then map to -1..1 ridge
-      const strataFreq = 32 * strataDensity; // more density -> more bands
-      const bands = Math.abs(((warpedHeight * strataFreq) % 1) - 0.5) * 2; // 0..1 with ridges at band centers
-      const strataStrength = strataDepth * (0.6 + 0.4 * Math.min(1, slope * 2)); // stronger on slopes
-      // Influence gradient primarily orthogonal to contour => along gradient direction
-      gx += (gx !== 0 || gy !== 0 ? (gx / Math.max(1e-6, slope)) : 0) * (bands - 0.5) * strataStrength;
-      gy += (gx !== 0 || gy !== 0 ? (gy / Math.max(1e-6, slope)) : 0) * (bands - 0.5) * strataStrength;
+      // Enhanced strata with multiple frequency bands for realism
+      const strataFreq1 = 15 * strataDensity; // Primary bands
+      const strataFreq2 = 45 * strataDensity; // Fine detail bands
+      const bands1 = Math.abs(((warpedHeight * strataFreq1) % 1) - 0.5) * 2;
+      const bands2 = Math.abs(((warpedHeight * strataFreq2) % 1) - 0.5) * 2;
+      const combinedBands = bands1 * 0.7 + bands2 * 0.3; // Mix frequencies
+      const strataStrength = strataDepth * (0.4 + 0.6 * Math.min(1, slope * 3)); // More dramatic on slopes
+      // Apply stronger strata influence
+      const strataEffect = (combinedBands - 0.5) * strataStrength * 1.5;
+      gx += (gx !== 0 || gy !== 0 ? (gx / Math.max(1e-6, slope)) : 0) * strataEffect;
+      gy += (gx !== 0 || gy !== 0 ? (gy / Math.max(1e-6, slope)) : 0) * strataEffect;
 
-      // Subtle cracks: sparse high-frequency negative ridges, masked by concavity
+      // Enhanced cracks: multiple scales and more dramatic placement
       if (crackDensity > 0 && crackDepth > 0) {
-        const c = valueNoise(u + 100, v - 200, 40, 2, 1, seed + 123);
-        const crackMask = c > 0.65 ? (c - 0.65) / 0.35 : 0; // 0..1
-        const concavity = Math.max(0, (get(x, y) - Math.min(hL, hR, hD, hU))) * 4; // cracks prefer valleys
-        const crack = crackMask * concavity * crackDepth * crackDensity;
+        // Primary large cracks
+        const c1 = valueNoise(u + 100, v - 200, 25, 2, 1, seed + 123);
+        const crackMask1 = c1 > 0.55 ? (c1 - 0.55) / 0.45 : 0; // More frequent cracks
+        
+        // Secondary fine cracks
+        const c2 = valueNoise(u - 50, v + 150, 60, 3, 1, seed + 456);
+        const crackMask2 = c2 > 0.7 ? (c2 - 0.7) / 0.3 : 0;
+        
+        // Combine crack masks
+        const crackMask = Math.max(crackMask1, crackMask2 * 0.6);
+        
+        // Enhanced concavity detection - cracks prefer valleys and transitions
+        const concavity = Math.max(0, (get(x, y) - Math.min(hL, hR, hD, hU))) * 6;
+        const slopeInfluence = Math.min(1, slope * 4); // More cracks on steep areas
+        
+        const crack = crackMask * (concavity + slopeInfluence * 0.5) * crackDepth * crackDensity * 2;
         gx -= crack;
         gy -= crack;
       }
 
-      // Micro-roughness as small unbiased jitter to gradient
+      // Enhanced micro-roughness with multiple scales
       if (roughness > 0) {
-        const r = valueNoise(u - 50.2, v + 77.7, 80, 2, 1, seed + 321);
-        gx += (r - 0.5) * roughness;
-        gy += (r - 0.5) * roughness;
+        // Fine grain roughness
+        const r1 = valueNoise(u - 50.2, v + 77.7, 100, 2, 1, seed + 321);
+        // Medium grain roughness  
+        const r2 = valueNoise(u + 25.1, v - 33.4, 200, 3, 0.8, seed + 654);
+        // Combine scales
+        const combinedRough = (r1 - 0.5) * 0.7 + (r2 - 0.5) * 0.3;
+        
+        // Scale roughness by slope - more variation on steep areas
+        const roughScale = 1 + slope * 2;
+        gx += combinedRough * roughness * roughScale;
+        gy += combinedRough * roughness * roughScale;
       }
 
       // Compose normal
