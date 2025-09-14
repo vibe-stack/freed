@@ -394,8 +394,8 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 							sceneStore.selectObject(id);
 							if (useSelectionStore.getState().selection.viewMode === 'object') useSelectionStore.getState().selectObjects([id]);
 						}}
-						onCreateTerrain={() => {
-							const res = useTerrainStore.getState().createTerrain();
+						onCreateTerrain={(type) => {
+							const res = useTerrainStore.getState().createTerrain({}, type);
 							// createTerrain returns { terrainId, objectId }
 							if (res?.objectId) {
 								sceneStore.selectObject(res.objectId);

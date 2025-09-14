@@ -87,7 +87,13 @@ export type ShaderNodeType =
   // Packing
   | 'directionToColor' | 'colorToDirection'
   // Extra math/optics
-  | 'reflect' | 'refract' | 'round' | 'trunc' | 'inverseSqrt' | 'degrees' | 'radians' | 'exp2' | 'log2' | 'lengthSq' | 'oneMinus' | 'pow2' | 'pow3' | 'pow4';
+  | 'reflect' | 'refract' | 'round' | 'trunc' | 'inverseSqrt' | 'degrees' | 'radians' | 'exp2' | 'log2' | 'lengthSq' | 'oneMinus' | 'pow2' | 'pow3' | 'pow4'
+  // Debug/visualization helpers
+  | 'debugHeight' | 'debugWorldY' | 'debugLocalY'
+  // Direct vertex attribute access
+  | 'vertexPosition' | 'vertexY'
+  // Axis testing
+  | 'testAllAxes';
 
 export interface ShaderNodeBase {
   id: string;
@@ -260,6 +266,8 @@ export const NodeInputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'bitXor': { a: 'float', b: 'float' },
   'shiftLeft': { a: 'float', b: 'float' },
   'shiftRight': { a: 'float', b: 'float' },
+  // Mix is typed as vec4 to allow generic mixing of floats/vec2/vec3 via compatibility rules;
+  // output is declared as vec4 (downcasts allowed when connecting to vec3 inputs like color)
   'mix': { a: 'vec4', b: 'vec4', t: 'float' },
   // common math
   'abs': { x: 'float' },
@@ -332,7 +340,9 @@ export const NodeInputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'highpModelViewMatrix': {},
   'highpModelNormalViewMatrix': {},
   // conditional
-  'select': { cond: 'bool', a: 'float', b: 'float' },
+  // Select (ternary) generalized to vec4 so it can switch colors as well as scalars;
+  // smaller numeric inputs (float/vec2/vec3) are accepted by compatibility rules
+  'select': { cond: 'bool', a: 'vec4', b: 'vec4' },
   // camera
   'cameraNear': {},
   'cameraFar': {},
@@ -387,6 +397,15 @@ export const NodeInputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'pow2': { x: 'float' },
   'pow3': { x: 'float' },
   'pow4': { x: 'float' },
+  // debug helpers - no inputs needed, they read built-in positions
+  'debugHeight': {},
+  'debugWorldY': {},
+  'debugLocalY': {},
+  // direct vertex attribute access
+  'vertexPosition': {},
+  'vertexY': {},
+  // axis testing
+  'testAllAxes': {},
 };
 
 export const NodeOutputs: Record<ShaderNodeType, Record<string, SocketType>> = {
@@ -425,7 +444,9 @@ export const NodeOutputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'bitXor': { out: 'float' },
   'shiftLeft': { out: 'float' },
   'shiftRight': { out: 'float' },
-  'mix': { out: 'float' },
+  // Declared as vec4 so it can be wired into color (vec3) or other vector inputs;
+  // scalar uses still work by implicit upcast on inputs and downcast on outputs
+  'mix': { out: 'vec4' },
   // common math
   'abs': { out: 'float' },
   'floor': { out: 'float' },
@@ -494,7 +515,8 @@ export const NodeOutputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'highpModelViewMatrix': { out: 'mat4' },
   'highpModelNormalViewMatrix': { out: 'mat3' },
   // conditional
-  'select': { out: 'float' },
+  // Matches the generalized input typing
+  'select': { out: 'vec4' },
   // camera
   'cameraNear': { out: 'float' },
   'cameraFar': { out: 'float' },
@@ -549,6 +571,15 @@ export const NodeOutputs: Record<ShaderNodeType, Record<string, SocketType>> = {
   'pow2': { out: 'float' },
   'pow3': { out: 'float' },
   'pow4': { out: 'float' },
+  // debug helpers - output height/Y coordinates as colors for visualization
+  'debugHeight': { out: 'vec3' },
+  'debugWorldY': { out: 'float' },
+  'debugLocalY': { out: 'float' },
+  // direct vertex attribute access
+  'vertexPosition': { out: 'vec3' },
+  'vertexY': { out: 'float' },
+  // axis testing - outputs RGB where R=X, G=Y, B=Z
+  'testAllAxes': { out: 'vec3' },
 };
 
 function isNumericVector(t: SocketType) {

@@ -311,8 +311,8 @@ const TopToolbar: React.FC = () => {
           onAddParticleSystem={addParticleSystem}
           onAddFluidSystem={() => { /* top toolbar: no fluid UI, create via scene API */ const id = scene.createFluidSystemObject('Fluid System'); scene.selectObject(id); if (selection.viewMode === 'object') selectionActions.selectObjects([id]); setMenuOpen(false); }}
           onAddMetaball={() => { const id = (scene as any).createMetaballObject?.('Metaballs'); if (id) { scene.selectObject(id); if (selection.viewMode === 'object') selectionActions.selectObjects([id]); } setMenuOpen(false); }}
-          onCreateTerrain={() => {
-            const res = useTerrainStore.getState().createTerrain();
+          onCreateTerrain={(type) => {
+            const res = useTerrainStore.getState().createTerrain({}, type);
             if (res?.objectId) {
               scene.selectObject(res.objectId);
               if (selection.viewMode === 'object') selectionActions.selectObjects([res.objectId]);

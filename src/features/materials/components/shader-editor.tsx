@@ -220,6 +220,13 @@ export const ShaderEditor: React.FC<Props> = ({ open, onOpenChange }) => {
         pow2: ShaderFlowNode,
         pow3: ShaderFlowNode,
         pow4: ShaderFlowNode,
+        // debug nodes
+        debugHeight: ShaderFlowNode,
+        debugWorldY: ShaderFlowNode,
+        debugLocalY: ShaderFlowNode,
+        vertexPosition: ShaderFlowNode,
+        vertexY: ShaderFlowNode,
+        testAllAxes: ShaderFlowNode,
     } as unknown as NodeTypes), []);
 
     // Toggle via shortcut: Shift+m to open/close

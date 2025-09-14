@@ -20,7 +20,7 @@ type Props = {
   onAddParticleSystem: () => void;
   onAddFluidSystem?: () => void;
   onAddMetaball?: () => void;
-  onCreateTerrain?: () => void;
+  onCreateTerrain?: (type: 'perlin' | 'voronoi' | 'mountain') => void;
 };
 
 const AddObjectMenu: React.FC<Props> = ({
@@ -76,6 +76,24 @@ const AddObjectMenu: React.FC<Props> = ({
 
             <Menu.Separator className="my-1 h-px bg-white/10" />
 
+            {/* Terrain submenu */}
+            {onCreateTerrain && (
+              <Menu.SubmenuRoot>
+                <Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200">Terrain</Menu.SubmenuTrigger>
+                <Menu.Portal container={portalContainer}>
+                  <Menu.Positioner sideOffset={6} className="z-90">
+                    <Menu.Popup className="min-w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
+                      <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onCreateTerrain('perlin'); closeIfControlled(); }}>Perlin</Menu.Item>
+                      <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onCreateTerrain('voronoi'); closeIfControlled(); }}>Voronoi</Menu.Item>
+                      <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onCreateTerrain('mountain'); closeIfControlled(); }}>Mountain</Menu.Item>
+                    </Menu.Popup>
+                  </Menu.Positioner>
+                </Menu.Portal>
+              </Menu.SubmenuRoot>
+            )}
+
+            <Menu.Separator className="my-1 h-px bg-white/10" />
+
             {/* Mesh submenu */}
             <Menu.SubmenuRoot>
               <Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200">Mesh</Menu.SubmenuTrigger>
@@ -84,7 +102,6 @@ const AddObjectMenu: React.FC<Props> = ({
                   <Menu.Popup className="min-w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
                     <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onCreateShape('cube'); closeIfControlled(); }}>Cube</Menu.Item>
                     <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onCreateShape('plane'); closeIfControlled(); }}>Plane</Menu.Item>
-                    <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { if (onCreateTerrain) onCreateTerrain(); closeIfControlled(); }}>Terrain</Menu.Item>
                     <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onCreateShape('cylinder'); closeIfControlled(); }}>Cylinder</Menu.Item>
                     <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onCreateShape('cone'); closeIfControlled(); }}>Cone</Menu.Item>
                     <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onCreateShape('uvsphere'); closeIfControlled(); }}>UV Sphere</Menu.Item>

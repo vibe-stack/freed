@@ -77,6 +77,8 @@ export const ShaderContextMenuContent: React.FC<Props> = ({ onAdd }) => {
         <SubMenu id="inputs">
           <Item onSelect={() => onAdd('uv')}>UV</Item>
           <Item onSelect={() => onAdd('normal')}>Normal</Item>
+          <Item onSelect={() => onAdd('positionAttr')}>Position (Local)</Item>
+          <Item onSelect={() => onAdd('worldPosition')}>Position (World)</Item>
           <Item onSelect={() => onAdd('texture')}>Texture</Item>
           <Item onSelect={() => onAdd('uvScale')}>UV Scale</Item>
           <Item onSelect={() => onAdd('uvTransform')}>UV Transform</Item>
@@ -323,6 +325,20 @@ export const ShaderContextMenuContent: React.FC<Props> = ({ onAdd }) => {
         <SubMenu id="pack">
           <Item onSelect={() => onAdd('directionToColor')}>Direction To Color</Item>
           <Item onSelect={() => onAdd('colorToDirection')}>Color To Direction</Item>
+        </SubMenu>
+      </div>
+
+      {/* Debug/Visualization */}
+      <div className="relative">
+        <SubTrigger id="debug">Debug</SubTrigger>
+        <SubMenu id="debug">
+          <Item onSelect={() => onAdd('debugHeight')}>Height Gradient</Item>
+          <Item onSelect={() => onAdd('debugWorldY')}>World Y</Item>
+          <Item onSelect={() => onAdd('debugLocalY')}>Local Y</Item>
+          <div className="px-2 pt-1 text-[10px] uppercase tracking-wide text-gray-500">Direct Access</div>
+          <Item onSelect={() => onAdd('vertexPosition')}>Vertex Position</Item>
+          <Item onSelect={() => onAdd('vertexY')}>Vertex Y</Item>
+          <Item onSelect={() => onAdd('testAllAxes')}>Test All Axes (RGB=XYZ)</Item>
         </SubMenu>
       </div>
     </div>

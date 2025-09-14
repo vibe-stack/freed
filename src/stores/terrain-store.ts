@@ -12,7 +12,7 @@ interface TerrainState {
 }
 
 interface TerrainActions {
-  createTerrain: (params?: Partial<Omit<TerrainResource, 'id' | 'meshId' | 'maps'>>) => { terrainId: string; objectId: string };
+  createTerrain: (params?: Partial<Omit<TerrainResource, 'id' | 'meshId' | 'maps'>>, type?: 'perlin' | 'voronoi' | 'mountain') => { terrainId: string; objectId: string };
   updateTerrain: (terrainId: string, updater: (t: TerrainResource) => void) => void;
   removeTerrain: (terrainId: string) => void;
   setGraph: (terrainId: string, graph: TerrainGraph) => void;
@@ -28,7 +28,7 @@ const __inflight = new Map<string, Promise<void>>();
 
 export const useTerrainStore = create<TerrainStore>()(immer((set, get) => ({
   terrains: {},
-  createTerrain: (params = {}) => {
+  createTerrain: (params = {}, type = 'perlin') => {
     const geom = useGeometryStore.getState();
     const scene = useSceneStore.getState();
     const id = nanoid();
@@ -42,20 +42,30 @@ export const useTerrainStore = create<TerrainStore>()(immer((set, get) => ({
     } as any;
     const tRes: TerrainResource = { id, meshId: '', ...defaults, ...params } as any;
 
-    // Initial graph with input->perlin->output chain
+    // Initial graph with input->type->output chain
     const inputId = nanoid();
-    const perlinId = nanoid();
+    const typeNodeId = nanoid();
     const outputId = nanoid();
+    
+    // Create type-specific node data
+    const typeNodeData = type === 'perlin'
+      ? { seed: Math.floor(Math.random() * 1e9), scale: 2, octaves: 4, persistence: 0.5, lacunarity: 2.0, amplitude: 1, operation: 'add', amount: 1 }
+      : type === 'voronoi'
+        ? { seed: Math.floor(Math.random() * 1e9), density: 4, jitter: 0.5, metric: 'euclidean', feature: 'f1', amplitude: 1, operation: 'add', amount: 1 }
+        : type === 'mountain'
+          ? { seed: Math.floor(Math.random() * 1e9), centerX: 0.5, centerY: 0.5, radius: 0.35, peak: 1.0, falloff: 2.0, sharpness: 1.5, ridges: 0.2, octaves: 4, gain: 0.5, lacunarity: 2.0, operation: 'add', amount: 1 }
+          : { seed: Math.floor(Math.random() * 1e9), scale: 2, octaves: 4, persistence: 0.5, lacunarity: 2.0, amplitude: 1, operation: 'add', amount: 1 }; // fallback to perlin
+
     const g: TerrainGraph = {
       terrainId: id,
       nodes: [
         { id: inputId, type: 'input', position: { x: 40, y: 160 }, data: {} },
-        { id: perlinId, type: 'perlin', position: { x: 280, y: 160 }, data: { seed: Math.floor(Math.random()*1e9), scale: 2, octaves: 4, persistence: 0.5, lacunarity: 2.0, amplitude: 1, operation: 'add', amount: 1 } },
+        { id: typeNodeId, type, position: { x: 280, y: 160 }, data: typeNodeData },
         { id: outputId, type: 'output', position: { x: 560, y: 160 }, data: {} },
       ],
       edges: [
-        { id: nanoid(), source: inputId, sourceHandle: 'out', target: perlinId, targetHandle: 'in' },
-        { id: nanoid(), source: perlinId, sourceHandle: 'out', target: outputId, targetHandle: 'in' },
+        { id: nanoid(), source: inputId, sourceHandle: 'out', target: typeNodeId, targetHandle: 'in' },
+        { id: nanoid(), source: typeNodeId, sourceHandle: 'out', target: outputId, targetHandle: 'in' },
       ],
     };
 
