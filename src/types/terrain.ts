@@ -8,7 +8,10 @@ export type TerrainNodeType =
   | 'perlin' // noise-based height modifier
   | 'voronoi' // cellular noise-based modifier
   | 'mountain' // geoprimitive
-  | 'crater'; // geoprimitive
+  | 'crater' // geoprimitive
+  | 'canyon' // erosional geoprimitive
+  | 'dunes' // aeolian sand dunes
+  | 'badlands'; // stratified erosional terrain
 
 export interface TerrainNodeBase {
   id: string;
@@ -88,6 +91,58 @@ export interface TerrainCraterNode extends TerrainNodeBase {
   };
 }
 
+export interface TerrainCanyonNode extends TerrainNodeBase {
+  type: 'canyon';
+  data: {
+    seed: number;
+    centerX: number; centerY: number; // uv
+    width: number; // canyon width in UV
+    length: number; // canyon length in UV
+    depth: number; // max canyon depth
+    angle: number; // canyon orientation in radians
+    meanders: number; // sinuosity amount
+    branches: number; // number of side branches
+    erosion: number; // erosion complexity
+    stratification: number; // rock layer visibility
+    operation: 'add' | 'mix' | 'max' | 'min' | 'replace';
+    amount: number;
+  };
+}
+
+export interface TerrainDunesNode extends TerrainNodeBase {
+  type: 'dunes';
+  data: {
+    seed: number;
+    density: number; // dunes per UV unit
+    height: number; // max dune height
+    wavelength: number; // dominant dune spacing
+    asymmetry: number; // windward/leeward slope ratio
+    slipface: number; // steep face sharpness
+    complexity: number; // secondary ripple detail
+    windDirection: number; // wind direction in radians
+    migration: number; // dune shape variation
+    operation: 'add' | 'mix' | 'max' | 'min' | 'replace';
+    amount: number;
+  };
+}
+
+export interface TerrainBadlandsNode extends TerrainNodeBase {
+  type: 'badlands';
+  data: {
+    seed: number;
+    scale: number; // overall feature scale
+    stratification: number; // horizontal layering strength
+    erosion: number; // vertical erosion channels
+    weathering: number; // surface breakdown
+    hardness: number; // resistant layer influence
+    tilting: number; // geological tilting angle
+    faulting: number; // fault line disruption
+    drainageComplexity: number; // gully system complexity
+    operation: 'add' | 'mix' | 'max' | 'min' | 'replace';
+    amount: number;
+  };
+}
+
 export type TerrainNode =
   | TerrainInputNode
   | TerrainOutputNode
@@ -95,6 +150,9 @@ export type TerrainNode =
   | TerrainVoronoiNode
   | TerrainMountainNode
   | TerrainCraterNode
+  | TerrainCanyonNode
+  | TerrainDunesNode
+  | TerrainBadlandsNode
   | TerrainNodeBase;
 
 export interface TerrainEdge {

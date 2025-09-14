@@ -34,8 +34,8 @@ export const useTerrainStore = create<TerrainStore>()(immer((set, get) => ({
     const id = nanoid();
     const defaults: Omit<TerrainResource, 'id' | 'meshId' | 'maps'> = {
       name: 'Terrain',
-      vertexResolution: { x: 129, y: 129 }, // power-of-two+1 grid
-      textureResolution: { width: 512, height: 512 },
+      vertexResolution: { x: 128, y: 128 }, // power-of-two+1 grid
+      textureResolution: { width: 128, height: 128 },
       width: 10,
       height: 10,
       heightScale: 3.0, // Elevation multiplier for visible displacement

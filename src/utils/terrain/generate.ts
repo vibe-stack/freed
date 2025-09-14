@@ -1,5 +1,5 @@
 import type { TerrainGraph, TerrainNode } from '@/types/terrain';
-import { evaluatePerlin, evaluateVoronoi, evaluateMountain, evaluateCrater } from './terrain-nodes';
+import { evaluatePerlin, evaluateVoronoi, evaluateMountain, evaluateCrater, evaluateCanyon, evaluateDunes, evaluateBadlands } from './terrain-nodes';
 
 
 const evaluators: Record<string, (node: TerrainNode, u: number, v: number, worldW: number, worldH: number, currentH: number) => number> = {
@@ -7,6 +7,9 @@ const evaluators: Record<string, (node: TerrainNode, u: number, v: number, world
   voronoi: evaluateVoronoi,
   mountain: evaluateMountain,
   crater: evaluateCrater,
+  canyon: evaluateCanyon,
+  dunes: evaluateDunes,
+  badlands: evaluateBadlands,
 };
 
 // Create a stable signature for a terrain graph that ignores node positions and transient ids
