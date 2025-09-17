@@ -5,7 +5,7 @@ const ToolIndicator: React.FC = () => {
   const toolStore = useToolStore();
   
   if (!toolStore.isActive) return null;
-  const implemented = toolStore.tool === 'move' || toolStore.tool === 'rotate' || toolStore.tool === 'scale' || toolStore.tool === 'extrude' || toolStore.tool === 'inset' || toolStore.tool === 'bevel';
+  const implemented = toolStore.tool === 'move' || toolStore.tool === 'rotate' || toolStore.tool === 'scale' || toolStore.tool === 'extrude' || toolStore.tool === 'inset' || toolStore.tool === 'bevel' || toolStore.tool === 'chamfer' || toolStore.tool === 'fillet';
   
   const getToolIcon = () => {
     switch (toolStore.tool) {
@@ -15,6 +15,8 @@ const ToolIndicator: React.FC = () => {
   case 'extrude': return '⤴︎';
   case 'inset': return '⬒';
   case 'bevel': return '◠';
+  case 'chamfer': return '◧';
+  case 'fillet': return '◩';
   case 'loopcut': return '╱╲';
   case 'knife': return '🔪';
       default: return '🔧';
@@ -29,6 +31,8 @@ const ToolIndicator: React.FC = () => {
   case 'extrude': return 'Extrude';
   case 'inset': return 'Inset';
   case 'bevel': return 'Bevel';
+  case 'chamfer': return 'Chamfer';
+  case 'fillet': return 'Fillet';
   case 'loopcut': return 'Loop Cut';
   case 'knife': return 'Knife';
       default: return 'Tool';

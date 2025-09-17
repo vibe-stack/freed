@@ -240,11 +240,11 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
         const selection = useSelectionStore.getState().selection;
         const tool = useToolStore.getState();
         if (tool.isActive) return;
-        if (selection.viewMode === 'edit' && selection.faceIds.length > 0) {
+        if (selection.viewMode === 'edit' && (selection.faceIds.length > 0 || selection.edgeIds.length > 0)) {
           useToolStore.getState().startOperation('bevel', null);
         }
       },
-      description: 'Bevel (Ctrl+B) — faces only for now',
+      description: 'Bevel (Ctrl+B)',
       preventDefault: true,
     },
     {

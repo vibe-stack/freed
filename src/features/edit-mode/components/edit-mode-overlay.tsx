@@ -256,7 +256,7 @@ const EditModeOverlay: React.FC = () => {
 							/>
 						)}
 
-						{toolStore.isActive && ['move', 'rotate', 'scale', 'extrude', 'inset', 'bevel'].includes(toolStore.tool) && centroid && (
+						{toolStore.isActive && ['move', 'rotate', 'scale', 'extrude', 'inset', 'bevel', 'chamfer', 'fillet'].includes(toolStore.tool) && centroid && (
 							<group>
 								{[{ key: 'x', dir: new Vector3(1, 0, 0), color: new Color(1, 0, 0) },
 								{ key: 'y', dir: new Vector3(0, 1, 0), color: new Color(0, 1, 0) },

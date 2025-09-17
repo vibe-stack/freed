@@ -4,7 +4,7 @@ import type { Transform } from '@/types/geometry';
 export type ToolMode =
   | 'none'
   // Mesh editing transforms
-  | 'move' | 'rotate' | 'scale' | 'extrude' | 'inset' | 'bevel' | 'loopcut' | 'knife'
+  | 'move' | 'rotate' | 'scale' | 'extrude' | 'inset' | 'bevel' | 'chamfer' | 'fillet' | 'loopcut' | 'knife'
   // Sculpt brushes
   | 'sculpt-draw' | 'sculpt-clay' | 'sculpt-inflate' | 'sculpt-blob' | 'sculpt-crease'
   | 'sculpt-smooth' | 'sculpt-flatten' | 'sculpt-contrast' | 'sculpt-fill' | 'sculpt-deepen'

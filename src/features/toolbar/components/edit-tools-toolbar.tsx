@@ -52,8 +52,26 @@ export const KnifeIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+// Extra small icons for chamfer/fillet
+export const ChamferIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" viewBox="0 0 24 24" className={className} xmlns="http://www.w3.org/2000/svg">
+    {/* square with chamfered corner */}
+    <path d="M4 8V6a2 2 0 0 1 2-2h6" />
+    <path d="M20 16v2a2 2 0 0 1-2 2h-6" />
+    <path d="M20 8l-4 4" />
+  </svg>
+);
+
+export const FilletIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" viewBox="0 0 24 24" className={className} xmlns="http://www.w3.org/2000/svg">
+    {/* rounded corner */}
+    <path d="M4 12V6a2 2 0 0 1 2-2h6" />
+    <path d="M20 12c0-4.418-3.582-8-8-8" />
+  </svg>
+);
+
 type Btn = {
-  id: 'move' | 'rotate' | 'scale' | 'extrude' | 'inset' | 'bevel' | 'loopcut' | 'knife';
+  id: 'move' | 'rotate' | 'scale' | 'extrude' | 'inset' | 'bevel' | 'chamfer' | 'fillet' | 'loopcut' | 'knife';
   label: string;
   tip: string;
   icon: ReactNode;
@@ -66,7 +84,9 @@ const buttons: Btn[] = [
   { id: 'scale', label: 'Scale', tip: 'Scale selection (S)', icon: <Scale3DIcon className='w-4 h-4' />, shortcut: 'S' },
   { id: 'extrude', label: 'Extrude', tip: 'Extrude (E / Alt+E)', icon: <ExtrudeIcon className='w-4 h-4' />, shortcut: 'E' },
   { id: 'inset', label: 'Inset', tip: 'Inset faces (I)', icon: <InsetIcon className='w-4 h-4' />, shortcut: 'I' },
-  { id: 'bevel', label: 'Bevel', tip: 'Bevel (Ctrl+B / Ctrl+Shift+B)', icon: <BevelIcon className='w-4 h-4' />, shortcut: 'Ctrl+B' },
+  { id: 'bevel', label: 'Bevel', tip: 'Bevel edges/faces (Ctrl+B)', icon: <BevelIcon className='w-4 h-4' />, shortcut: 'Ctrl+B' },
+  { id: 'chamfer', label: 'Chamfer', tip: 'Chamfer selected edges; drag to set angle', icon: <ChamferIcon className='w-4 h-4' />, shortcut: '' },
+  { id: 'fillet', label: 'Fillet', tip: 'Fillet selected edges; drag radius; mousewheel segments', icon: <FilletIcon className='w-4 h-4' />, shortcut: '' },
   { id: 'loopcut', label: 'Loop Cut', tip: 'Loop Cut (Ctrl+R)', icon: <LoopCutIcon className='w-4 h-4' />, shortcut: 'Ctrl+R' },
   { id: 'knife', label: 'Knife', tip: 'Knife tool (Shift+K)', icon: <KnifeIcon className='w-4 h-4' />, shortcut: 'Shift+K' },
 ];
@@ -99,7 +119,19 @@ export const EditToolsToolbar: React.FC = () => {
       return;
     }
     if (id === 'bevel') {
-      if (selection.viewMode !== 'edit' || selection.faceIds.length === 0) return;
+      if (selection.viewMode !== 'edit') return;
+      const hasFacesOrEdges = selection.faceIds.length > 0 || selection.edgeIds.length > 0;
+      if (!hasFacesOrEdges) return;
+      tool.startOperation(id, null);
+      return;
+    }
+    if (id === 'chamfer') {
+      if (selection.viewMode !== 'edit' || selection.edgeIds.length === 0) return;
+      tool.startOperation(id, null);
+      return;
+    }
+    if (id === 'fillet') {
+      if (selection.viewMode !== 'edit' || selection.edgeIds.length === 0) return;
       tool.startOperation(id, null);
       return;
     }
@@ -129,10 +161,12 @@ export const EditToolsToolbar: React.FC = () => {
             isTransform ? selection.viewMode !== 'edit' :
               b.id === 'extrude' ? selection.faceIds.length === 0 :
                 b.id === 'inset' ? selection.faceIds.length === 0 :
-                  b.id === 'bevel' ? selection.faceIds.length === 0 :
-                    b.id === 'loopcut' ? selection.viewMode !== 'edit' :
-                      b.id === 'knife' ? selection.viewMode !== 'edit' :
-                        true;
+                  b.id === 'bevel' ? (selection.faceIds.length === 0 && selection.edgeIds.length === 0) :
+                    b.id === 'chamfer' ? selection.edgeIds.length === 0 :
+                      b.id === 'fillet' ? selection.edgeIds.length === 0 :
+                        b.id === 'loopcut' ? selection.viewMode !== 'edit' :
+                          b.id === 'knife' ? selection.viewMode !== 'edit' :
+                            true;
           return (
             <button
               key={b.id}
