@@ -14,7 +14,9 @@ import {
   ScaleToolState,
   ExtrudeToolState,
   InsetToolState,
-  BevelToolState
+  BevelToolState,
+  handleChamferOperation,
+  handleFilletOperation
 } from '../operations';
 
 interface MouseMoveHandlerParams {
@@ -122,7 +124,7 @@ export function createMouseMoveHandler({
       onAccumulatorChange(prev => ({ ...prev, scale: result.newScale }));
       onVerticesChange(result.vertices);
       
-    } else if (toolStore.tool === 'bevel' || toolStore.tool === 'chamfer' || toolStore.tool === 'fillet') {
+    } else if (toolStore.tool === 'bevel') {
       const result = handleBevelOperation(
         event,
         originalVertices,
@@ -136,6 +138,30 @@ export function createMouseMoveHandler({
       );
       
       onAccumulatorChange(prev => ({ ...prev, scale: result.newWidth }));
+      onVerticesChange(result.vertices);
+    } else if (toolStore.tool === 'chamfer') {
+      const result = handleChamferOperation(
+        event,
+        originalVertices,
+        centroid,
+        context,
+        meshId,
+        toolStore.scaleSensitivity,
+        accumulator.scale || 0
+      );
+      onAccumulatorChange(prev => ({ ...prev, scale: result.newDistance }));
+      onVerticesChange(result.vertices);
+    } else if (toolStore.tool === 'fillet') {
+      const result = handleFilletOperation(
+        event,
+        originalVertices,
+        centroid,
+        context,
+        meshId,
+        toolStore.scaleSensitivity,
+        accumulator.scale || 0
+      );
+      onAccumulatorChange(prev => ({ ...prev, scale: result.newRadius }));
       onVerticesChange(result.vertices);
     }
   };

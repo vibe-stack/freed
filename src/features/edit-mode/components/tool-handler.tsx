@@ -16,10 +16,14 @@ import {
   handleExtrudeOperation,
   handleInsetOperation,
   handleBevelOperation,
+  handleChamferOperation,
+  handleFilletOperation,
   commitVertexUpdate,
   commitExtrudeOperation,
   commitInsetOperation,
   commitBevelOperation,
+  commitChamferOperation,
+  commitFilletOperation,
   createMouseMoveHandler,
   createKeyboardHandler,
   createWheelHandler,
@@ -155,7 +159,7 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
         setLocalVertices(result.vertices);
         onLocalDataChange(result.vertices);
         
-      } else if (toolState.tool === 'bevel' || toolState.tool === 'chamfer' || toolState.tool === 'fillet') {
+      } else if (toolState.tool === 'bevel') {
         const result = handleBevelOperation(
           event,
           originalVertices,
@@ -171,6 +175,38 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
         setAccumulator(prev => ({ ...prev, scale: result.newWidth }));
         setLocalVertices(result.vertices);
         onLocalDataChange(result.vertices);
+      } else if (toolState.tool === 'chamfer') {
+        const result = handleChamferOperation(
+          event,
+          originalVertices,
+          centroid,
+          freshContext,
+          meshId,
+          toolState.scaleSensitivity,
+          accumulator.scale || 0
+        );
+        setAccumulator(prev => ({ ...prev, scale: result.newDistance }));
+        // persist current distance in localData for commit
+        const data = (toolState.localData as any) || {};
+        toolStore.setLocalData({ ...data, distance: result.newDistance });
+        setLocalVertices(result.vertices);
+        onLocalDataChange(result.vertices);
+      } else if (toolState.tool === 'fillet') {
+        const result = handleFilletOperation(
+          event,
+          originalVertices,
+          centroid,
+          freshContext,
+          meshId,
+          toolState.scaleSensitivity,
+          accumulator.scale || 0
+        );
+        setAccumulator(prev => ({ ...prev, scale: result.newRadius }));
+        // persist current radius in localData for commit
+        const data = (toolState.localData as any) || {};
+        toolStore.setLocalData({ ...data, radius: result.newRadius });
+        setLocalVertices(result.vertices);
+        onLocalDataChange(result.vertices);
       }
     };
     
@@ -184,8 +220,15 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
           commitExtrudeOperation(localVertices, selectedFaceIds, meshId, geometryStore);
         } else if (toolState.tool === 'inset') {
           commitInsetOperation(localVertices, selectedFaceIds, meshId, geometryStore);
-        } else if (toolState.tool === 'bevel' || toolState.tool === 'chamfer' || toolState.tool === 'fillet') {
+        } else if (toolState.tool === 'bevel') {
           commitBevelOperation(localVertices, selectedFaceIds, meshId, geometryStore, toolState);
+        } else if (toolState.tool === 'chamfer') {
+          const distance = accumulator.scale || 0; // total distance across band
+          commitChamferOperation(meshId, geometryStore, distance);
+        } else if (toolState.tool === 'fillet') {
+          const radius = accumulator.scale || 0;
+          const divisions = (toolState.localData as any)?.divisions ?? 1;
+          commitFilletOperation(meshId, geometryStore, radius, divisions);
         } else {
           // Simple vertex position update
           commitVertexUpdate(localVertices, meshId, geometryStore);
@@ -217,31 +260,31 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
     
     const handleWheel = (e: WheelEvent) => {
       const toolState = useToolStore.getState();
-      
-      if (!toolState.isActive || toolState.tool !== 'fillet') return;
-      
-      e.preventDefault();
-      const delta = Math.sign(e.deltaY);
-      
-      // Store divisions in tool localData
-      const data = toolState.localData as any;
-      const prev = (data?.divisions ?? 1) as number;
-      const next = Math.max(1, prev + (delta > 0 ? 1 : -1));
-      
-      toolState.setLocalData({ ...(data || {}), divisions: next });
-      console.log(`Fillet divisions: ${next}`);
+      if (!toolState.isActive) return;
+      if (toolState.tool === 'fillet') {
+        // Disable camera zoom while adjusting fillet divisions
+        try { e.preventDefault(); } catch {}
+        try { e.stopPropagation(); } catch {}
+        const delta = Math.sign(e.deltaY);
+        const data = (toolState.localData as any) || {};
+        const prev = (data.divisions ?? 1) as number;
+        const next = Math.max(1, Math.min(64, prev + (delta > 0 ? 1 : -1)));
+        toolState.setLocalData({ ...data, divisions: next });
+      } else if (toolState.tool === 'chamfer') {
+        // no wheel behavior for chamfer now
+      }
     };
     
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
     document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('wheel', handleWheel, { passive: false });
+  document.addEventListener('wheel', handleWheel, { passive: false });
     
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('wheel', handleWheel as any);
+  document.removeEventListener('wheel', handleWheel as any);
     };
   }, [
     toolStore.isActive,

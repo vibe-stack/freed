@@ -32,8 +32,15 @@ export function createCommitHandler({
         commitExtrudeOperation(localVertices, selectedFaceIds, meshId, geometryStore);
       } else if (toolStore.tool === 'inset') {
         commitInsetOperation(localVertices, selectedFaceIds, meshId, geometryStore);
-      } else if (toolStore.tool === 'bevel' || toolStore.tool === 'chamfer' || toolStore.tool === 'fillet') {
+      } else if (toolStore.tool === 'bevel') {
         commitBevelOperation(localVertices, selectedFaceIds, meshId, geometryStore, toolStore);
+      } else if (toolStore.tool === 'chamfer') {
+        const distance = (toolStore.localData as any)?.distance ??  (toolStore as any).accumulator?.scale ?? 0;
+        commitChamferOperation(meshId, geometryStore, distance || 0);
+      } else if (toolStore.tool === 'fillet') {
+        const radius = (toolStore.localData as any)?.radius ?? (toolStore as any).accumulator?.scale ?? 0;
+        const divisions = (toolStore.localData as any)?.divisions ?? 1;
+        commitFilletOperation(meshId, geometryStore, radius || 0, divisions);
       } else {
         // Simple vertex position update
         commitVertexUpdate(localVertices, meshId, geometryStore);
@@ -245,5 +252,275 @@ export function commitBevelOperation(
     mesh.edges = buildEdgesFromFaces(mesh.vertices, mesh.faces);
   });
   
+  geometryStore.recalculateNormals(meshId);
+}
+
+// Utilities for chamfer/fillet
+function replaceEdgeInFace(face: any, v1: string, v2: string, n1: string, n2: string) {
+  const ids = face.vertexIds.slice();
+  const n = ids.length;
+  const i1 = ids.indexOf(v1);
+  const i2 = ids.indexOf(v2);
+  if (i1 === -1 || i2 === -1) return; // not in this face
+  // Check adjacency
+  const isAdj = (i2 === (i1 + 1) % n) || (i1 === (i2 + 1) % n);
+  if (!isAdj) return; // edge should be adjacent
+  // Determine order
+  let a = i1, b = i2;
+  let na = n1, nb = n2;
+  // If the order in face is v2 -> v1, swap to maintain winding
+  if ((i2 + n - i1) % n !== 1) {
+    a = i2; b = i1; na = n2; nb = n1;
+  }
+  const out = ids.slice();
+  out[a] = na; out[b] = nb;
+  face.vertexIds = out;
+}
+
+function computeEdgeDir(mesh: any, e: any) {
+  const va = mesh.vertices.find((v: any) => v.id === e.vertexIds[0]);
+  const vb = mesh.vertices.find((v: any) => v.id === e.vertexIds[1]);
+  const dir = new Vector3(
+    (vb.position.x - va.position.x),
+    (vb.position.y - va.position.y),
+    (vb.position.z - va.position.z)
+  );
+  return dir.normalize();
+}
+
+function getFaceNormalMap(mesh: any) {
+  const map = new Map<string, { x: number; y: number; z: number }>();
+  for (const f of mesh.faces) map.set(f.id, calculateFaceNormal(f, mesh.vertices));
+  return map;
+}
+
+export function commitChamferOperation(
+  meshId: string,
+  geometryStore: any,
+  distance: number
+) {
+  // Chamfer: half distance on each side of edge inside adjacent faces; creates a quad band replacing the edge
+  const half = Math.max(0, distance) * 0.5;
+  geometryStore.updateMesh(meshId, (mesh: any) => {
+    const selection = useSelectionStore.getState().selection;
+    if (selection.selectionMode !== 'edge' || selection.edgeIds.length === 0) return;
+    const faceNormal = getFaceNormalMap(mesh);
+
+    const newBandFaces: any[] = [];
+
+    for (const edgeId of selection.edgeIds) {
+      const e = mesh.edges.find((ee: any) => ee.id === edgeId);
+      if (!e) continue;
+      const v1 = mesh.vertices.find((v: any) => v.id === e.vertexIds[0]);
+      const v2 = mesh.vertices.find((v: any) => v.id === e.vertexIds[1]);
+      if (!v1 || !v2) continue;
+      const edgeDir = computeEdgeDir(mesh, e);
+
+      const faceIds = e.faceIds.slice();
+      const dupIdsPerFace: Array<[string,string]> = []; // [newV1, newV2] per face
+      for (const fid of faceIds) {
+        const fn = faceNormal.get(fid) || { x: 0, y: 0, z: 1 };
+        const fN = new Vector3(fn.x, fn.y, fn.z).normalize();
+        let perp = new Vector3().crossVectors(fN, edgeDir).normalize();
+        // Orient inward via centroid
+        const mid = new Vector3(
+          (v1.position.x + v2.position.x) * 0.5,
+          (v1.position.y + v2.position.y) * 0.5,
+          (v1.position.z + v2.position.z) * 0.5,
+        );
+        const face = mesh.faces.find((ff: any) => ff.id === fid);
+        if (face) {
+          let cx = 0, cy = 0, cz = 0;
+          for (const vid of face.vertexIds) {
+            const vv = mesh.vertices.find((x: any) => x.id === vid)!;
+            cx += vv.position.x; cy += vv.position.y; cz += vv.position.z;
+          }
+          const inv = 1 / Math.max(1, face.vertexIds.length);
+          cx *= inv; cy *= inv; cz *= inv;
+          const toC = new Vector3(cx - mid.x, cy - mid.y, cz - mid.z);
+          if (toC.dot(perp) < 0) perp.multiplyScalar(-1);
+        }
+        const v1n = createVertex({
+          x: v1.position.x + perp.x * half,
+          y: v1.position.y + perp.y * half,
+          z: v1.position.z + perp.z * half,
+        }, { ...v1.normal }, { ...v1.uv });
+        const v2n = createVertex({
+          x: v2.position.x + perp.x * half,
+          y: v2.position.y + perp.y * half,
+          z: v2.position.z + perp.z * half,
+        }, { ...v2.normal }, { ...v2.uv });
+        mesh.vertices.push(v1n, v2n);
+        dupIdsPerFace.push([v1n.id, v2n.id]);
+        const f = mesh.faces.find((f: any) => f.id === fid);
+        if (f) replaceEdgeInFace(f, v1.id, v2.id, v1n.id, v2n.id);
+      }
+      if (dupIdsPerFace.length === 2) {
+        const [a1, a2] = dupIdsPerFace[0];
+        const [b1, b2] = dupIdsPerFace[1];
+        newBandFaces.push(createFace([a1, a2, b2, b1]));
+        // Add small caps at endpoints to connect to original topology
+        newBandFaces.push(createFace([v1.id, a1, b1]));
+        newBandFaces.push(createFace([v2.id, b2, a2]));
+      } else if (dupIdsPerFace.length === 1) {
+        const [a1, a2] = dupIdsPerFace[0];
+        newBandFaces.push(createFace([a1, a2, v2.id, v1.id]));
+      }
+    }
+
+    mesh.faces.push(...newBandFaces);
+    mesh.edges = buildEdgesFromFaces(mesh.vertices, mesh.faces);
+  });
+  geometryStore.recalculateNormals(meshId);
+}
+
+export function commitFilletOperation(
+  meshId: string,
+  geometryStore: any,
+  radius: number,
+  divisions: number
+) {
+  const r = Math.max(0, radius);
+  const segs = Math.max(1, divisions);
+  geometryStore.updateMesh(meshId, (mesh: any) => {
+    const selection = useSelectionStore.getState().selection;
+    if (selection.selectionMode !== 'edge' || selection.edgeIds.length === 0) return;
+    const faceNormal = getFaceNormalMap(mesh);
+
+    const bandFaces: any[] = [];
+
+    for (const edgeId of selection.edgeIds) {
+      const e = mesh.edges.find((ee: any) => ee.id === edgeId);
+      if (!e) continue;
+      const v1 = mesh.vertices.find((v: any) => v.id === e.vertexIds[0]);
+      const v2 = mesh.vertices.find((v: any) => v.id === e.vertexIds[1]);
+      if (!v1 || !v2) continue;
+      const edgeDir = computeEdgeDir(mesh, e);
+      if (e.faceIds.length === 0) continue; // skip loose
+
+      const fidA = e.faceIds[0];
+      const fidB = e.faceIds[1] ?? null;
+      const nAraw = faceNormal.get(fidA) || { x: 0, y: 0, z: 1 };
+      const nA = new Vector3(nAraw.x, nAraw.y, nAraw.z).normalize();
+      const pA = new Vector3().crossVectors(nA, edgeDir).normalize();
+      let pB = pA.clone().multiplyScalar(-1);
+      if (fidB) {
+        const nBraw = faceNormal.get(fidB) || { x: 0, y: 0, z: 1 };
+        const nB = new Vector3(nBraw.x, nBraw.y, nBraw.z).normalize();
+        pB = new Vector3().crossVectors(nB, edgeDir).normalize();
+      }
+      // Orient into faces via centroid heuristic
+      const centerAlong = (va: any, vb: any) => new Vector3(
+        (va.position.x + vb.position.x) * 0.5,
+        (va.position.y + vb.position.y) * 0.5,
+        (va.position.z + vb.position.z) * 0.5
+      );
+      const mid = centerAlong(v1, v2);
+      const orientInward = (fid: string | null, perp: Vector3) => {
+        if (!fid) return perp;
+        const face = mesh.faces.find((f: any) => f.id === fid);
+        if (!face) return perp;
+        let cx = 0, cy = 0, cz = 0;
+        for (const vid of face.vertexIds) {
+          const vv = mesh.vertices.find((x: any) => x.id === vid)!;
+          cx += vv.position.x; cy += vv.position.y; cz += vv.position.z;
+        }
+        const inv = 1 / Math.max(1, face.vertexIds.length);
+        cx *= inv; cy *= inv; cz *= inv;
+        const toC = new Vector3(cx - mid.x, cy - mid.y, cz - mid.z);
+        if (toC.dot(perp) < 0) perp.multiplyScalar(-1);
+        return perp;
+      };
+      orientInward(fidA, pA);
+      if (fidB) orientInward(fidB, pB);
+
+      // Compute offset arc center for convex fillet
+      const local_s = pA.clone().multiplyScalar(r);
+      const local_e = pB.clone().multiplyScalar(r);
+      const d = local_s.distanceTo(local_e);
+      const half_d = d / 2;
+      let h_sq = r * r - half_d * half_d;
+      if (h_sq < 0) h_sq = 0; // Clamp for large radius; flat line
+      const h = Math.sqrt(h_sq);
+
+      const local_mid = new Vector3().addVectors(local_s, local_e).multiplyScalar(0.5);
+      const dir_se = new Vector3().subVectors(local_e, local_s).normalize();
+      const perp_se = new Vector3().crossVectors(edgeDir, dir_se).normalize();
+      const c_plus = new Vector3().addVectors(local_mid, perp_se.clone().multiplyScalar(h));
+      const c_minus = new Vector3().subVectors(local_mid, perp_se.clone().multiplyScalar(h));
+
+      const bis = new Vector3().addVectors(pA, pB).normalize();
+      const dot_plus = c_plus.dot(bis);
+      const dot_minus = c_minus.dot(bis);
+      const local_c = dot_plus > dot_minus ? c_plus : c_minus;
+
+      const vec_start = new Vector3().subVectors(local_s, local_c).normalize();
+      const vec_end = new Vector3().subVectors(local_e, local_c).normalize();
+
+      const cross_v = new Vector3().crossVectors(vec_start, vec_end);
+      const dot_v = Math.max(-1, Math.min(1, vec_start.dot(vec_end)));
+      const sign_a = Math.sign(cross_v.dot(edgeDir));
+      const theta_a = Math.acos(dot_v) * (sign_a === 0 ? 1 : sign_a);
+
+      const rotateAroundAxis = (v: Vector3, axis: Vector3, angle: number) => {
+        const k = axis.clone().normalize();
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        const term1 = v.clone().multiplyScalar(cos);
+        const term2 = new Vector3().crossVectors(k, v).multiplyScalar(sin);
+        const term3 = k.multiplyScalar(k.dot(v) * (1 - cos));
+        return term1.add(term2).add(term3);
+      };
+
+      // Build rings with offset-center arc points
+      const ring1: string[] = [];
+      const ring2: string[] = [];
+      for (let i = 0; i <= segs; i++) {
+        const t = i / segs;
+        const angle = theta_a * t;
+        let dir_i = vec_start.clone();
+        const k = edgeDir.clone().normalize();
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        const term1 = dir_i.multiplyScalar(cos);
+        const term2 = new Vector3().crossVectors(k, dir_i).multiplyScalar(sin);
+        const term3 = k.clone().multiplyScalar(k.dot(dir_i) * (1 - cos));
+        dir_i = new Vector3().addVectors(term1, term2).add(term3).normalize();
+        
+        const local_point = new Vector3().addVectors(local_c, dir_i.multiplyScalar(r));
+        const v1i = createVertex({
+          x: v1.position.x + local_point.x,
+          y: v1.position.y + local_point.y,
+          z: v1.position.z + local_point.z,
+        }, { ...v1.normal }, { ...v1.uv });
+        const v2i = createVertex({
+          x: v2.position.x + local_point.x,
+          y: v2.position.y + local_point.y,
+          z: v2.position.z + local_point.z,
+        }, { ...v2.normal }, { ...v2.uv });
+        mesh.vertices.push(v1i, v2i);
+        ring1.push(v1i.id);
+        ring2.push(v2i.id);
+      }
+
+      // Replace in adjacent faces: first ring for A, last ring for B
+      const faceA = mesh.faces.find((f: any) => f.id === fidA);
+      if (faceA) replaceEdgeInFace(faceA, v1.id, v2.id, ring1[0], ring2[0]);
+      if (fidB) {
+        const faceB = mesh.faces.find((f: any) => f.id === fidB);
+        if (faceB) replaceEdgeInFace(faceB, v1.id, v2.id, ring1[ring1.length - 1], ring2[ring2.length - 1]);
+      }
+
+      // Create band quads between successive rings
+      for (let i = 0; i < segs; i++) {
+        const a1 = ring1[i];
+        const a2 = ring2[i];
+        const b2 = ring2[i + 1];
+        const b1 = ring1[i + 1];
+        bandFaces.push(createFace([a1, a2, b2, b1]));
+      }
+    }
+
+    mesh.faces.push(...bandFaces);
+    mesh.edges = buildEdgesFromFaces(mesh.vertices, mesh.faces);
+  });
   geometryStore.recalculateNormals(meshId);
 }

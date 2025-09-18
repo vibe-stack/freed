@@ -14,6 +14,7 @@ import { Color, Vector3 } from 'three/webgpu';
 import { useSelectionVertices } from '@/features/edit-mode/hooks/use-selection-vertices';
 import { useSceneStore } from '@/stores/scene-store';
 import { useLoopcut } from '@/features/edit-mode/hooks/use-loopcut';
+import { useFilletPreview } from '@/features/edit-mode/hooks/use-fillet-preview';
 // loopcut spans retained indirectly via existing hook usage (removed direct usage)
 import { SculptHandler } from '@/features/edit-mode/components/sculpt-handler';
 import { KnifeHandler } from '@/features/edit-mode/components/knife-handler';
@@ -87,6 +88,7 @@ const EditModeOverlay: React.FC = () => {
 
 	// Loop Cut managed by hook
 	const { lines: loopcutLines } = useLoopcut(mesh || null, meshId || null, objTransform);
+    const { lines: filletLines } = useFilletPreview(mesh || null);
 
 	// Alt+Shift marquee selection (screen-space rectangle)
 	const marquee = useMarqueeSelection(objTransform);
@@ -159,6 +161,27 @@ const EditModeOverlay: React.FC = () => {
 										args={[
 											new Float32Array(
 												loopcutLines.flatMap((ln) => [
+													ln.a.x, ln.a.y, ln.a.z,
+													ln.b.x, ln.b.y, ln.b.z,
+												])
+											),
+											3,
+										]}
+									/>
+								</bufferGeometry>
+								<lineBasicMaterial color={new Color(1, 1, 0)} depthTest={false} depthWrite={false} transparent opacity={0.9} />
+							</lineSegments>
+						)}
+
+						{/* Fillet preview lines */}
+						{toolStore.isActive && toolStore.tool === 'fillet' && filletLines.length > 0 && (
+							<lineSegments>
+								<bufferGeometry>
+									<bufferAttribute
+										attach="attributes-position"
+										args={[
+											new Float32Array(
+												filletLines.flatMap((ln) => [
 													ln.a.x, ln.a.y, ln.a.z,
 													ln.b.x, ln.b.y, ln.b.z,
 												])
