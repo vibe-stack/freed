@@ -7,6 +7,7 @@ import {
 } from '../../tool-operations';
 import { worldToLocalDelta, getScaleFactor, getCameraDistance } from '../utils/transform-utils';
 import { TransformContext } from '../utils/types';
+import { snapValue } from '@/utils/grid-snapping';
 
 export interface MoveToolState {
   moveAccumulator: Vector3;
@@ -45,9 +46,16 @@ export function handleMoveOperation(
   
   // Accumulate movement since start in local space
   const newAccumulator = moveAccumulator.clone().add(deltaLocal);
+  const appliedDelta = context.gridSnapping
+    ? new Vector3(
+        snapValue(newAccumulator.x, context.gridSize ?? 1),
+        snapValue(newAccumulator.y, context.gridSize ?? 1),
+        snapValue(newAccumulator.z, context.gridSize ?? 1)
+      )
+    : newAccumulator;
   
   // Apply move operation
-  const newVertices = applyMoveOperation(originalVertices, newAccumulator, axisLock);
+  const newVertices = applyMoveOperation(originalVertices, appliedDelta, axisLock);
   
   return {
     vertices: newVertices,

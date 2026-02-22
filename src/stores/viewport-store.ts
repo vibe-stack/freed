@@ -11,6 +11,8 @@ interface ViewportActions {
   toggleGrid: () => void;
   toggleAxes: () => void;
   setGridSize: (size: number) => void;
+  setGridSnapping: (enabled: boolean) => void;
+  toggleGridSnapping: () => void;
   setBackgroundColor: (color: [number, number, number]) => void;
   resetCamera: () => void;
   focusOnObject: (center: [number, number, number], size: number) => void;
@@ -39,7 +41,8 @@ export const useViewportStore = create<ViewportStore>()(
       shadingMode: 'solid' as ShadingMode,
       showGrid: true,
       showAxes: true,
-      gridSize: 10,
+      gridSize: 1,
+      gridSnapping: false,
       backgroundColor: vec3(0.01, 0.01, 0.01),
   autoOrbitIntervalSec: 0,
 
@@ -75,7 +78,19 @@ export const useViewportStore = create<ViewportStore>()(
 
       setGridSize: (size: number) => {
         set((state) => {
-          state.gridSize = Math.max(1, size);
+          state.gridSize = Math.max(0.01, size);
+        });
+      },
+
+      setGridSnapping: (enabled: boolean) => {
+        set((state) => {
+          state.gridSnapping = enabled;
+        });
+      },
+
+      toggleGridSnapping: () => {
+        set((state) => {
+          state.gridSnapping = !state.gridSnapping;
         });
       },
 
@@ -133,7 +148,8 @@ export const useViewportStore = create<ViewportStore>()(
           state.shadingMode = 'solid' as ShadingMode;
           state.showGrid = true;
           state.showAxes = true;
-          state.gridSize = 10;
+          state.gridSize = 1;
+          state.gridSnapping = false;
           state.backgroundColor = vec3(.1, .1, .1);
           state.autoOrbitIntervalSec = 0;
         });
@@ -150,5 +166,6 @@ export const useViewportSettings = () => useViewportStore((state) => ({
   showGrid: state.showGrid,
   showAxes: state.showAxes,
   gridSize: state.gridSize,
+  gridSnapping: state.gridSnapping,
   backgroundColor: state.backgroundColor,
 }));

@@ -13,13 +13,8 @@ type Props = {
   triggerLabel?: React.ReactNode;
   triggerClassName?: string;
   onCreateShape: (shape: Shape) => void;
-  onCreateText?: () => void;
   onAddLight: (type: 'directional' | 'spot' | 'point' | 'ambient') => void;
   onAddCamera: (type: 'perspective' | 'orthographic') => void;
-  onAddForce: (type: 'attractor' | 'repulsor' | 'vortex') => void;
-  onAddParticleSystem: () => void;
-  onAddFluidSystem?: () => void;
-  onAddMetaball?: () => void;
   onCreateTerrain?: (type: 'perlin' | 'voronoi' | 'mountain') => void;
 };
 
@@ -31,13 +26,8 @@ const AddObjectMenu: React.FC<Props> = ({
   triggerLabel = 'Add',
   triggerClassName = 'px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5',
   onCreateShape,
-  onCreateText,
   onAddLight,
   onAddCamera,
-  onAddForce,
-  onAddParticleSystem,
-  onAddFluidSystem,
-  onAddMetaball,
   onCreateTerrain,
 }) => {
   const closeIfControlled = () => { if (typeof onOpenChange === 'function') onOpenChange(false); };
@@ -48,34 +38,6 @@ const AddObjectMenu: React.FC<Props> = ({
       <Menu.Portal container={portalContainer}>
         <Menu.Positioner sideOffset={6} className="z-90">
           <Menu.Popup className="mt-0 min-w-48 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
-            <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onAddParticleSystem(); closeIfControlled(); }}>Particle System</Menu.Item>
-            {onCreateText && (
-              <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onCreateText(); closeIfControlled(); }}>Text</Menu.Item>
-            )}
-            {onAddFluidSystem && (
-              <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onAddFluidSystem(); closeIfControlled(); }}>Fluid System</Menu.Item>
-            )}
-            {onAddMetaball && (
-              <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onAddMetaball(); closeIfControlled(); }}>Metaballs</Menu.Item>
-            )}
-            <Menu.Separator className="my-1 h-px bg-white/10" />
-
-            {/* Force Field submenu */}
-            <Menu.SubmenuRoot>
-              <Menu.SubmenuTrigger className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200">Force Field</Menu.SubmenuTrigger>
-              <Menu.Portal container={portalContainer}>
-                <Menu.Positioner sideOffset={6} className="z-90">
-                  <Menu.Popup className="min-w-44 rounded border border-white/10 bg-[#0b0e13]/95 shadow-lg py-1 text-xs z-90" style={{ zIndex: 10050 }}>
-                    <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onAddForce('attractor'); closeIfControlled(); }}>Attractor</Menu.Item>
-                    <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onAddForce('repulsor'); closeIfControlled(); }}>Repulsor</Menu.Item>
-                    <Menu.Item className="w-full text-left px-3 py-1.5 hover:bg-white/10 text-gray-200" onClick={() => { onAddForce('vortex'); closeIfControlled(); }}>Vortex</Menu.Item>
-                  </Menu.Popup>
-                </Menu.Positioner>
-              </Menu.Portal>
-            </Menu.SubmenuRoot>
-
-            <Menu.Separator className="my-1 h-px bg-white/10" />
-
             {/* Terrain submenu */}
             {onCreateTerrain && (
               <Menu.SubmenuRoot>

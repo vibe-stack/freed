@@ -4,6 +4,7 @@ import { AxisLock } from '@/stores/tool-store';
 import { applyScaleOperation } from '../../tool-operations';
 import { getScaleFactor } from '../utils/transform-utils';
 import { TransformContext } from '../utils/types';
+import { snapScaleValue } from '@/utils/grid-snapping';
 
 export interface ScaleToolState {
   scaleAccumulator: number;
@@ -23,7 +24,10 @@ export function handleScaleOperation(
 } {
   const scaleFactor = getScaleFactor(context.objectScale);
   const scaleDelta = event.movementX * scaleSensitivity / Math.max(1e-6, scaleFactor);
-  const newScale = Math.max(0.01, currentScale + scaleDelta); // Prevent negative scale
+  const rawScale = Math.max(0.01, currentScale + scaleDelta);
+  const newScale = context.gridSnapping
+    ? snapScaleValue(rawScale, context.gridSize ?? 1)
+    : rawScale;
   
   const newVertices = applyScaleOperation(originalVertices, newScale, axisLock, centroid);
   

@@ -167,6 +167,7 @@ function viewportToT3D(viewport: ViewportState): T3DViewport {
     showGrid: viewport.showGrid,
     showAxes: viewport.showAxes,
     gridSize: viewport.gridSize,
+    gridSnapping: viewport.gridSnapping,
     backgroundColor: vector3ToT3D(viewport.backgroundColor),
   };
 }
@@ -246,7 +247,8 @@ export async function exportToT3D(
       shadingMode: 'solid',
       showGrid: true,
       showAxes: true,
-      gridSize: 10,
+      gridSize: 1,
+      gridSnapping: false,
       backgroundColor: { x: 0.2, y: 0.2, z: 0.2 },
       activeCameraObjectId: null,
     },

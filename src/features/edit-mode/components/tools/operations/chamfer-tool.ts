@@ -5,6 +5,7 @@ import { useGeometryStore } from '@/stores/geometry-store';
 import { getScaleFactor } from '../utils/transform-utils';
 import { TransformContext } from '../utils/types';
 import { calculateFaceNormal } from '@/utils/geometry';
+import { snapValue } from '@/utils/grid-snapping';
 
 export interface ChamferToolState {
   distance: number; // total distance between new edges across the chamfer band
@@ -24,7 +25,8 @@ export function handleChamferOperation(
 } {
   const scaleFactor = getScaleFactor(context.objectScale);
   const delta = (event.movementX) * scaleSensitivity / Math.max(1e-6, scaleFactor);
-  const distance = Math.max(0, currentDistance + delta);
+  const rawDistance = Math.max(0, currentDistance + delta);
+  const distance = context.gridSnapping ? Math.max(0, snapValue(rawDistance, context.gridSize ?? 1)) : rawDistance;
   const half = distance * 0.5;
 
   const selection = useSelectionStore.getState().selection;

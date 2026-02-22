@@ -7,6 +7,7 @@ import { applyScaleOperation } from '../../tool-operations';
 import { calculateFaceNormal } from '@/utils/geometry';
 import { getScaleFactor } from '../utils/transform-utils';
 import { TransformContext } from '../utils/types';
+import { snapValue } from '@/utils/grid-snapping';
 
 export interface BevelToolState {
   bevelWidth: number;
@@ -28,7 +29,8 @@ export function handleBevelOperation(
 } {
   const scaleFactor = getScaleFactor(context.objectScale);
   const delta = event.movementX * scaleSensitivity / Math.max(1e-6, scaleFactor);
-  const width = Math.max(0, currentWidth + delta);
+  const rawWidth = Math.max(0, currentWidth + delta);
+  const width = context.gridSnapping ? Math.max(0, snapValue(rawWidth, context.gridSize ?? 1)) : rawWidth;
   
   const selection = useSelectionStore.getState().selection;
   const mesh = useGeometryStore.getState().meshes.get(meshId);

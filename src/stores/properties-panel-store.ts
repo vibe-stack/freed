@@ -7,8 +7,7 @@ export type PropertiesTab =
   | 'view-layer'
   | 'world'
   | 'modifiers'
-  | 'render'
-  | 'output';
+  | 'render';
 
 interface PropertiesPanelState {
   activeTab: PropertiesTab;

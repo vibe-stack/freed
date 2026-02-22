@@ -4,6 +4,7 @@ import { AxisLock } from '@/stores/tool-store';
 import { mouseToWorldDelta } from '../../tool-operations';
 import { worldToLocalDelta, getCameraDistance } from '../utils/transform-utils';
 import { TransformContext } from '../utils/types';
+import { snapValue } from '@/utils/grid-snapping';
 
 export interface ExtrudeToolState {
   extrudeAccumulator: Vector3;
@@ -57,6 +58,14 @@ export function handleExtrudeOperation(
   }
   
   const newAccumulator = extrudeAccumulator.clone().add(step);
+  if (context.gridSnapping) {
+    const snapStep = context.gridSize ?? 1;
+    newAccumulator.set(
+      snapValue(newAccumulator.x, snapStep),
+      snapValue(newAccumulator.y, snapStep),
+      snapValue(newAccumulator.z, snapStep)
+    );
+  }
   
   // Apply offset to selected vertices
   const newVertices = originalVertices.map(v => ({

@@ -22,7 +22,6 @@ import { geometryRedo, geometryUndo } from '@/stores/geometry-store';
 import { useRegisterShortcuts } from '@/components/shortcut-provider';
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
 import AddObjectMenu from '@/features/shared/add-object-menu';
-import { useTextStore } from '@/stores/text-store';
 import { useTerrainStore } from '@/stores/terrain-store';
 
 type Props = { onOpenShaderEditor?: () => void };
@@ -72,6 +71,7 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 			showGrid: viewportStore.showGrid,
 			showAxes: viewportStore.showAxes,
 			gridSize: viewportStore.gridSize,
+			gridSnapping: viewportStore.gridSnapping,
 			backgroundColor: viewportStore.backgroundColor,
 		},
 		selectedObjectId: sceneStore.selectedObjectId,
@@ -126,6 +126,7 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 					viewportStore.setCamera(data.viewport.camera);
 					viewportStore.setShadingMode(data.viewport.shadingMode);
 					viewportStore.setGridSize(data.viewport.gridSize);
+					viewportStore.setGridSnapping((data.viewport as any).gridSnapping ?? false);
 					viewportStore.setBackgroundColor([
 						data.viewport.backgroundColor.x,
 						data.viewport.backgroundColor.y,
@@ -174,16 +175,6 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 		shapeCreationStore.reset();
 	}, [geometryStore, sceneStore, selectionStore, viewportStore, toolStore, shapeCreationStore]);
 
-	const handleCreateParticleSystem = useCallback(() => {
-		const id = sceneStore.createParticleSystemObject('Particle System');
-		sceneStore.selectObject(id);
-	}, [sceneStore]);
-
-	const handleCreateFluidSystem = useCallback(() => {
-		const id = sceneStore.createFluidSystemObject('Fluid System');
-		sceneStore.selectObject(id);
-	}, [sceneStore]);
-
 	const beginShape = useCallback((shape: 'cube' | 'plane' | 'cylinder' | 'cone' | 'uvsphere' | 'icosphere' | 'torus') => {
 		let id = '';
 		let name = '';
@@ -212,13 +203,6 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 
 	const addCamera = useCallback((type: 'perspective' | 'orthographic') => {
 		const id = sceneStore.createCameraObject(type === 'perspective' ? 'Perspective Camera' : 'Orthographic Camera', type);
-		sceneStore.selectObject(id);
-		if (useSelectionStore.getState().selection.viewMode === 'object') useSelectionStore.getState().selectObjects([id]);
-	}, [sceneStore]);
-
-	const addForce = useCallback((type: 'attractor'|'repulsor'|'vortex') => {
-		const pretty = type.charAt(0).toUpperCase() + type.slice(1);
-		const id = sceneStore.createForceFieldObject(pretty, type);
 		sceneStore.selectObject(id);
 		if (useSelectionStore.getState().selection.viewMode === 'object') useSelectionStore.getState().selectObjects([id]);
 	}, [sceneStore]);
@@ -383,17 +367,8 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 					<AddObjectMenu
 						portalContainer={portalContainer}
 						onCreateShape={beginShape}
-						onCreateText={() => { useTextStore.getState().createText(); }}
 						onAddLight={addLight}
 						onAddCamera={addCamera}
-						onAddForce={addForce}
-						onAddParticleSystem={handleCreateParticleSystem}
-						onAddFluidSystem={handleCreateFluidSystem}
-						onAddMetaball={() => {
-							const id = sceneStore.createMetaballObject('Metaballs');
-							sceneStore.selectObject(id);
-							if (useSelectionStore.getState().selection.viewMode === 'object') useSelectionStore.getState().selectObjects([id]);
-						}}
 						onCreateTerrain={(type) => {
 							const res = useTerrainStore.getState().createTerrain({}, type);
 							// createTerrain returns { terrainId, objectId }

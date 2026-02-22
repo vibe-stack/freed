@@ -6,6 +6,8 @@ import { Vector3, Euler, Camera } from 'three/webgpu';
 import { useToolStore } from '@/stores/tool-store';
 import { useSelectionStore } from '@/stores/selection-store';
 import { useSceneStore } from '@/stores/scene-store';
+import { useViewportStore } from '@/stores/viewport-store';
+import { snapRotationRadians, snapValue } from '@/utils/grid-snapping';
 
 // Helper to convert mouse delta to world delta like edit-mode
 function mouseToWorldDelta(movementX: number, movementY: number, camera: Camera, distance: number, sensitivity: number = 0.005) {
@@ -24,6 +26,7 @@ export const ObjectToolHandler: React.FC = () => {
   const toolStore = useToolStore();
   // access selection store imperatively where needed to avoid rerenders
   const sceneStore = useSceneStore();
+  const viewport = useViewportStore();
 
   const [original, setOriginal] = useState<{ id: string; pos: Vector3; rot: Euler; scale: Vector3 }[]>([]);
   const [center, setCenter] = useState<Vector3>(new Vector3());
@@ -106,12 +109,19 @@ export const ObjectToolHandler: React.FC = () => {
           );
         }
         moveAccum.current.add(delta);
+        const snappedMove = viewport.gridSnapping
+          ? new Vector3(
+              snapValue(moveAccum.current.x, viewport.gridSize),
+              snapValue(moveAccum.current.y, viewport.gridSize),
+              snapValue(moveAccum.current.z, viewport.gridSize)
+            )
+          : moveAccum.current;
         original.forEach((o) => {
           const t = local[o.id];
           if (t) {
-            t.position.x = o.pos.x + moveAccum.current.x;
-            t.position.y = o.pos.y + moveAccum.current.y;
-            t.position.z = o.pos.z + moveAccum.current.z;
+            t.position.x = o.pos.x + snappedMove.x;
+            t.position.y = o.pos.y + snappedMove.y;
+            t.position.z = o.pos.z + snappedMove.z;
           }
         });
         // trigger store update so subscribers (MeshView) re-render
@@ -119,11 +129,14 @@ export const ObjectToolHandler: React.FC = () => {
       } else if (toolStore.tool === 'rotate') {
         const delta = (e.movementX + e.movementY) * useToolStore.getState().rotateSensitivity;
         rotAccum.current += delta;
+        const snappedRotation = viewport.gridSnapping
+          ? snapRotationRadians(rotAccum.current, viewport.gridSize)
+          : rotAccum.current;
         original.forEach((o) => {
           // Default: rotate around Z when no axis is locked (view-like behavior)
-          const rx = toolStore.axisLock === 'x' ? rotAccum.current : 0;
-          const ry = toolStore.axisLock === 'y' ? rotAccum.current : 0;
-          const rz = toolStore.axisLock === 'z' || toolStore.axisLock === 'none' ? rotAccum.current : 0;
+          const rx = toolStore.axisLock === 'x' ? snappedRotation : 0;
+          const ry = toolStore.axisLock === 'y' ? snappedRotation : 0;
+          const rz = toolStore.axisLock === 'z' || toolStore.axisLock === 'none' ? snappedRotation : 0;
           const t = local[o.id];
           if (t) {
             t.rotation.x = o.rot.x + rx;
@@ -135,15 +148,26 @@ export const ObjectToolHandler: React.FC = () => {
       } else if (toolStore.tool === 'scale') {
         const sDelta = 1 + e.movementX * useToolStore.getState().scaleSensitivity;
         scaleAccum.current *= Math.max(0.01, sDelta);
+        const scaleFactor = scaleAccum.current;
         original.forEach((o) => {
-          const sx = toolStore.axisLock === 'x' || toolStore.axisLock === 'none' ? scaleAccum.current : 1;
-          const sy = toolStore.axisLock === 'y' || toolStore.axisLock === 'none' ? scaleAccum.current : 1;
-          const sz = toolStore.axisLock === 'z' || toolStore.axisLock === 'none' ? scaleAccum.current : 1;
+          const applyX = toolStore.axisLock === 'x' || toolStore.axisLock === 'none';
+          const applyY = toolStore.axisLock === 'y' || toolStore.axisLock === 'none';
+          const applyZ = toolStore.axisLock === 'z' || toolStore.axisLock === 'none';
+
+          const rawX = applyX ? o.scale.x * scaleFactor : o.scale.x;
+          const rawY = applyY ? o.scale.y * scaleFactor : o.scale.y;
+          const rawZ = applyZ ? o.scale.z * scaleFactor : o.scale.z;
+
+          const step = viewport.gridSize;
+          const snappedX = viewport.gridSnapping && applyX ? snapValue(rawX, step) : rawX;
+          const snappedY = viewport.gridSnapping && applyY ? snapValue(rawY, step) : rawY;
+          const snappedZ = viewport.gridSnapping && applyZ ? snapValue(rawZ, step) : rawZ;
+
           const t = local[o.id];
           if (t) {
-            t.scale.x = o.scale.x * sx;
-            t.scale.y = o.scale.y * sy;
-            t.scale.z = o.scale.z * sz;
+            t.scale.x = Math.max(0.01, snappedX);
+            t.scale.y = Math.max(0.01, snappedY);
+            t.scale.z = Math.max(0.01, snappedZ);
           }
         });
         useToolStore.getState().setLocalData({ kind: 'object-transform', transforms: { ...local } });
@@ -193,7 +217,7 @@ export const ObjectToolHandler: React.FC = () => {
       document.removeEventListener('mousedown', onMouseDown);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [toolStore.isActive, toolStore.tool, toolStore.axisLock, center, camera, original, sceneStore]);
+  }, [toolStore.isActive, toolStore.tool, toolStore.axisLock, center, camera, original, sceneStore, viewport.gridSnapping, viewport.gridSize]);
 
   // Axis visual when a transform is active and an axis is locked
   const showAxis = toolStore.isActive && toolStore.axisLock !== 'none' && original.length > 0;

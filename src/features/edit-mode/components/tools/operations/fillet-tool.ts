@@ -6,6 +6,7 @@ import { useToolStore } from '@/stores/tool-store';
 import { getScaleFactor } from '../utils/transform-utils';
 import { TransformContext } from '../utils/types';
 import { calculateFaceNormal } from '@/utils/geometry';
+import { snapValue } from '@/utils/grid-snapping';
 
 export interface FilletToolState {
   radius: number;
@@ -30,7 +31,8 @@ export function handleFilletOperation(
 
   const scaleFactor = getScaleFactor(context.objectScale);
   const delta = (event.movementX) * scaleSensitivity / Math.max(1e-6, scaleFactor);
-  const radius = Math.max(0, currentRadius + delta);
+  const rawRadius = Math.max(0, currentRadius + delta);
+  const radius = context.gridSnapping ? Math.max(0, snapValue(rawRadius, context.gridSize ?? 1)) : rawRadius;
 
   const selection = useSelectionStore.getState().selection;
   const mesh = useGeometryStore.getState().meshes.get(meshId);

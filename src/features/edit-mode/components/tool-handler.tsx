@@ -5,6 +5,7 @@ import { useThree } from '@react-three/fiber';
 import { Vector3 } from 'three/webgpu';
 import { useToolStore } from '@/stores/tool-store';
 import { useGeometryStore } from '@/stores/geometry-store';
+import { useViewportStore } from '@/stores/viewport-store';
 import { 
   ToolHandlerProps,
   TransformContext,
@@ -39,6 +40,8 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
   const { camera, gl } = useThree();
   const toolStore = useToolStore();
   const geometryStore = useGeometryStore();
+  const gridSnapping = useViewportStore((s) => s.gridSnapping);
+  const gridSize = useViewportStore((s) => s.gridSize);
   const moveAccumRef = useRef(new Vector3(0, 0, 0));
   
   // Setup tool operation state
@@ -66,7 +69,9 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
     camera,
     distance: camera.position.distanceTo(centroid),
     objectRotation,
-    objectScale
+    objectScale,
+    gridSnapping,
+    gridSize,
   };
   
   // Handle mouse movement during tool operations
@@ -79,7 +84,9 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
         camera,
         distance: camera.position.distanceTo(centroid),
         objectRotation,
-        objectScale
+        objectScale,
+        gridSnapping,
+        gridSize,
       };
       
       const toolState = useToolStore.getState();
@@ -300,6 +307,8 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
     camera,
     objectRotation,
     objectScale,
+    gridSnapping,
+    gridSize,
     onLocalDataChange,
     setLocalVertices,
     setAccumulator,

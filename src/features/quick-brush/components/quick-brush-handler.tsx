@@ -8,11 +8,13 @@ import { useToolStore } from '@/stores/tool-store';
 import { useSelectionStore } from '@/stores/selection-store';
 import { useGeometryStore } from '@/stores/geometry-store';
 import { useSceneStore } from '@/stores/scene-store';
+import { useViewportStore } from '@/stores/viewport-store';
 import { getBrush } from '../brushes/registry';
 import type { BrushParams } from '../brushes/types';
 import { castToGroundOrSurface } from '../utils/ray-utils';
 import QuickBrushPreview from './quick-brush-preview';
 import { computeRectFootprint } from '../brushes/brush-utils';
+import { snapValue } from '@/utils/grid-snapping';
 
 /** Cast a ray against a fixed plane and return the intersection point, or null. */
 function castToPlane(
@@ -65,6 +67,8 @@ function commitActiveBrushPlacement() {
 
 const QuickBrushHandler: React.FC = () => {
   const { camera, gl, scene } = useThree();
+  const gridSnapping = useViewportStore((s) => s.gridSnapping);
+  const gridSize = useViewportStore((s) => s.gridSize);
   const phaseRef = useRef(useQuickBrushStore.getState().phase);
   const heightDragRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
@@ -119,11 +123,19 @@ const QuickBrushHandler: React.FC = () => {
         const hit = castToGroundOrSurface(e.clientX, e.clientY, camera, gl.domElement, getSceneMeshes());
         if (!hit) return;
 
+        const snappedPoint = gridSnapping
+          ? {
+              x: snapValue(hit.point.x, gridSize),
+              y: snapValue(hit.point.y, gridSize),
+              z: snapValue(hit.point.z, gridSize),
+            }
+          : { x: hit.point.x, y: hit.point.y, z: hit.point.z };
+
         // Lock the surface plane once at mousedown — all footprint dragging casts against this
-        anchorPlaneRef.current = new THREE.Plane().setFromNormalAndCoplanarPoint(hit.normal, hit.point);
+        anchorPlaneRef.current = new THREE.Plane().setFromNormalAndCoplanarPoint(hit.normal, new THREE.Vector3(snappedPoint.x, snappedPoint.y, snappedPoint.z));
 
         useQuickBrushStore.getState().beginFootprint(
-          { x: hit.point.x, y: hit.point.y, z: hit.point.z },
+          snappedPoint,
           { x: hit.normal.x, y: hit.normal.y, z: hit.normal.z },
           { x: hit.tangent.x, y: hit.tangent.y, z: hit.tangent.z },
         );
@@ -166,17 +178,21 @@ const QuickBrushHandler: React.FC = () => {
         if (!plane) return;
         const pt = castToPlane(e.clientX, e.clientY, camera, gl.domElement, plane);
         if (!pt) return;
+        const nextPoint = gridSnapping
+          ? { x: snapValue(pt.x, gridSize), y: snapValue(pt.y, gridSize), z: snapValue(pt.z, gridSize) }
+          : { x: pt.x, y: pt.y, z: pt.z };
         useQuickBrushStore.getState().updateFootprint({
-          x: pt.x,
-          y: pt.y,
-          z: pt.z,
+          x: nextPoint.x,
+          y: nextPoint.y,
+          z: nextPoint.z,
         });
 
       } else if (phase === 'height') {
         // Blender-like absolute drag: derive signed height from pointer offset since stage start
         const drag = heightDragRef.current;
         if (!drag) return;
-        const nextHeight = drag.startHeight + (e.clientY - drag.startY) * HEIGHT_SENSITIVITY;
+        const rawHeight = drag.startHeight + (e.clientY - drag.startY) * HEIGHT_SENSITIVITY;
+        const nextHeight = gridSnapping ? snapValue(rawHeight, gridSize) : rawHeight;
         useQuickBrushStore.getState().setHeight(nextHeight);
       } else if (phase === 'cutout') {
         // Door phase 3: adjust opening width from cursor position over the locked anchor plane
@@ -261,7 +277,7 @@ const QuickBrushHandler: React.FC = () => {
       document.removeEventListener('wheel', onWheel);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [camera, gl, scene]);
+  }, [camera, gl, scene, gridSnapping, gridSize]);
 
   // Track whether mouse is over a DOM UI element (to avoid swallowing toolbar clicks)
   useEffect(() => {

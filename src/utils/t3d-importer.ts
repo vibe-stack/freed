@@ -150,6 +150,7 @@ function t3dToViewport(t3dViewport: T3DViewport): ViewportState {
     showGrid: t3dViewport.showGrid,
     showAxes: t3dViewport.showAxes,
     gridSize: t3dViewport.gridSize,
+  gridSnapping: (t3dViewport as any).gridSnapping ?? false,
   backgroundColor: t3dToVector3(t3dViewport.backgroundColor),
   activeCameraObjectId: (t3dViewport as any).activeCameraObjectId ?? null,
   };

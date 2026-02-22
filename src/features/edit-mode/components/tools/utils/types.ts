@@ -22,4 +22,6 @@ export interface TransformContext {
   distance: number;
   objectRotation?: { x: number; y: number; z: number };
   objectScale?: { x: number; y: number; z: number };
+  gridSnapping?: boolean;
+  gridSize?: number;
 }

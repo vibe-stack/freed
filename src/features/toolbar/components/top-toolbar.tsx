@@ -3,7 +3,6 @@
 import React from 'react';
 import AddObjectMenu from '@/features/shared/add-object-menu';
 import { useTerrainStore } from '@/stores/terrain-store';
-import { useTextStore } from '@/stores/text-store';
 import { useSelection, useSelectionStore } from '@/stores/selection-store';
 import { useViewportStore } from '@/stores/viewport-store';
 import { useSceneStore } from '@/stores/scene-store';
@@ -16,6 +15,9 @@ import { Pill } from './pill';
 import { AIGeneratePopover } from './ai-generate-popover';
 import * as motion from "motion/react-client"
 import { AnimatePresence } from 'motion/react'
+import { Popover } from '@base-ui-components/react/popover';
+import { Magnet, Ellipsis } from 'lucide-react';
+import { DragInput } from '@/components/drag-input';
 
 const SegButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { active?: boolean }>
   = ({ className = '', active = false, children, ...rest }) => (
@@ -204,21 +206,6 @@ const TopToolbar: React.FC = () => {
     if (selection.viewMode === 'object') selectionActions.selectObjects([id]);
   };
 
-  const addParticleSystem = () => {
-    const id = scene.createParticleSystemObject('Particle System');
-    scene.selectObject(id);
-    if (selection.viewMode === 'object') selectionActions.selectObjects([id]);
-    setMenuOpen(false);
-  };
-
-  const addForce = (type: 'attractor' | 'repulsor' | 'vortex') => {
-    const pretty = type.charAt(0).toUpperCase() + type.slice(1);
-    const id = scene.createForceFieldObject(pretty, type);
-    scene.selectObject(id);
-    if (selection.viewMode === 'object') selectionActions.selectObjects([id]);
-    setMenuOpen(false);
-  };
-
   const enterEdit = () => {
     if (selection.objectIds.length > 0) {
       const objId = selection.objectIds[0];
@@ -233,6 +220,45 @@ const TopToolbar: React.FC = () => {
 
   return (
     <div className="flex items-center gap-2">
+      <Pill className="px-1 py-1">
+        <div className="flex items-center gap-1">
+          <SegButton
+            aria-label="Toggle Grid Snapping"
+            title="Toggle Grid Snapping"
+            active={viewport.gridSnapping}
+            onClick={() => viewport.setGridSnapping(!viewport.gridSnapping)}
+          >
+            <Magnet className="h-4 w-4" />
+          </SegButton>
+          <Popover.Root>
+            <Popover.Trigger
+              render={
+                <SegButton aria-label="Grid Snap Settings" title="Grid Snap Settings">
+                  <Ellipsis className="h-4 w-4" />
+                </SegButton>
+              }
+            />
+            <Popover.Portal>
+              <Popover.Positioner sideOffset={6} className="z-50">
+                <Popover.Popup className="rounded-lg border border-white/10 bg-[#0b0e13]/95 shadow-lg p-2 w-44 text-xs text-gray-200">
+                  <Popover.Title className="text-[11px] uppercase tracking-wide text-gray-400 mb-2">Grid Snapping</Popover.Title>
+                  <DragInput
+                    label="Grid size"
+                    value={viewport.gridSize}
+                    min={0.01}
+                    step={0.05}
+                    precision={2}
+                    onChange={viewport.setGridSize}
+                    onValueCommit={viewport.setGridSize}
+                    className="w-full"
+                  />
+                </Popover.Popup>
+              </Popover.Positioner>
+            </Popover.Portal>
+          </Popover.Root>
+        </div>
+      </Pill>
+
       <Pill className="px-2 py-1">
         <motion.div layout className="flex items-center gap-1">
           <SegButton
@@ -313,13 +339,8 @@ const TopToolbar: React.FC = () => {
           triggerLabel={"Add"}
           triggerClassName={"px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5 data-[open]:bg-white/10 data-[open]:text-white"}
           onCreateShape={beginShape}
-          onCreateText={() => { useTextStore.getState().createText(); setMenuOpen(false); }}
           onAddLight={addLight}
           onAddCamera={addCamera}
-          onAddForce={addForce}
-          onAddParticleSystem={addParticleSystem}
-          onAddFluidSystem={() => { /* top toolbar: no fluid UI, create via scene API */ const id = scene.createFluidSystemObject('Fluid System'); scene.selectObject(id); if (selection.viewMode === 'object') selectionActions.selectObjects([id]); setMenuOpen(false); }}
-          onAddMetaball={() => { const id = (scene as any).createMetaballObject?.('Metaballs'); if (id) { scene.selectObject(id); if (selection.viewMode === 'object') selectionActions.selectObjects([id]); } setMenuOpen(false); }}
           onCreateTerrain={(type) => {
             const res = useTerrainStore.getState().createTerrain({}, type);
             if (res?.objectId) {

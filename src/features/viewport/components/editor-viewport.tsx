@@ -16,7 +16,6 @@ import AutoOrbitController from './auto-orbit-controller';
 import { useSelectionStore } from '@/stores/selection-store';
 import { useToolStore } from '@/stores/tool-store';
 import { useActiveCameraBinding } from '../hooks/use-active-camera';
-import AnimationSampler from '@/features/animation/components/animation-sampler';
 import CameraAspectSync from './camera-aspect-sync';
 import { useQuickBrushStore } from '@/features/quick-brush/stores/quick-brush-store';
 
@@ -101,7 +100,6 @@ const EditorViewport: React.FC = () => {
         />
         <SceneContent />
         <WorldEffects />
-        <AnimationSampler />
       </Canvas>
     </div>
   );

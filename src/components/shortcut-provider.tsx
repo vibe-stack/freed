@@ -62,16 +62,6 @@ export const ShortcutProvider: React.FC<ShortcutProviderProps> = ({ children }) 
       description: 'Toggle between Object and Edit mode',
       preventDefault: true,
     },
-  // Animation transport
-  { key: ' ', action: () => { const a = require('@/stores/animation-store'); const s = a.useAnimationStore.getState(); if (s.activeClipId) s.togglePlay(); }, description: 'Play/Pause (Space)', preventDefault: true },
-  { key: ' ', shift: true, action: () => { const a = require('@/stores/animation-store'); const s = a.useAnimationStore.getState(); if (s.activeClipId) s.stop(); }, description: 'Stop (Shift+Space)', preventDefault: true },
-  { key: 'Home', action: () => { const a = require('@/stores/animation-store'); const s = a.useAnimationStore.getState(); const clip = s.activeClipId ? s.clips[s.activeClipId] : null; if (clip) s.seekSeconds(clip.start); }, description: 'Seek to In (Home)', preventDefault: true },
-  { key: 'End', action: () => { const a = require('@/stores/animation-store'); const s = a.useAnimationStore.getState(); const clip = s.activeClipId ? s.clips[s.activeClipId] : null; if (clip) s.seekSeconds(clip.end); }, description: 'Seek to Out (End)', preventDefault: true },
-  { key: 'l', action: () => { const a = require('@/stores/animation-store'); const s = a.useAnimationStore.getState(); const clip = s.activeClipId ? s.clips[s.activeClipId] : null; if (clip) s.toggleLoop(); }, description: 'Toggle Loop (L)', preventDefault: true },
-  { key: 'k', action: () => { const a = require('@/stores/animation-store'); const s = a.useAnimationStore.getState(); s.setAutoKey(!s.autoKey); }, description: 'Toggle Auto-key (K)', preventDefault: true },
-  { key: 't', action: () => { const a = require('@/stores/animation-store'); const s = a.useAnimationStore.getState(); s.toggleTimelinePanel(); }, description: 'Toggle Timeline Panel (T)', preventDefault: true },
-  { key: 'j', action: () => { const a = require('@/stores/animation-store'); const s = a.useAnimationStore.getState(); s.prevKey(); }, description: 'Prev Keyframe (J)', preventDefault: true },
-  { key: 'n', action: () => { const a = require('@/stores/animation-store'); const s = a.useAnimationStore.getState(); s.nextKey(); }, description: 'Next Keyframe (N)', preventDefault: true },
     // Selection modes (only work in edit mode)
     { key: '1', action: () => { const s = useSelectionStore.getState().selection; if (s.viewMode === 'edit') useSelectionStore.getState().setSelectionMode('vertex'); }, description: 'Switch to Vertex selection mode (Edit Mode)', preventDefault: true },
     { key: '2', action: () => { const s = useSelectionStore.getState().selection; if (s.viewMode === 'edit') useSelectionStore.getState().setSelectionMode('edge'); }, description: 'Switch to Edge selection mode (Edit Mode)', preventDefault: true },

@@ -100,6 +100,7 @@ export interface T3DViewport {
   showGrid: boolean;
   showAxes: boolean;
   gridSize: number;
+  gridSnapping?: boolean;
   backgroundColor: { x: number; y: number; z: number };
   activeCameraObjectId?: string | null;
 }

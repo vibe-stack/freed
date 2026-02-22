@@ -4,9 +4,6 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { useSceneStore } from '@/stores/scene-store';
 import MeshView from './mesh-view';
 import TerrainView from '@/features/viewport/components/terrain-view';
-import ParticleSystemNode from '@/features/particles/components/particle-system-node';
-// Local relative import (avoids occasional path alias resolution issues in some build modes)
-import FluidSystemNode from './fluid-system-node';
 import { useToolStore } from '@/stores/tool-store';
 import {
   Color,
@@ -27,7 +24,6 @@ import { useCameraResource } from '@/stores/geometry-store';
 import { registerCamera, unregisterCamera } from '../hooks/camera-registry';
 import { registerObject3D, unregisterObject3D } from '../hooks/object3d-registry';
 import { useAnimationStore } from '@/stores/animation-store';
-import ForceFieldNode from './force-field-node';
 // Light helper wrappers
 const DirectionalLightNode: React.FC<{ color: Color; intensity: number }> = ({ color, intensity }) => {
   const ref = useRef<DirectionalLight>(null!);
@@ -378,12 +374,6 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
     <group ref={groupRef} visible={obj.visible} {...transformProps} userData={{ ...((groupRef.current?.userData as any) ?? {}), sceneObjectId: objectId }}>
   { (obj.type === 'mesh' || obj.type === 'text') && <MeshView objectId={objectId} noTransform /> }
   { obj.type === 'terrain' && <TerrainView objectId={objectId} noTransform /> }
-      {obj.type === 'particles' && obj.particleSystemId && (
-        <ParticleSystemNode objectId={objectId} systemId={obj.particleSystemId} />
-      )}
-      {obj.type === 'fluid' && obj.fluidSystemId && (
-        <FluidSystemNode objectId={objectId} systemId={obj.fluidSystemId} />
-      )}
       {obj.type === 'light' && obj.lightId && (() => {
         const light = scene.lights[obj.lightId!];
         if (!light) return null;
@@ -433,9 +423,6 @@ const ObjectNode: React.FC<Props> = ({ objectId }) => {
       })()}
       {obj.type === 'camera' && obj.cameraId && (
         <CameraObjectNode objectId={objectId} cameraId={obj.cameraId!} isMaterial={(shading as unknown as string) === 'material'} />
-      )}
-      {obj.type === 'force' && obj.forceFieldId && (
-        <ForceFieldNode fieldId={obj.forceFieldId} />
       )}
       {obj.children.map((cid) => (
         <ObjectNode key={cid} objectId={cid} />

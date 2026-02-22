@@ -4,9 +4,8 @@ import React from 'react';
 import { useActivePropertiesTab, usePropertiesPanelStore, PropertiesTab } from '@/stores/properties-panel-store';
 import { InspectorPanel } from './tabs/inspector-panel';
 import { WorldPanel } from './tabs/world-panel';
-import OutputPanel from './tabs/output-panel';
 import type { LucideIcon } from 'lucide-react';
-import { Wrench, Box, Layers, Globe, Sliders, Camera, HardDrive } from 'lucide-react';
+import { Wrench, Box, Layers, Globe, Sliders, Camera } from 'lucide-react';
 import ModifiersPanel from '@/features/properties-panel/components/tabs/modifiers-panel';
 import * as motion from "motion/react-client"
 
@@ -19,7 +18,6 @@ const tabs: TabDef[] = [
   { key: 'world', label: 'World', icon: Globe },
   { key: 'modifiers', label: 'Modifiers', icon: Sliders },
   { key: 'render', label: 'Render', icon: Camera },
-  { key: 'output', label: 'Output', icon: HardDrive },
 ];
 
 export const PropertiesPanel: React.FC = () => {
@@ -48,8 +46,7 @@ export const PropertiesPanel: React.FC = () => {
         {active === 'inspector' && <InspectorPanel />}
         {active === 'world' && <WorldPanel />}
         {active === 'modifiers' && <ModifiersPanel />}
-        {active === 'output' && <OutputPanel />}
-        {active !== 'inspector' && active !== 'world' && active !== 'modifiers' && active !== 'output' && (
+        {active !== 'inspector' && active !== 'world' && active !== 'modifiers' && (
           <div className="p-2 text-[11px] text-gray-500">
             {tabs.find((t) => t.key === active)?.label} panel coming soon.
           </div>
