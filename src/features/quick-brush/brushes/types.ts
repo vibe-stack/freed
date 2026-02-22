@@ -6,6 +6,7 @@ import type { useSelectionStore } from '@/stores/selection-store';
 
 export type BrushShape =
   | 'select'
+  | 'polygon'
   | 'cube'
   | 'slope'
   | 'sphere'

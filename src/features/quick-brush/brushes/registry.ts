@@ -1,4 +1,5 @@
 import { SelectBrush } from './select-brush';
+import { PolygonBrush } from './polygon-brush';
 import { CubeBrush } from './cube-brush';
 import { SlopeBrush } from './slope-brush';
 import { SphereBrush } from './sphere-brush';
@@ -12,6 +13,7 @@ import type { BrushDefinition, BrushShape } from './types';
 
 export const BRUSH_REGISTRY: BrushDefinition[] = [
   SelectBrush,
+  PolygonBrush,
   CubeBrush,
   SlopeBrush,
   SphereBrush,

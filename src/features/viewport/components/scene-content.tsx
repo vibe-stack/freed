@@ -11,6 +11,7 @@ import EditModeOverlay from '@/features/edit-mode/components/edit-mode-overlay';
 import ObjectToolHandler from './object-tool-handler';
 import MetaballSurface from './metaball-surface';
 import QuickBrushHandler from '@/features/quick-brush/components/quick-brush-handler';
+import PolygonBrushHandler from '@/features/quick-brush/components/polygon-brush-handler';
 
 const SceneContent: React.FC = () => {
   const scene = useSceneStore();
@@ -22,6 +23,7 @@ const SceneContent: React.FC = () => {
     <>
       <ObjectToolHandler />
       <QuickBrushHandler />
+      <PolygonBrushHandler />
       {viewport.showGrid && (
         <WebGPUGrid
           args={[500, 500]}

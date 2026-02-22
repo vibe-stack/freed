@@ -43,7 +43,7 @@ const AddObjectMenu: React.FC<Props> = ({
   const closeIfControlled = () => { if (typeof onOpenChange === 'function') onOpenChange(false); };
 
   return (
-    <Menu.Root modal={false} openOnHover={openOnHover} {...(controlledOpen !== undefined ? { open: controlledOpen, onOpenChange } : {})}>
+    <Menu.Root modal={false} {...(controlledOpen !== undefined ? { open: controlledOpen, onOpenChange } : {})}>
       <Menu.Trigger className={triggerClassName}>{triggerLabel}</Menu.Trigger>
       <Menu.Portal container={portalContainer}>
         <Menu.Positioner sideOffset={6} className="z-90">

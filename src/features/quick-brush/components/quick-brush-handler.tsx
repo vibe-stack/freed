@@ -112,7 +112,7 @@ const QuickBrushHandler: React.FC = () => {
 
       // In 'select' mode, never start placement
       const activeBrush = useQuickBrushStore.getState().activeBrush;
-      if (activeBrush === 'select') return;
+      if (activeBrush === 'select' || activeBrush === 'polygon') return;
 
       if (phase === 'idle') {
         // Phase 1: begin footprint
@@ -176,7 +176,7 @@ const QuickBrushHandler: React.FC = () => {
         // Blender-like absolute drag: derive signed height from pointer offset since stage start
         const drag = heightDragRef.current;
         if (!drag) return;
-        const nextHeight = drag.startHeight + (drag.startY - e.clientY) * HEIGHT_SENSITIVITY;
+        const nextHeight = drag.startHeight + (e.clientY - drag.startY) * HEIGHT_SENSITIVITY;
         useQuickBrushStore.getState().setHeight(nextHeight);
       } else if (phase === 'cutout') {
         // Door phase 3: adjust opening width from cursor position over the locked anchor plane

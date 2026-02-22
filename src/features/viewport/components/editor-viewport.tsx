@@ -18,6 +18,7 @@ import { useToolStore } from '@/stores/tool-store';
 import { useActiveCameraBinding } from '../hooks/use-active-camera';
 import AnimationSampler from '@/features/animation/components/animation-sampler';
 import CameraAspectSync from './camera-aspect-sync';
+import { useQuickBrushStore } from '@/features/quick-brush/stores/quick-brush-store';
 
 // Runs inside Canvas to bind the R3F default camera to the active scene camera
 function ActiveCameraBinding() {
@@ -32,10 +33,13 @@ const EditorViewport: React.FC = () => {
   const shadingMode = useViewportStore((s) => s.shadingMode);
   const autoOrbitIntervalSec = useViewportStore((s) => s.autoOrbitIntervalSec ?? 0);
   const hasSelectedObject = useSelectionStore((s) => s.selection.viewMode === 'object' && s.selection.objectIds.length > 0);
+  const viewMode = useSelectionStore((s) => s.selection.viewMode);
+  const activeBrush = useQuickBrushStore((s) => s.activeBrush);
   const renderer = useRendererSettings();
   const sculptStrokeActive = useToolStore((s) => s.sculptStrokeActive);
   const marqueeActive = useToolStore((s) => s.marqueeActive);
   const brushPlacing = useToolStore((s) => s.brushPlacing);
+  const brushCameraLocked = viewMode === 'brush' && activeBrush !== 'select';
   // Camera binding runs inside Canvas via ActiveCameraBinding
 
   // Camera controller runs inside Canvas via component
@@ -86,11 +90,11 @@ const EditorViewport: React.FC = () => {
           dampingFactor={0.1}
           // Avoid camera inertia after sculpting by disabling inputs directly during strokes
           enabled={true}
-          enableRotate={!sculptStrokeActive && !marqueeActive && !brushPlacing}
-          enablePan={!sculptStrokeActive && !marqueeActive && !brushPlacing}
-          enableZoom={!sculptStrokeActive && !marqueeActive && !brushPlacing}
-          enableDamping={!sculptStrokeActive && !marqueeActive && !brushPlacing}
-          autoRotate={Boolean(autoOrbitIntervalSec && hasSelectedObject) && !sculptStrokeActive && !marqueeActive && !brushPlacing}
+          enableRotate={!sculptStrokeActive && !marqueeActive && !brushPlacing && !brushCameraLocked}
+          enablePan={!sculptStrokeActive && !marqueeActive && !brushPlacing && !brushCameraLocked}
+          enableZoom={!sculptStrokeActive && !marqueeActive && !brushPlacing && !brushCameraLocked}
+          enableDamping={!sculptStrokeActive && !marqueeActive && !brushPlacing && !brushCameraLocked}
+          autoRotate={Boolean(autoOrbitIntervalSec && hasSelectedObject) && !sculptStrokeActive && !marqueeActive && !brushPlacing && !brushCameraLocked}
           // Three.js OrbitControls uses a 60fps-based factor: angle += 2π/60 * autoRotateSpeed per frame
           // For one full rotation every N seconds: speed = 60 / N
           autoRotateSpeed={autoOrbitIntervalSec ? 60 / autoOrbitIntervalSec : 0}

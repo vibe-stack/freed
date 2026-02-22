@@ -306,7 +306,7 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 
 			<div className="flex items-center gap-1">
 				{/* File */}
-				<Menu.Root modal={false} openOnHover>
+				<Menu.Root modal={false} highlightItemOnHover>
 					<Menu.Trigger className="px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5 data-[open]:bg-white/10 data-[open]:text-white">
 						File
 					</Menu.Trigger>
@@ -335,7 +335,7 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 				</Menu.Root>
 
 				{/* Import */}
-				<Menu.Root modal={false} openOnHover>
+				<Menu.Root modal={false} highlightItemOnHover>
 					<Menu.Trigger className="px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5 data-[open]:bg-white/10 data-[open]:text-white">
 						Import
 					</Menu.Trigger>
@@ -353,7 +353,7 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 				</Menu.Root>
 
 				{/* Edit (placeholders) */}
-				<Menu.Root modal={false} openOnHover>
+				<Menu.Root modal={false} highlightItemOnHover>
 					<Menu.Trigger className="px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5 data-[open]:bg-white/10 data-[open]:text-white">
 						Edit
 					</Menu.Trigger>
@@ -405,7 +405,7 @@ const MenuBar: React.FC<Props> = ({ onOpenShaderEditor }) => {
 					/>
 
 				{/* View (placeholders) */}
-				<Menu.Root modal={false} openOnHover>
+				<Menu.Root modal={false} highlightItemOnHover>
 					<Menu.Trigger className="px-2 py-1 text-xs rounded text-gray-300 hover:text-white hover:bg-white/5 data-[open]:bg-white/10 data-[open]:text-white">
 						View
 					</Menu.Trigger>
