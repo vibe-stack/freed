@@ -26,7 +26,6 @@ export function handleMoveOperation(
   newAccumulator: Vector3;
 } {
   const distance = getCameraDistance(context, centroid);
-  const scaleFactor = getScaleFactor(context.objectScale);
   
   // Calculate world space delta
   const deltaWorld = mouseToWorldDelta(
@@ -43,9 +42,17 @@ export function handleMoveOperation(
     context.objectRotation, 
     context.objectScale
   );
+
+  const constrainedDelta = axisLock === 'none'
+    ? deltaLocal
+    : new Vector3(
+        axisLock === 'x' ? deltaLocal.x : 0,
+        axisLock === 'y' ? deltaLocal.y : 0,
+        axisLock === 'z' ? deltaLocal.z : 0,
+      );
   
   // Accumulate movement since start in local space
-  const newAccumulator = moveAccumulator.clone().add(deltaLocal);
+  const newAccumulator = moveAccumulator.clone().add(constrainedDelta);
   const appliedDelta = context.gridSnapping
     ? new Vector3(
         snapValue(newAccumulator.x, context.gridSize ?? 1),

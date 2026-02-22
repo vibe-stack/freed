@@ -70,7 +70,7 @@ const QuickBrushHandler: React.FC = () => {
   const gridSnapping = useViewportStore((s) => s.gridSnapping);
   const gridSize = useViewportStore((s) => s.gridSize);
   const phaseRef = useRef(useQuickBrushStore.getState().phase);
-  const heightDragRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  const heightDragRef = useRef<{ startX: number; startY: number; startHeight: number; dirX: number; dirY: number } | null>(null);
 
   // Track which UI elements are being interacted with so we skip toolbar clicks
   const isOverUIRef = useRef(false);
@@ -88,6 +88,15 @@ const QuickBrushHandler: React.FC = () => {
 
   useEffect(() => {
     const HEIGHT_SENSITIVITY = 0.02;
+
+    const projectWorldToScreen = (point: THREE.Vector3): THREE.Vector2 => {
+      const rect = gl.domElement.getBoundingClientRect();
+      const projected = point.clone().project(camera);
+      return new THREE.Vector2(
+        ((projected.x + 1) * 0.5) * rect.width,
+        ((-projected.y + 1) * 0.5) * rect.height,
+      );
+    };
 
     const getViewMode = () => useSelectionStore.getState().selection.viewMode;
     const isBrushMode = () => getViewMode() === 'brush';
@@ -191,7 +200,10 @@ const QuickBrushHandler: React.FC = () => {
         // Blender-like absolute drag: derive signed height from pointer offset since stage start
         const drag = heightDragRef.current;
         if (!drag) return;
-        const rawHeight = drag.startHeight + (e.clientY - drag.startY) * HEIGHT_SENSITIVITY;
+        const deltaX = e.clientX - drag.startX;
+        const deltaY = e.clientY - drag.startY;
+        const signedPixels = deltaX * drag.dirX + deltaY * drag.dirY;
+        const rawHeight = drag.startHeight + signedPixels * HEIGHT_SENSITIVITY;
         const nextHeight = gridSnapping ? snapValue(rawHeight, gridSize) : rawHeight;
         useQuickBrushStore.getState().setHeight(nextHeight);
       } else if (phase === 'cutout') {
@@ -228,8 +240,25 @@ const QuickBrushHandler: React.FC = () => {
           return;
         }
         useQuickBrushStore.getState().beginHeight();
-        const h = useQuickBrushStore.getState().height;
-        heightDragRef.current = { startY: e.clientY, startHeight: h };
+        const store = useQuickBrushStore.getState();
+        const h = store.height;
+
+        let dirX = 0;
+        let dirY = -1;
+        if (store.anchor && store.normal) {
+          const anchor = new THREE.Vector3(store.anchor.x, store.anchor.y, store.anchor.z);
+          const normal = new THREE.Vector3(store.normal.x, store.normal.y, store.normal.z).normalize();
+          const p0 = projectWorldToScreen(anchor);
+          const p1 = projectWorldToScreen(anchor.clone().add(normal));
+          const d = p1.sub(p0);
+          const len = d.length();
+          if (len > 1e-6) {
+            dirX = d.x / len;
+            dirY = d.y / len;
+          }
+        }
+
+        heightDragRef.current = { startX: e.clientX, startY: e.clientY, startHeight: h, dirX, dirY };
       }
     };
 

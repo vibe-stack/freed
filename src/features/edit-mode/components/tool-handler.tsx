@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import React, { useEffect, useRef } from 'react';
-import { useThree } from '@react-three/fiber';
-import { Vector3 } from 'three/webgpu';
-import { useToolStore } from '@/stores/tool-store';
-import { useGeometryStore } from '@/stores/geometry-store';
-import { useViewportStore } from '@/stores/viewport-store';
-import { 
+import React, { useEffect, useRef } from "react";
+import { useThree } from "@react-three/fiber";
+import { Vector3 } from "three/webgpu";
+import { useToolStore } from "@/stores/tool-store";
+import { useGeometryStore } from "@/stores/geometry-store";
+import { useViewportStore } from "@/stores/viewport-store";
+import {
   ToolHandlerProps,
   TransformContext,
   usePointerLock,
@@ -28,14 +28,14 @@ import {
   createMouseMoveHandler,
   createKeyboardHandler,
   createWheelHandler,
-  createCommitHandler
-} from './tools';
+  createCommitHandler,
+} from "./tools";
 
-export const ToolHandler: React.FC<ToolHandlerProps> = ({ 
-  meshId, 
-  onLocalDataChange, 
-  objectRotation, 
-  objectScale 
+export const ToolHandler: React.FC<ToolHandlerProps> = ({
+  meshId,
+  onLocalDataChange,
+  objectRotation,
+  objectScale,
 }) => {
   const { camera, gl } = useThree();
   const toolStore = useToolStore();
@@ -43,7 +43,7 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
   const gridSnapping = useViewportStore((s) => s.gridSnapping);
   const gridSize = useViewportStore((s) => s.gridSize);
   const moveAccumRef = useRef(new Vector3(0, 0, 0));
-  
+
   // Setup tool operation state
   const {
     originalVertices,
@@ -53,17 +53,27 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
     selectedFaceIds,
     avgNormalLocal,
     setLocalVertices,
-    setAccumulator
+    setAccumulator,
   } = useToolSetup(meshId, onLocalDataChange);
-  
+
+  const originalVerticesRef = useRef(originalVertices);
+  const localVerticesRef = useRef(localVertices);
+  const selectedFaceIdsRef = useRef(selectedFaceIds);
+  const accumulatorRef = useRef(accumulator);
+
   // Manage pointer lock
-  const implementedTool = toolStore.tool === 'move' || toolStore.tool === 'rotate' || 
-                         toolStore.tool === 'scale' || toolStore.tool === 'extrude' || 
-                         toolStore.tool === 'inset' || toolStore.tool === 'bevel' || 
-                         toolStore.tool === 'chamfer' || toolStore.tool === 'fillet';
-  
+  const implementedTool =
+    toolStore.tool === "move" ||
+    toolStore.tool === "rotate" ||
+    toolStore.tool === "scale" ||
+    toolStore.tool === "extrude" ||
+    toolStore.tool === "inset" ||
+    toolStore.tool === "bevel" ||
+    toolStore.tool === "chamfer" ||
+    toolStore.tool === "fillet";
+
   usePointerLock(gl, toolStore.isActive && implementedTool);
-  
+
   // Create transform context
   const context: TransformContext = {
     camera,
@@ -73,11 +83,29 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
     gridSnapping,
     gridSize,
   };
-  
+
+  useEffect(() => {
+    originalVerticesRef.current = originalVertices;
+  }, [originalVertices]);
+  useEffect(() => {
+    localVerticesRef.current = localVertices;
+  }, [localVertices]);
+  useEffect(() => {
+    selectedFaceIdsRef.current = selectedFaceIds;
+  }, [selectedFaceIds]);
+  useEffect(() => {
+    accumulatorRef.current = accumulator;
+  }, [accumulator]);
+
   // Handle mouse movement during tool operations
   useEffect(() => {
-    if (!toolStore.isActive || !implementedTool || originalVertices.length === 0) return;
-    
+    if (
+      !toolStore.isActive ||
+      !implementedTool ||
+      originalVertices.length === 0
+    )
+      return;
+
     const handleMouseMove = (event: MouseEvent) => {
       // Get fresh context and state each time
       const freshContext: TransformContext = {
@@ -88,127 +116,142 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
         gridSnapping,
         gridSize,
       };
-      
+
       const toolState = useToolStore.getState();
-      
-      if (toolState.tool === 'move') {
+
+      if (toolState.tool === "move") {
         const result = handleMoveOperation(
           event,
-          originalVertices,
-          centroid,
-          freshContext,
-          toolState.axisLock,
-          toolState.moveSensitivity,
-          moveAccumRef.current
-        );
-        
-        moveAccumRef.current = result.newAccumulator;
-        setLocalVertices(result.vertices);
-        onLocalDataChange(result.vertices);
-        
-      } else if (toolState.tool === 'rotate') {
-        const result = handleRotateOperation(
-          event,
-          originalVertices,
-          centroid,
-          freshContext,
-          toolState.axisLock,
-          toolState.rotateSensitivity,
-          accumulator.rotation
-        );
-        
-        setAccumulator(prev => ({ ...prev, rotation: result.newRotation }));
-        setLocalVertices(result.vertices);
-        onLocalDataChange(result.vertices);
-        
-      } else if (toolState.tool === 'scale') {
-        const result = handleScaleOperation(
-          event,
-          originalVertices,
-          centroid,
-          freshContext,
-          toolState.axisLock,
-          toolState.scaleSensitivity,
-          accumulator.scale
-        );
-        
-        setAccumulator(prev => ({ ...prev, scale: result.newScale }));
-        setLocalVertices(result.vertices);
-        onLocalDataChange(result.vertices);
-        
-      } else if (toolState.tool === 'extrude') {
-        const result = handleExtrudeOperation(
-          event,
-          originalVertices,
+          originalVerticesRef.current,
           centroid,
           freshContext,
           toolState.axisLock,
           toolState.moveSensitivity,
           moveAccumRef.current,
-          avgNormalLocal
         );
-        
+
         moveAccumRef.current = result.newAccumulator;
         setLocalVertices(result.vertices);
         onLocalDataChange(result.vertices);
-        
-      } else if (toolState.tool === 'inset') {
+      } else if (toolState.tool === "rotate") {
+        const result = handleRotateOperation(
+          event,
+          originalVerticesRef.current,
+          centroid,
+          freshContext,
+          toolState.axisLock,
+          toolState.rotateSensitivity,
+          accumulatorRef.current.rotation,
+        );
+        accumulatorRef.current = {
+          ...accumulatorRef.current,
+          rotation: result.newRotation,
+        };
+        setAccumulator((prev) => ({ ...prev, rotation: result.newRotation }));
+        setLocalVertices(result.vertices);
+        onLocalDataChange(result.vertices);
+      } else if (toolState.tool === "scale") {
+        const result = handleScaleOperation(
+          event,
+          originalVerticesRef.current,
+          centroid,
+          freshContext,
+          toolState.axisLock,
+          toolState.scaleSensitivity,
+          accumulatorRef.current.scale,
+        );
+        accumulatorRef.current = {
+          ...accumulatorRef.current,
+          scale: result.newScale,
+        };
+        setAccumulator((prev) => ({ ...prev, scale: result.newScale }));
+        setLocalVertices(result.vertices);
+        onLocalDataChange(result.vertices);
+      } else if (toolState.tool === "extrude") {
+        const result = handleExtrudeOperation(
+          event,
+          originalVerticesRef.current,
+          centroid,
+          freshContext,
+          toolState.axisLock,
+          toolState.moveSensitivity,
+          moveAccumRef.current,
+          avgNormalLocal,
+        );
+
+        moveAccumRef.current = result.newAccumulator;
+        setLocalVertices(result.vertices);
+        onLocalDataChange(result.vertices);
+      } else if (toolState.tool === "inset") {
         const result = handleInsetOperation(
           event,
-          originalVertices,
+          originalVerticesRef.current,
           centroid,
           freshContext,
           toolState.scaleSensitivity,
-          accumulator.scale
+          accumulatorRef.current.scale,
         );
-        
-        setAccumulator(prev => ({ ...prev, scale: result.newScale }));
+        accumulatorRef.current = {
+          ...accumulatorRef.current,
+          scale: result.newScale,
+        };
+        setAccumulator((prev) => ({ ...prev, scale: result.newScale }));
         setLocalVertices(result.vertices);
         onLocalDataChange(result.vertices);
-        
-      } else if (toolState.tool === 'bevel') {
+      } else if (toolState.tool === "bevel") {
         const result = handleBevelOperation(
           event,
-          originalVertices,
+          originalVerticesRef.current,
           centroid,
           freshContext,
           meshId,
-          selectedFaceIds,
+          selectedFaceIdsRef.current,
           toolState.scaleSensitivity,
-          accumulator.scale || 0,
-          toolState.tool
+          accumulatorRef.current.scale || 0,
+          toolState.tool,
         );
-        
-        setAccumulator(prev => ({ ...prev, scale: result.newWidth }));
+        accumulatorRef.current = {
+          ...accumulatorRef.current,
+          scale: result.newWidth,
+        };
+        setAccumulator((prev) => ({ ...prev, scale: result.newWidth }));
         setLocalVertices(result.vertices);
         onLocalDataChange(result.vertices);
-      } else if (toolState.tool === 'chamfer') {
+      } else if (toolState.tool === "chamfer") {
         const result = handleChamferOperation(
           event,
-          originalVertices,
+          originalVerticesRef.current,
           centroid,
           freshContext,
           meshId,
           toolState.scaleSensitivity,
-          accumulator.scale || 0
+          accumulatorRef.current.scale || 0,
         );
-        setAccumulator(prev => ({ ...prev, scale: result.newDistance }));
+        accumulatorRef.current = {
+          ...accumulatorRef.current,
+          scale: result.newDistance,
+        };
+        setAccumulator((prev) => ({ ...prev, scale: result.newDistance }));
         // persist current distance in localData for commit
         const data = (toolState.localData as any) || {};
         toolStore.setLocalData({ ...data, distance: result.newDistance });
         setLocalVertices(result.vertices);
         onLocalDataChange(result.vertices);
-      } else if (toolState.tool === 'fillet') {
+      } else if (toolState.tool === "fillet") {
         const result = handleFilletOperation(
           event,
-          originalVertices,
+          originalVerticesRef.current,
           centroid,
           freshContext,
           meshId,
           toolState.scaleSensitivity,
-          accumulator.scale || 0
+          accumulatorRef.current.scale || 0,
         );
-        setAccumulator(prev => ({ ...prev, scale: result.newRadius }));
+        accumulatorRef.current = {
+          ...accumulatorRef.current,
+          scale: result.newRadius,
+        };
+        setAccumulator((prev) => ({ ...prev, scale: result.newRadius }));
         // persist current radius in localData for commit
         const data = (toolState.localData as any) || {};
         toolStore.setLocalData({ ...data, radius: result.newRadius });
@@ -216,83 +259,119 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
         onLocalDataChange(result.vertices);
       }
     };
-    
+
     const handleMouseUp = (event: MouseEvent) => {
       if (event.button !== 0) return; // Only left mouse button
-      
+
       const toolState = useToolStore.getState();
-      
-      if (localVertices.length > 0) {
-        if (toolState.tool === 'extrude') {
-          commitExtrudeOperation(localVertices, selectedFaceIds, meshId, geometryStore);
-        } else if (toolState.tool === 'inset') {
-          commitInsetOperation(localVertices, selectedFaceIds, meshId, geometryStore);
-        } else if (toolState.tool === 'bevel') {
-          commitBevelOperation(localVertices, selectedFaceIds, meshId, geometryStore, toolState);
-        } else if (toolState.tool === 'chamfer') {
-          const distance = (toolState.localData as any)?.distance ?? accumulator.scale ?? 0;
+
+      const latestLocalVertices = localVerticesRef.current;
+      const latestSelectedFaceIds = selectedFaceIdsRef.current;
+      const latestAccumulator = accumulatorRef.current;
+
+      if (latestLocalVertices.length > 0) {
+        if (toolState.tool === "extrude") {
+          commitExtrudeOperation(
+            latestLocalVertices,
+            latestSelectedFaceIds,
+            meshId,
+            geometryStore,
+          );
+        } else if (toolState.tool === "inset") {
+          commitInsetOperation(
+            latestLocalVertices,
+            latestSelectedFaceIds,
+            meshId,
+            geometryStore,
+          );
+        } else if (toolState.tool === "bevel") {
+          commitBevelOperation(
+            latestLocalVertices,
+            latestSelectedFaceIds,
+            meshId,
+            geometryStore,
+            toolState,
+          );
+        } else if (toolState.tool === "chamfer") {
+          const distance =
+            (toolState.localData as any)?.distance ??
+            latestAccumulator.scale ??
+            0;
           commitChamferOperation(meshId, geometryStore, distance);
-        } else if (toolState.tool === 'fillet') {
-          const radius = (toolState.localData as any)?.radius ?? accumulator.scale ?? 0;
+        } else if (toolState.tool === "fillet") {
+          const radius =
+            (toolState.localData as any)?.radius ??
+            latestAccumulator.scale ??
+            0;
           const divisions = (toolState.localData as any)?.divisions ?? 1;
           commitFilletOperation(meshId, geometryStore, radius, divisions);
         } else {
           // Simple vertex position update
-          commitVertexUpdate(localVertices, meshId, geometryStore);
+          commitVertexUpdate(latestLocalVertices, meshId, geometryStore);
         }
       }
-      
+
       toolStore.endOperation(true);
       moveAccumRef.current.set(0, 0, 0);
     };
-    
+
     const handleKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       const toolState = useToolStore.getState();
-      
-      if (key === 'escape') {
+
+      if (key === "escape") {
         // Abort operation - restore original state
-        setLocalVertices(originalVertices);
-        onLocalDataChange(originalVertices);
+        const latestOriginalVertices = originalVerticesRef.current;
+        setLocalVertices(latestOriginalVertices);
+        onLocalDataChange(latestOriginalVertices);
         toolStore.endOperation(false);
         moveAccumRef.current.set(0, 0, 0);
-      } else if (key === 'x') {
-        toolState.setAxisLock(toolState.axisLock === 'x' ? 'none' : 'x');
-      } else if (key === 'y') {
-        toolState.setAxisLock(toolState.axisLock === 'y' ? 'none' : 'y');
-      } else if (key === 'z') {
-        toolState.setAxisLock(toolState.axisLock === 'z' ? 'none' : 'z');
+      } else if (key === "x") {
+        toolState.setAxisLock(toolState.axisLock === "x" ? "none" : "x");
+      } else if (key === "y") {
+        toolState.setAxisLock(toolState.axisLock === "y" ? "none" : "y");
+      } else if (key === "z") {
+        toolState.setAxisLock(toolState.axisLock === "z" ? "none" : "z");
       }
     };
-    
+
     const handleWheel = (e: WheelEvent) => {
       const toolState = useToolStore.getState();
       if (!toolState.isActive) return;
-      if (toolState.tool === 'fillet' || toolState.tool === 'bevel') {
+      if (toolState.tool === "fillet" || toolState.tool === "bevel") {
         // Disable camera zoom while adjusting bevel/fillet divisions
-        try { e.preventDefault(); } catch {}
-        try { e.stopPropagation(); } catch {}
-        try { (e as any).stopImmediatePropagation?.(); } catch {}
+        try {
+          e.preventDefault();
+        } catch {}
+        try {
+          e.stopPropagation();
+        } catch {}
+        try {
+          (e as any).stopImmediatePropagation?.();
+        } catch {}
         const delta = Math.sign(e.deltaY);
         const data = (toolState.localData as any) || {};
         const prev = (data.divisions ?? 1) as number;
         const next = Math.max(1, Math.min(64, prev + (delta > 0 ? 1 : -1)));
         toolState.setLocalData({ ...data, divisions: next });
-      } else if (toolState.tool === 'chamfer') {
+      } else if (toolState.tool === "chamfer") {
         // no wheel behavior for chamfer now
       }
     };
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('wheel', handleWheel, { passive: false, capture: true });
-    
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("wheel", handleWheel, {
+      passive: false,
+      capture: true,
+    });
+
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('wheel', handleWheel as any, true);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("wheel", handleWheel as any, true);
     };
   }, [
     toolStore.isActive,
@@ -312,8 +391,8 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
     onLocalDataChange,
     setLocalVertices,
     setAccumulator,
-    geometryStore
+    geometryStore,
   ]);
-  
+
   return null; // This component only handles events, no rendering
 };
