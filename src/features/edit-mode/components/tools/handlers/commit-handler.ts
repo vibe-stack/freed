@@ -422,11 +422,11 @@ function splitEndpointInSideFaces(
             if (originalFace.id === faceA || originalFace.id === faceB) continue;
             if (!originalFace.vertexIds.includes(vertexId)) continue;
 
-            const liveFace = liveFaceById.get(originalFace.id);
+            const liveFace = liveFaceById.get(originalFace.id) as { id: string; vertexIds: string[],  } | undefined;
             if (!liveFace) continue;
-            const key = `${liveFace.id}::${vertexId}`;
+            const key = `${(liveFace as any).id}::${vertexId}`;
             if (processed.has(key)) continue;
-            const iLive = liveFace.vertexIds.indexOf(vertexId);
+            const iLive = (liveFace as any).vertexIds.indexOf(vertexId);
             if (iLive === -1) continue;
 
             const idsOrig = originalFace.vertexIds as string[];
@@ -477,12 +477,12 @@ export function commitChamferOperation(
         const selection = useSelectionStore.getState().selection;
         if (selection.selectionMode !== 'edge' || selection.edgeIds.length === 0) return;
         if (half <= 0) return;
-        const originalFaceById = new Map(mesh.faces.map((f: any) => [f.id, { ...f, vertexIds: [...f.vertexIds] }] as const));
+        const originalFaceById = new Map(mesh.faces.map((f: any) => [f.id, { ...f, vertexIds: [...f.vertexIds] }] as const)) as Map<string, { id: string; vertexIds: string[] }>;
 
         const faceNormal = getFaceNormalMap(mesh);
-        const edgeById = new Map(mesh.edges.map((e: any) => [e.id, e] as const));
-        const faceById = new Map(mesh.faces.map((f: any) => [f.id, f] as const));
-        const vertexById = new Map(mesh.vertices.map((v: any) => [v.id, v] as const));
+        const edgeById = new Map(mesh.edges.map((e: any) => [e.id, e] as const)) as Map<string, { id: string; vertexIds: string[]; faceIds: string[] }>;
+        const faceById = new Map(mesh.faces.map((f: any) => [f.id, f] as const)) as Map<string, { id: string; vertexIds: string[] }>;
+        const vertexById = new Map(mesh.vertices.map((v: any) => [v.id, v] as const)) as Map<string, { id: string; position: { x: number; y: number; z: number }; normal: { x: number; y: number; z: number }; uv?: { u: number; v: number } }>;
 
         const offsetSum = new Map<string, Vector3>();
         const offsetCount = new Map<string, number>();
@@ -555,7 +555,7 @@ export function commitChamferOperation(
                 x: original.position.x + avgOffset.x,
                 y: original.position.y + avgOffset.y,
                 z: original.position.z + avgOffset.z,
-            }, { ...original.normal }, { ...original.uv });
+            }, { ...original.normal }, { ...(original as any).uv });
             mesh.vertices.push(created);
             duplicateByFaceVertex.set(faceVertexKey(faceId, vertexId), created.id);
         }
@@ -629,12 +629,12 @@ export function commitFilletOperation(
                 const selection = useSelectionStore.getState().selection;
                 if (selection.selectionMode !== 'edge' || selection.edgeIds.length === 0) return;
                 if (r <= 0) return;
-            const originalFaceById = new Map(mesh.faces.map((f: any) => [f.id, { ...f, vertexIds: [...f.vertexIds] }] as const));
+            const originalFaceById = new Map(mesh.faces.map((f: any) => [f.id, { ...f, vertexIds: [...f.vertexIds] }] as const)) as Map<string, { id: string; vertexIds: string[] }>;
 
                 const faceNormal = getFaceNormalMap(mesh);
-                const edgeById = new Map(mesh.edges.map((e: any) => [e.id, e] as const));
-                const faceById = new Map(mesh.faces.map((f: any) => [f.id, f] as const));
-                const vertexById = new Map(mesh.vertices.map((v: any) => [v.id, v] as const));
+                const edgeById = new Map(mesh.edges.map((e: any) => [e.id, e] as const)) as Map<string, { id: string; vertexIds: string[]; faceIds: string[] }>;
+                const faceById = new Map(mesh.faces.map((f: any) => [f.id, f] as const)) as Map<string, { id: string; vertexIds: string[] }>;
+                const vertexById = new Map(mesh.vertices.map((v: any) => [v.id, v] as const)) as Map<string, { id: string; position: { x: number; y: number; z: number }; normal: { x: number; y: number; z: number }; uv?: { u: number; v: number } }>;
 
                 const offsetSum = new Map<string, Vector3>();
                 const offsetCount = new Map<string, number>();
@@ -707,7 +707,7 @@ export function commitFilletOperation(
                                 x: original.position.x + avgOffset.x,
                                 y: original.position.y + avgOffset.y,
                                 z: original.position.z + avgOffset.z,
-                        }, { ...original.normal }, { ...original.uv });
+                        }, { ...original.normal }, { ...(original as any).uv });
                         mesh.vertices.push(created);
                         duplicateByFaceVertex.set(faceVertexKey(faceId, vertexId), created.id);
                 }
@@ -727,7 +727,7 @@ export function commitFilletOperation(
 
                     const endpointChains = new Map<string, string[]>();
 
-                const currentVertexById = () => new Map(mesh.vertices.map((v: any) => [v.id, v] as const));
+                const currentVertexById = () => new Map(mesh.vertices.map((v: any) => [v.id, v] as const)) as Map<string, { id: string; position: { x: number; y: number; z: number }; normal: { x: number; y: number; z: number }; uv?: { u: number; v: number } }>;
 
                 const bowedOffsetTowardCorner = (start: Vector3, end: Vector3, t: number) => {
                     const a = (1 - t) * (1 - t);

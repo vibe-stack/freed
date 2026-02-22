@@ -12,6 +12,7 @@ export type BrushShape =
   | 'cylinder'
   | 'cone'
   | 'stairs'
+  | 'closed-stairs'
   | 'door'
   | 'arch';
 
@@ -28,6 +29,14 @@ export interface BrushParams {
   tangent: THREE.Vector3;
   /** Height accumulated in phase 2 */
   height: number;
+  /** Door opening width ratio (0..1 of full width), used by door brush stage 3 */
+  doorOpeningRatio: number;
+  /** Stairs step count (set by mouse wheel in stage 2) */
+  stairsCount: number;
+  /** Arch segment count (set by mouse wheel in stage 2) */
+  archSegments: number;
+  /** Stairs curvature amount set in final stage (-1..1) */
+  stairsCurve: number;
 }
 
 export interface CommitStores {

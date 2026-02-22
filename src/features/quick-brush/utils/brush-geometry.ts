@@ -5,6 +5,74 @@
 import { createVertex, createFace, vec3, vec2 } from '@/utils/geometry';
 import type { BuiltGeometry } from '@/utils/geometry';
 
+function applyArcCurvePoint(
+  x: number,
+  z: number,
+  depth: number,
+  curve: number,
+  frontZ: number,
+): { x: number; z: number } {
+  const totalAngle = curve;
+  if (Math.abs(totalAngle) < 1e-5 || depth < 1e-6) {
+    return { x, z };
+  }
+
+  const zRel = z - frontZ;
+  const radius = depth / totalAngle;
+  const theta = (zRel / depth) * totalAngle;
+
+  const pathX = radius * (1 - Math.cos(theta));
+  const pathZ = radius * Math.sin(theta);
+
+  // Tangent of centerline at theta is (sin(theta), cos(theta)) in XZ.
+  // Perpendicular local-right vector for stair width offset:
+  const nx = Math.cos(theta);
+  const nz = -Math.sin(theta);
+
+  return {
+    x: pathX + nx * x,
+    z: frontZ + pathZ + nz * x,
+  };
+}
+
+export function curveStairsPositionBuffer(positions: number[], depth: number, curve: number): void {
+  if (Math.abs(curve) < 1e-6 || depth < 1e-6) return;
+
+  const vertCount = Math.floor(positions.length / 3);
+  let frontZ = Infinity;
+  for (let i = 0; i < vertCount; i++) {
+    const zi = i * 3 + 2;
+    frontZ = Math.min(frontZ, positions[zi]);
+  }
+
+  for (let i = 0; i < vertCount; i++) {
+    const xi = i * 3;
+    const zi = xi + 2;
+    const curved = applyArcCurvePoint(positions[xi], positions[zi], depth, curve, frontZ);
+    positions[xi] = curved.x;
+    positions[zi] = curved.z;
+  }
+}
+
+export function curveStairsVertices(
+  vertices: Array<{ position: { x: number; y: number; z: number } }>,
+  depth: number,
+  curve: number,
+): void {
+  if (Math.abs(curve) < 1e-6 || depth < 1e-6) return;
+
+  let frontZ = Infinity;
+  for (const vertex of vertices) {
+    frontZ = Math.min(frontZ, vertex.position.z);
+  }
+
+  for (const vertex of vertices) {
+    const curved = applyArcCurvePoint(vertex.position.x, vertex.position.z, depth, curve, frontZ);
+    vertex.position.x = curved.x;
+    vertex.position.z = curved.z;
+  }
+}
+
 // ---------- Wedge / Slope (triangular prism) ----------
 // Origin at bottom-center. Sloped from back-bottom to front-top.
 //
@@ -50,10 +118,22 @@ export function buildWedgeGeometry(width: number, height: number, depth: number)
 // Generates `steps` equal-height steps stacked along the depth axis.
 // Origin at bottom-front-center.
 export function buildStairsGeometry(width: number, height: number, depth: number, steps: number): BuiltGeometry {
-  const clampedSteps = Math.max(2, Math.min(16, steps));
+  return buildStairsGeometryWithOptions(width, height, depth, steps, false, 0);
+}
+
+export function buildStairsGeometryWithOptions(
+  width: number,
+  height: number,
+  depth: number,
+  steps: number,
+  closedBase: boolean,
+  curve: number,
+): BuiltGeometry {
+  const clampedSteps = Math.max(2, Math.min(64, steps));
   const hw = width / 2;
   const stepH = height / clampedSteps;
   const stepD = depth / clampedSteps;
+  const zStart = -depth / 2;
 
   const vertices: ReturnType<typeof createVertex>[] = [];
   const faces: ReturnType<typeof createFace>[] = [];
@@ -61,10 +141,10 @@ export function buildStairsGeometry(width: number, height: number, depth: number
   for (let i = 0; i < clampedSteps; i++) {
     const x0 = -hw;
     const x1 = hw;
-    const y0 = i * stepH;
+    const y0 = closedBase ? 0 : i * stepH;
     const y1 = (i + 1) * stepH;
-    const z0 = -(i + 1) * stepD;  // front of this step
-    const z1 = -i * stepD;         // back of previous step / front-top of this step
+    const z0 = zStart + i * stepD;
+    const z1 = zStart + (i + 1) * stepD;
 
     // Each step is a box: front face (riser) + top face (tread)
     // We need 4 corners per step for riser, 4 for tread
@@ -98,6 +178,8 @@ export function buildStairsGeometry(width: number, height: number, depth: number
     faces.push(createFace([bfr.id, bbr.id, tbr.id, tfr.id]));
   }
 
+  curveStairsVertices(vertices, depth, curve);
+
   return { vertices, faces };
 }
 
@@ -108,13 +190,15 @@ export function buildDoorGeometry(
   width: number,
   height: number,
   depth: number,
-  wallThickness: number = 0.15
+  wallThickness: number = 0.15,
+  openingRatio: number = 0.6,
 ): BuiltGeometry {
   const hw = width / 2;
   const t = Math.min(wallThickness, width * 0.3);
   const lintelH = Math.max(height * 0.08, 0.1);
   const openingH = height - lintelH;
-  const openingHW = hw - t;
+  const maxOpeningHalf = Math.max(0.01, hw - t);
+  const openingHW = Math.max(0.01, Math.min(maxOpeningHalf, (width * Math.min(0.9, Math.max(0.15, openingRatio))) / 2));
 
   const vertices: ReturnType<typeof createVertex>[] = [];
   const faces: ReturnType<typeof createFace>[] = [];
@@ -206,7 +290,8 @@ export function buildArchGeometry(
   addBox(archRadius, hw, 0, pillarH, -hd, hd);
 
   // Arch segments: wedge-shaped pieces forming the semicircle
-  const clampedSeg = Math.max(4, Math.min(16, segments));
+  const clampedSeg = Math.max(4, Math.min(64, segments));
+
   for (let i = 0; i < clampedSeg; i++) {
     const a0 = Math.PI * (i / clampedSeg);
     const a1 = Math.PI * ((i + 1) / clampedSeg);

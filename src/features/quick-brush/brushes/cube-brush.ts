@@ -23,7 +23,7 @@ export const CubeBrush: BrushDefinition = {
 
   buildPreviewGeometry(params: BrushParams): THREE.BufferGeometry {
     const { width, depth } = computeRectFootprint(params);
-    const h = Math.max(0.01, params.height);
+    const h = Math.max(0.01, Math.abs(params.height));
     // Geometry centred at origin, sized to exact dimensions — no drift
     return new THREE.BoxGeometry(width, h, depth);
   },
@@ -31,9 +31,10 @@ export const CubeBrush: BrushDefinition = {
   computePreviewTransform(params: BrushParams): PreviewTransform {
     const { center, quaternion } = computeRectFootprint(params);
     const normal = new THREE.Vector3(params.normal.x, params.normal.y, params.normal.z).normalize();
-    const h = Math.max(0.01, params.height);
+    const hSigned = params.height;
+    const h = Math.max(0.01, Math.abs(hSigned));
     // Lift by half height along the surface normal so base sits on the surface
-    const worldCenter = center.clone().addScaledVector(normal, h / 2);
+    const worldCenter = center.clone().addScaledVector(normal, hSigned / 2);
     return {
       position: [worldCenter.x, worldCenter.y, worldCenter.z],
       quaternion: [quaternion.x, quaternion.y, quaternion.z, quaternion.w],
@@ -44,8 +45,9 @@ export const CubeBrush: BrushDefinition = {
   commit(params: BrushParams, _stores: CommitStores): string {
     const { center, width, depth, quaternion } = computeRectFootprint(params);
     const normal = new THREE.Vector3(params.normal.x, params.normal.y, params.normal.z).normalize();
-    const h = Math.max(0.05, params.height);
-    const worldCenter = center.clone().addScaledVector(normal, h / 2);
+    const hSigned = params.height;
+    const h = Math.max(0.05, Math.abs(hSigned));
+    const worldCenter = center.clone().addScaledVector(normal, hSigned / 2);
 
     const { vertices, faces } = buildCubeGeometry(1);
     const mesh = createMeshFromGeometry('Cube', vertices, faces);

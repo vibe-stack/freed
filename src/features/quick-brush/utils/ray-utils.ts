@@ -54,17 +54,30 @@ export function castToGroundOrSurface(
 }
 
 function computeTangent(normal: THREE.Vector3, camera: THREE.Camera): THREE.Vector3 {
-  // Use camera right vector as a hint, then orthogonalize against the normal
-  const cameraRight = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
-  const tangent = cameraRight.clone().sub(
-    normal.clone().multiplyScalar(normal.dot(cameraRight))
-  );
-  if (tangent.lengthSq() < 1e-6) {
-    // Degenerate case (looking straight down the normal) — use world X instead
-    const worldX = new THREE.Vector3(1, 0, 0);
-    return worldX.sub(normal.clone().multiplyScalar(normal.dot(worldX))).normalize();
+  void camera;
+  // Deterministic axis-aligned tangent: project world axes onto the surface plane
+  // and pick the strongest projection. This keeps brushes aligned to world axes.
+  const worldAxes = [
+    new THREE.Vector3(1, 0, 0),
+    new THREE.Vector3(0, 0, 1),
+    new THREE.Vector3(0, 1, 0),
+  ];
+
+  let best = new THREE.Vector3(1, 0, 0);
+  let bestLenSq = -1;
+  for (const axis of worldAxes) {
+    const projected = axis.clone().sub(normal.clone().multiplyScalar(normal.dot(axis)));
+    const lenSq = projected.lengthSq();
+    if (lenSq > bestLenSq) {
+      bestLenSq = lenSq;
+      best = projected;
+    }
   }
-  return tangent.normalize();
+
+  if (bestLenSq < 1e-6) {
+    return new THREE.Vector3(1, 0, 0);
+  }
+  return best.normalize();
 }
 
 /**

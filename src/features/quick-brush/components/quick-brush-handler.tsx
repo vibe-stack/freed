@@ -12,6 +12,7 @@ import { getBrush } from '../brushes/registry';
 import type { BrushParams } from '../brushes/types';
 import { castToGroundOrSurface } from '../utils/ray-utils';
 import QuickBrushPreview from './quick-brush-preview';
+import { computeRectFootprint } from '../brushes/brush-utils';
 
 /** Cast a ray against a fixed plane and return the intersection point, or null. */
 function castToPlane(
@@ -40,12 +41,32 @@ function buildBrushParams(store: ReturnType<typeof useQuickBrushStore.getState>)
     normal: new THREE.Vector3(store.normal.x, store.normal.y, store.normal.z),
     tangent: new THREE.Vector3(store.tangent.x, store.tangent.y, store.tangent.z),
     height: store.height,
+    doorOpeningRatio: store.doorOpeningRatio,
+    stairsCount: store.stairsCount,
+    archSegments: store.archSegments,
+    stairsCurve: store.stairsCurve,
   };
+}
+
+function commitActiveBrushPlacement() {
+  const store = useQuickBrushStore.getState();
+  const params = buildBrushParams(store);
+  if (params) {
+    const brush = getBrush(store.activeBrush);
+    brush.commit(params, {
+      geometry: useGeometryStore.getState(),
+      scene: useSceneStore.getState(),
+      selection: useSelectionStore.getState(),
+    });
+  }
+  useQuickBrushStore.getState().commitPlacement();
+  useToolStore.getState().setBrushPlacing(false);
 }
 
 const QuickBrushHandler: React.FC = () => {
   const { camera, gl, scene } = useThree();
   const phaseRef = useRef(useQuickBrushStore.getState().phase);
+  const heightDragRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
   // Track which UI elements are being interacted with so we skip toolbar clicks
   const isOverUIRef = useRef(false);
@@ -62,7 +83,7 @@ const QuickBrushHandler: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const HEIGHT_SENSITIVITY = 0.015;
+    const HEIGHT_SENSITIVITY = 0.02;
 
     const getViewMode = () => useSelectionStore.getState().selection.viewMode;
     const isBrushMode = () => getViewMode() === 'brush';
@@ -109,19 +130,27 @@ const QuickBrushHandler: React.FC = () => {
         useToolStore.getState().setBrushPlacing(true);
 
       } else if (phase === 'height') {
-        // Phase 2 commit: create the actual object
-        const store = useQuickBrushStore.getState();
-        const params = buildBrushParams(store);
-        if (params) {
-          const brush = getBrush(store.activeBrush);
-          brush.commit(params, {
-            geometry: useGeometryStore.getState(),
-            scene: useSceneStore.getState(),
-            selection: useSelectionStore.getState(),
-          });
+        // Phase 2 click: door advances to cutout; stairs advance to curve; others commit
+        if (activeBrush === 'door') {
+          useQuickBrushStore.getState().beginCutout();
+          heightDragRef.current = null;
+        } else if (activeBrush === 'stairs' || activeBrush === 'closed-stairs') {
+          useQuickBrushStore.getState().beginCurve();
+          heightDragRef.current = null;
+        } else {
+          commitActiveBrushPlacement();
+          anchorPlaneRef.current = null;
+          heightDragRef.current = null;
         }
-        useQuickBrushStore.getState().commitPlacement();
-        useToolStore.getState().setBrushPlacing(false);
+      } else if (phase === 'curve') {
+        commitActiveBrushPlacement();
+        anchorPlaneRef.current = null;
+        heightDragRef.current = null;
+      } else if (phase === 'cutout') {
+        // Phase 3 click: finalize door
+        commitActiveBrushPlacement();
+        anchorPlaneRef.current = null;
+        heightDragRef.current = null;
       }
     };
 
@@ -144,17 +173,66 @@ const QuickBrushHandler: React.FC = () => {
         });
 
       } else if (phase === 'height') {
-        // Accumulate height from vertical mouse movement
-        const delta = -e.movementY * HEIGHT_SENSITIVITY;
-        useQuickBrushStore.getState().updateHeight(delta);
+        // Blender-like absolute drag: derive signed height from pointer offset since stage start
+        const drag = heightDragRef.current;
+        if (!drag) return;
+        const nextHeight = drag.startHeight + (drag.startY - e.clientY) * HEIGHT_SENSITIVITY;
+        useQuickBrushStore.getState().setHeight(nextHeight);
+      } else if (phase === 'cutout') {
+        // Door phase 3: adjust opening width from cursor position over the locked anchor plane
+        const plane = anchorPlaneRef.current;
+        if (!plane) return;
+        const pt = castToPlane(e.clientX, e.clientY, camera, gl.domElement, plane);
+        if (!pt) return;
+        const store = useQuickBrushStore.getState();
+        const params = buildBrushParams(store);
+        if (!params) return;
+        const fp = computeRectFootprint(params);
+        const tangent = new THREE.Vector3(params.tangent.x, params.tangent.y, params.tangent.z).normalize();
+        const halfOnTangent = Math.abs(pt.clone().sub(fp.center).dot(tangent));
+        const openingWidth = Math.max(0.01, halfOnTangent * 2);
+        const ratio = openingWidth / Math.max(0.01, fp.width);
+        useQuickBrushStore.getState().setDoorOpeningRatio(ratio);
+      } else if (phase === 'curve') {
+        const CURVE_SENSITIVITY = e.shiftKey ? 0.002 : 0.01;
+        const current = useQuickBrushStore.getState().stairsCurve;
+        useQuickBrushStore.getState().setStairsCurve(current + e.movementX * CURVE_SENSITIVITY);
       }
     };
 
     const onMouseUp = (e: MouseEvent) => {
       if (e.button !== 0) return;
       if (phaseRef.current === 'footprint') {
-        anchorPlaneRef.current = null;
-        useQuickBrushStore.getState().commitFootprint();
+        const activeBrush = useQuickBrushStore.getState().activeBrush;
+        if (activeBrush === 'sphere') {
+          // Sphere is one-stage: drag radius then release to commit
+          commitActiveBrushPlacement();
+          anchorPlaneRef.current = null;
+          heightDragRef.current = null;
+          return;
+        }
+        useQuickBrushStore.getState().beginHeight();
+        const h = useQuickBrushStore.getState().height;
+        heightDragRef.current = { startY: e.clientY, startHeight: h };
+      }
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      if (!isBrushMode()) return;
+      if (e.target !== gl.domElement) return;
+      if (phaseRef.current !== 'height') return;
+
+      const activeBrush = useQuickBrushStore.getState().activeBrush;
+      if (activeBrush !== 'stairs' && activeBrush !== 'closed-stairs' && activeBrush !== 'arch') return;
+
+      e.preventDefault();
+      const step = e.deltaY < 0 ? 1 : -1;
+      if (activeBrush === 'stairs') {
+        useQuickBrushStore.getState().adjustStairsCount(step);
+      } else if (activeBrush === 'closed-stairs') {
+        useQuickBrushStore.getState().adjustStairsCount(step);
+      } else {
+        useQuickBrushStore.getState().adjustArchSegments(step);
       }
     };
 
@@ -163,6 +241,7 @@ const QuickBrushHandler: React.FC = () => {
         const phase = phaseRef.current;
         if (phase !== 'idle') {
           anchorPlaneRef.current = null;
+          heightDragRef.current = null;
           useQuickBrushStore.getState().cancel();
           useToolStore.getState().setBrushPlacing(false);
         }
@@ -172,12 +251,14 @@ const QuickBrushHandler: React.FC = () => {
     document.addEventListener('mousedown', onMouseDown);
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('wheel', onWheel, { passive: false });
     document.addEventListener('keydown', onKeyDown);
 
     return () => {
       document.removeEventListener('mousedown', onMouseDown);
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('wheel', onWheel);
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [camera, gl, scene]);

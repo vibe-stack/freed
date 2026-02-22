@@ -25,6 +25,10 @@ function toThreeParams(store: ReturnType<typeof useQuickBrushStore.getState>): B
     normal: new THREE.Vector3(store.normal.x, store.normal.y, store.normal.z),
     tangent: new THREE.Vector3(store.tangent.x, store.tangent.y, store.tangent.z),
     height: store.height,
+    doorOpeningRatio: store.doorOpeningRatio,
+    stairsCount: store.stairsCount,
+    archSegments: store.archSegments,
+    stairsCurve: store.stairsCurve,
   };
 }
 
@@ -33,12 +37,16 @@ interface LastDims {
   w: number;
   d: number;
   h: number;
+  doorOpeningRatio: number;
+  stairsCount: number;
+  archSegments: number;
+  stairsCurve: number;
   brushId: string;
 }
 
 const QuickBrushPreview: React.FC = () => {
   const meshRef = useRef<THREE.Mesh>(null);
-  const lastDims = useRef<LastDims>({ w: 0, d: 0, h: 0, brushId: '' });
+  const lastDims = useRef<LastDims>({ w: 0, d: 0, h: 0, doorOpeningRatio: 0, stairsCount: 0, archSegments: 0, stairsCurve: 0, brushId: '' });
 
   // Geometry is kept as a ref, not React state, so we can swap it imperatively
   const geoRef = useRef<THREE.BufferGeometry>(new THREE.BoxGeometry(0.01, 0.01, 0.01));
@@ -87,6 +95,10 @@ const QuickBrushPreview: React.FC = () => {
       Math.abs(w - dims.w) > EPSILON ||
       Math.abs(d - dims.d) > EPSILON ||
       Math.abs(h - dims.h) > EPSILON ||
+      Math.abs(params.doorOpeningRatio - dims.doorOpeningRatio) > EPSILON ||
+      Math.abs(params.stairsCount - dims.stairsCount) > EPSILON ||
+      Math.abs(params.archSegments - dims.archSegments) > EPSILON ||
+      Math.abs(params.stairsCurve - dims.stairsCurve) > EPSILON ||
       dims.brushId !== store.activeBrush
     ) {
       const newGeo = brush.buildPreviewGeometry(params);
@@ -94,7 +106,16 @@ const QuickBrushPreview: React.FC = () => {
       geoRef.current = newGeo;
       mesh.geometry = newGeo;
       oldGeo.dispose();
-      lastDims.current = { w, d, h, brushId: store.activeBrush };
+      lastDims.current = {
+        w,
+        d,
+        h,
+        doorOpeningRatio: params.doorOpeningRatio,
+        stairsCount: params.stairsCount,
+        archSegments: params.archSegments,
+        stairsCurve: params.stairsCurve,
+        brushId: store.activeBrush,
+      };
     }
 
     // Transform always applied from the same params snapshot — geo and position stay in sync

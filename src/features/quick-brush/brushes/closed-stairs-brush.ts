@@ -8,13 +8,14 @@ import type { BrushDefinition, BrushParams, CommitStores, PreviewTransform } fro
 import { computeRectFootprint, quaternionToEuler } from './brush-utils';
 import React from 'react';
 
-const StairsIcon = React.createElement(
+const ClosedStairsIcon = React.createElement(
   'svg',
   { viewBox: '0 0 18 18', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round', width: 16, height: 16 },
-  React.createElement('path', { d: 'M2 14h4v-3h4V7h4V4h2' })
+  React.createElement('path', { d: 'M2 14h12V4h2' }),
+  React.createElement('path', { d: 'M2 14h4v-3h4V7h4V4' })
 );
 
-function buildStairsPreviewGeometry(width: number, height: number, depth: number, steps: number, curve: number): THREE.BufferGeometry {
+function buildClosedStairsPreviewGeometry(width: number, height: number, depth: number, steps: number, curve: number): THREE.BufferGeometry {
   const stepH = height / steps;
   const stepD = depth / steps;
   const hw = width / 2;
@@ -25,7 +26,7 @@ function buildStairsPreviewGeometry(width: number, height: number, depth: number
   let vi = 0;
 
   for (let i = 0; i < steps; i++) {
-    const y0 = i * stepH;
+    const y0 = 0;
     const y1 = (i + 1) * stepH;
     const z0 = zStart + i * stepD;
     const z1 = zStart + (i + 1) * stepD;
@@ -55,18 +56,18 @@ function buildStairsPreviewGeometry(width: number, height: number, depth: number
   return geo;
 }
 
-export const StairsBrush: BrushDefinition = {
-  id: 'stairs',
-  label: 'Stairs',
-  shortcut: '6',
-  icon: StairsIcon,
+export const ClosedStairsBrush: BrushDefinition = {
+  id: 'closed-stairs',
+  label: 'Closed Stairs',
+  shortcut: '9',
+  icon: ClosedStairsIcon,
   footprintType: 'rect',
 
   buildPreviewGeometry(params: BrushParams): THREE.BufferGeometry {
     const { width, depth } = computeRectFootprint(params);
     const h = Math.max(0.01, Math.abs(params.height));
     const steps = Math.max(2, Math.min(64, Math.round(params.stairsCount)));
-    return buildStairsPreviewGeometry(
+    return buildClosedStairsPreviewGeometry(
       Math.max(0.01, width),
       h,
       Math.max(0.01, depth),
@@ -103,13 +104,13 @@ export const StairsBrush: BrushDefinition = {
       h,
       Math.max(0.01, depth),
       steps,
-      false,
+      true,
       params.stairsCurve,
     );
-    const mesh = createMeshFromGeometry('Stairs', vertices, faces);
+    const mesh = createMeshFromGeometry('Closed Stairs', vertices, faces);
     useGeometryStore.getState().addMesh(mesh);
     const scene = useSceneStore.getState();
-    const objId = scene.createMeshObject('Stairs', mesh.id);
+    const objId = scene.createMeshObject('Closed Stairs', mesh.id);
     scene.setTransform(objId, {
       position: { x: center.x, y: center.y, z: center.z },
       rotation: quaternionToEuler(q),

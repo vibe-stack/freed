@@ -25,7 +25,7 @@ export const ArchBrush: BrushDefinition = {
 
   buildPreviewGeometry(params: BrushParams): THREE.BufferGeometry {
     const { width, depth } = computeRectFootprint(params);
-    const h = Math.max(0.01, params.height);
+    const h = Math.max(0.01, Math.abs(params.height));
     const w = Math.max(0.01, width);
     const d = Math.max(0.01, depth);
     const t = Math.min(w * 0.15, 0.25);
@@ -34,7 +34,7 @@ export const ArchBrush: BrushDefinition = {
     const archCenterY = pillarH;
     const hw = w / 2;
     const hd = d / 2;
-    const segments = 8;
+    const segments = Math.max(4, Math.min(64, Math.round(params.archSegments)));
 
     const positions: number[] = [];
     const indices: number[] = [];
@@ -94,18 +94,29 @@ export const ArchBrush: BrushDefinition = {
 
   computePreviewTransform(params: BrushParams): PreviewTransform {
     const { center, quaternion } = computeRectFootprint(params);
+    const q = quaternion.clone();
+    if (params.height < 0) {
+      const flip = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI);
+      q.multiply(flip);
+    }
     return {
       position: [center.x, center.y, center.z],
-      quaternion: [quaternion.x, quaternion.y, quaternion.z, quaternion.w],
+      quaternion: [q.x, q.y, q.z, q.w],
       scale: [1, 1, 1],
     };
   },
 
   commit(params: BrushParams, _stores: CommitStores): string {
     const { center, width, depth, quaternion } = computeRectFootprint(params);
-    const h = Math.max(0.05, params.height);
+    const h = Math.max(0.05, Math.abs(params.height));
+    const q = quaternion.clone();
+    if (params.height < 0) {
+      const flip = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI);
+      q.multiply(flip);
+    }
+    const segments = Math.max(4, Math.min(64, Math.round(params.archSegments)));
     const { vertices, faces } = buildArchGeometry(
-      Math.max(0.01, width), h, Math.max(0.01, depth), 8
+      Math.max(0.01, width), h, Math.max(0.01, depth), segments
     );
     const mesh = createMeshFromGeometry('Arch', vertices, faces);
     useGeometryStore.getState().addMesh(mesh);
@@ -113,7 +124,7 @@ export const ArchBrush: BrushDefinition = {
     const objId = scene.createMeshObject('Arch', mesh.id);
     scene.setTransform(objId, {
       position: { x: center.x, y: center.y, z: center.z },
-      rotation: quaternionToEuler(quaternion),
+      rotation: quaternionToEuler(q),
       scale: { x: 1, y: 1, z: 1 },
     });
     scene.selectObject(objId);

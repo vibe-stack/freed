@@ -5,6 +5,7 @@ import { SphereBrush } from './sphere-brush';
 import { CylinderBrush } from './cylinder-brush';
 import { ConeBrush } from './cone-brush';
 import { StairsBrush } from './stairs-brush';
+import { ClosedStairsBrush } from './closed-stairs-brush';
 import { DoorBrush } from './door-brush';
 import { ArchBrush } from './arch-brush';
 import type { BrushDefinition, BrushShape } from './types';
@@ -17,6 +18,7 @@ export const BRUSH_REGISTRY: BrushDefinition[] = [
   CylinderBrush,
   ConeBrush,
   StairsBrush,
+  ClosedStairsBrush,
   DoorBrush,
   ArchBrush,
 ];

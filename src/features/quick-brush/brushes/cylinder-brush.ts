@@ -25,15 +25,15 @@ export const CylinderBrush: BrushDefinition = {
 
   buildPreviewGeometry(params: BrushParams): THREE.BufferGeometry {
     const { radius } = computeRadialFootprint(params);
-    const h = Math.max(0.01, params.height);
+    const h = Math.max(0.01, Math.abs(params.height));
     return new THREE.CylinderGeometry(radius, radius, h, 16, 1);
   },
 
   computePreviewTransform(params: BrushParams): PreviewTransform {
     const { center, quaternion } = computeRadialFootprint(params);
     const normal = new THREE.Vector3(params.normal.x, params.normal.y, params.normal.z).normalize();
-    const h = Math.max(0.01, params.height);
-    const worldCenter = center.clone().addScaledVector(normal, h / 2);
+    const hSigned = params.height;
+    const worldCenter = center.clone().addScaledVector(normal, hSigned / 2);
     return {
       position: [worldCenter.x, worldCenter.y, worldCenter.z],
       quaternion: [quaternion.x, quaternion.y, quaternion.z, quaternion.w],
@@ -44,8 +44,9 @@ export const CylinderBrush: BrushDefinition = {
   commit(params: BrushParams, _stores: CommitStores): string {
     const { center, radius, quaternion } = computeRadialFootprint(params);
     const normal = new THREE.Vector3(params.normal.x, params.normal.y, params.normal.z).normalize();
-    const h = Math.max(0.05, params.height);
-    const worldCenter = center.clone().addScaledVector(normal, h / 2);
+    const hSigned = params.height;
+    const h = Math.max(0.05, Math.abs(hSigned));
+    const worldCenter = center.clone().addScaledVector(normal, hSigned / 2);
     const { vertices, faces } = buildCylinderGeometry(radius, radius, h, 16, 1, true);
     const mesh = createMeshFromGeometry('Cylinder', vertices, faces, { shading: 'smooth' });
     useGeometryStore.getState().addMesh(mesh);

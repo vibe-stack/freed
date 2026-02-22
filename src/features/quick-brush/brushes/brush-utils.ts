@@ -23,8 +23,9 @@ export function computeRectFootprint(params: BrushParams): RectFootprint {
   const anchor = new THREE.Vector3(params.anchor.x, params.anchor.y, params.anchor.z);
   const current = new THREE.Vector3(params.current.x, params.current.y, params.current.z);
   const normal = new THREE.Vector3(params.normal.x, params.normal.y, params.normal.z).normalize();
-  const tangent = new THREE.Vector3(params.tangent.x, params.tangent.y, params.tangent.z).normalize();
-  const bitangent = new THREE.Vector3().crossVectors(normal, tangent).normalize();
+  const tangentRaw = new THREE.Vector3(params.tangent.x, params.tangent.y, params.tangent.z).normalize();
+  const tangent = tangentRaw.clone().sub(normal.clone().multiplyScalar(tangentRaw.dot(normal))).normalize();
+  const bitangent = new THREE.Vector3().crossVectors(tangent, normal).normalize();
 
   // Project current onto surface plane at anchor
   const diff = current.clone().sub(anchor);
@@ -40,11 +41,9 @@ export function computeRectFootprint(params: BrushParams): RectFootprint {
     .addScaledVector(tangent, t / 2)
     .addScaledVector(bitangent, b / 2);
 
-  // Quaternion that rotates Y-up geometry to align with the surface normal
-  const quaternion = new THREE.Quaternion().setFromUnitVectors(
-    new THREE.Vector3(0, 1, 0),
-    normal,
-  );
+  // Quaternion from full local basis: X=tangent, Y=normal, Z=bitangent
+  const basis = new THREE.Matrix4().makeBasis(tangent, normal, bitangent);
+  const quaternion = new THREE.Quaternion().setFromRotationMatrix(basis);
 
   return { width, depth, center, quaternion };
 }

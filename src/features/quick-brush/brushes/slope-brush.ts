@@ -24,7 +24,7 @@ export const SlopeBrush: BrushDefinition = {
 
   buildPreviewGeometry(params: BrushParams): THREE.BufferGeometry {
     const { width, depth } = computeRectFootprint(params);
-    const h = Math.max(0.01, params.height);
+    const h = Math.max(0.01, Math.abs(params.height));
     const w = Math.max(0.01, width);
     const d = Math.max(0.01, depth);
     const geo = new THREE.BufferGeometry();
@@ -47,16 +47,26 @@ export const SlopeBrush: BrushDefinition = {
 
   computePreviewTransform(params: BrushParams): PreviewTransform {
     const { center, quaternion } = computeRectFootprint(params);
+    const q = quaternion.clone();
+    if (params.height < 0) {
+      const flip = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI);
+      q.multiply(flip);
+    }
     return {
       position: [center.x, center.y, center.z],
-      quaternion: [quaternion.x, quaternion.y, quaternion.z, quaternion.w],
+      quaternion: [q.x, q.y, q.z, q.w],
       scale: [1, 1, 1],
     };
   },
 
   commit(params: BrushParams, _stores: CommitStores): string {
     const { center, width, depth, quaternion } = computeRectFootprint(params);
-    const h = Math.max(0.05, params.height);
+    const h = Math.max(0.05, Math.abs(params.height));
+    const q = quaternion.clone();
+    if (params.height < 0) {
+      const flip = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI);
+      q.multiply(flip);
+    }
     const { vertices, faces } = buildWedgeGeometry(
       Math.max(0.01, width), h, Math.max(0.01, depth)
     );
@@ -66,7 +76,7 @@ export const SlopeBrush: BrushDefinition = {
     const objId = scene.createMeshObject('Slope', mesh.id);
     scene.setTransform(objId, {
       position: { x: center.x, y: center.y, z: center.z },
-      rotation: quaternionToEuler(quaternion),
+      rotation: quaternionToEuler(q),
       scale: { x: 1, y: 1, z: 1 },
     });
     scene.selectObject(objId);
