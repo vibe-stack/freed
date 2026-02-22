@@ -7,6 +7,8 @@ export function createWheelHandler() {
     if (!toolStore.isActive || toolStore.tool !== 'fillet') return;
     
     e.preventDefault();
+    try { e.stopPropagation(); } catch {}
+    try { (e as any).stopImmediatePropagation?.(); } catch {}
     const delta = Math.sign(e.deltaY);
     
     // Store divisions in tool localData

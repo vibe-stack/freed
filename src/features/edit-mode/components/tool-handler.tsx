@@ -223,10 +223,10 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
         } else if (toolState.tool === 'bevel') {
           commitBevelOperation(localVertices, selectedFaceIds, meshId, geometryStore, toolState);
         } else if (toolState.tool === 'chamfer') {
-          const distance = accumulator.scale || 0; // total distance across band
+          const distance = (toolState.localData as any)?.distance ?? accumulator.scale ?? 0;
           commitChamferOperation(meshId, geometryStore, distance);
         } else if (toolState.tool === 'fillet') {
-          const radius = accumulator.scale || 0;
+          const radius = (toolState.localData as any)?.radius ?? accumulator.scale ?? 0;
           const divisions = (toolState.localData as any)?.divisions ?? 1;
           commitFilletOperation(meshId, geometryStore, radius, divisions);
         } else {
@@ -261,10 +261,11 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
     const handleWheel = (e: WheelEvent) => {
       const toolState = useToolStore.getState();
       if (!toolState.isActive) return;
-      if (toolState.tool === 'fillet') {
-        // Disable camera zoom while adjusting fillet divisions
+      if (toolState.tool === 'fillet' || toolState.tool === 'bevel') {
+        // Disable camera zoom while adjusting bevel/fillet divisions
         try { e.preventDefault(); } catch {}
         try { e.stopPropagation(); } catch {}
+        try { (e as any).stopImmediatePropagation?.(); } catch {}
         const delta = Math.sign(e.deltaY);
         const data = (toolState.localData as any) || {};
         const prev = (data.divisions ?? 1) as number;
@@ -278,13 +279,13 @@ export const ToolHandler: React.FC<ToolHandlerProps> = ({
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
     document.addEventListener('keydown', handleKeyDown);
-  document.addEventListener('wheel', handleWheel, { passive: false });
+    document.addEventListener('wheel', handleWheel, { passive: false, capture: true });
     
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('keydown', handleKeyDown);
-  document.removeEventListener('wheel', handleWheel as any);
+      document.removeEventListener('wheel', handleWheel as any, true);
     };
   }, [
     toolStore.isActive,

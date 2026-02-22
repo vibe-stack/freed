@@ -245,6 +245,15 @@ const TopToolbar: React.FC = () => {
             Object
           </SegButton>
           <SegButton active={selection.viewMode === 'edit'} onClick={enterEdit}>Edit</SegButton>
+          <SegButton
+            active={selection.viewMode === 'brush'}
+            onClick={() => {
+              if (selection.viewMode === 'edit') selectionActions.exitEditMode();
+              selectionActions.setViewMode(selection.viewMode === 'brush' ? 'object' : 'brush');
+            }}
+          >
+            Brush
+          </SegButton>
           {selection.viewMode === 'edit' && (
             <div className="ml-1 flex items-center">
               <div className="mx-1 w-px h-4 bg-white/10" />

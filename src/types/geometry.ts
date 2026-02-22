@@ -75,7 +75,7 @@ export interface Material {
 }
 
 // View and Selection types
-export type ViewMode = 'object' | 'edit';
+export type ViewMode = 'object' | 'edit' | 'brush';
 export type SelectionMode = 'vertex' | 'edge' | 'face';
 
 export interface Selection {

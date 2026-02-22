@@ -24,6 +24,7 @@ import { AnimatePresence } from "motion/react"
 
 import TerrainEditor from '@/features/terrain/components/terrain-editor'
 import { useTerrainEditorStore } from '@/stores/terrain-editor-store';
+import QuickBrushBar from '@/features/quick-brush/components/quick-brush-bar';
 
 const EditorLayout: React.FC = () => {
   const shaderOpen = useShaderEditorStore((s) => s.open);
@@ -58,6 +59,10 @@ const EditorLayout: React.FC = () => {
             {/* Edit/Sculpt toolbars (only one visible based on palette) */}
             <AnimatePresence mode="popLayout">
               {editPalette === 'sculpt' ? <SculptToolsToolbar /> : <EditToolsToolbar />}
+            </AnimatePresence>
+            {/* Quick Brush bar — visible only in object mode */}
+            <AnimatePresence>
+              <QuickBrushBar />
             </AnimatePresence>
           </div>
 

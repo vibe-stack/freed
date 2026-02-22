@@ -52,6 +52,10 @@ export const useSelectionStore = create<SelectionStore>()(
         set((state) => {
           // Cancel any active tools when changing modes
           useToolStore.getState().reset();
+          // If leaving brush mode, also release brush placing lock
+          if (state.selection.viewMode === 'brush') {
+            useToolStore.getState().setBrushPlacing(false);
+          }
           state.selection.viewMode = viewMode;
           // Clear all selections when changing view modes
           state.selection.vertexIds = [];

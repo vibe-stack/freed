@@ -63,6 +63,9 @@ interface ToolState {
   symmetryAxis: 'x' | 'y' | 'z';
   setSymmetryEnabled: (v: boolean) => void;
   setSymmetryAxis: (a: 'x' | 'y' | 'z') => void;
+  // Quick brush placement (disables camera orbit while dragging)
+  brushPlacing: boolean;
+  setBrushPlacing: (v: boolean) => void;
 }
 
 export const useToolStore = create<ToolState>((set) => ({
@@ -106,4 +109,6 @@ export const useToolStore = create<ToolState>((set) => ({
   symmetryAxis: 'x',
   setSymmetryEnabled: (v) => set({ symmetryEnabled: v }),
   setSymmetryAxis: (a) => set({ symmetryAxis: a }),
+  brushPlacing: false,
+  setBrushPlacing: (v) => set({ brushPlacing: v }),
 }));
