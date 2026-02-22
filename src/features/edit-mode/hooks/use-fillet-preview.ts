@@ -81,43 +81,42 @@ export function useFilletPreview(mesh: Mesh | null) {
 
             if (!fidB) continue;
 
-            // Compute offset arc center for convex fillet
-            const local_s = pA.clone().multiplyScalar(radius);
-            const local_e = pB.clone().multiplyScalar(radius);
-            const d = local_s.distanceTo(local_e);
-            const half_d = d / 2;
-            let h_sq = radius * radius - half_d * half_d;
-            if (h_sq < 0) h_sq = 0; // Clamp for large radius; preview flat
-            const h = Math.sqrt(h_sq);
+            // Compute outward normals consistent with inward pA, pB
+            let nA_out = new Vector3().crossVectors(edgeDir, pA).normalize();
+            let nB_out = new Vector3().crossVectors(edgeDir, pB).normalize();
+            if (nA_out.dot(pB) > 0) nA_out.multiplyScalar(-1);
+            if (nB_out.dot(pA) > 0) nB_out.multiplyScalar(-1);
 
-            const local_mid = new Vector3().addVectors(local_s, local_e).multiplyScalar(0.5);
-            const dir_se = new Vector3().subVectors(local_e, local_s).normalize();
-            const perp_se = new Vector3().crossVectors(edgeDir, dir_se).normalize();
-            const c_plus = new Vector3().addVectors(local_mid, perp_se.clone().multiplyScalar(h));
-            const c_minus = new Vector3().subVectors(local_mid, perp_se.clone().multiplyScalar(h));
+            // Compute arc center to center the arc on the edge
+            const cosb = nA_out.dot(nB_out);
+            const angleBetween = Math.acos(Math.max(-1, Math.min(1, cosb)));
+            const halfAngle = angleBetween / 2;
+            const sinHalfAngle = Math.sin(halfAngle);
+            const centerDist = radius / (sinHalfAngle > 0.0001 ? sinHalfAngle : 0.0001); // Avoid division by zero
+            const bisector = new Vector3().addVectors(nA_out, nB_out).normalize();
+            const local_c = bisector.multiplyScalar(-centerDist);
 
-            const bis = new Vector3().addVectors(pA, pB).normalize();
-            const dot_plus = c_plus.dot(bis);
-            const dot_minus = c_minus.dot(bis);
-            const local_c = dot_plus > dot_minus ? c_plus : c_minus;
+            // Compute start and end points of the arc
+            const local_s = new Vector3().addVectors(local_c, nA_out.clone().multiplyScalar(radius));
+            const local_e = new Vector3().addVectors(local_c, nB_out.clone().multiplyScalar(radius));
 
+            // Compute the arc parameters directly
             const vec_start = new Vector3().subVectors(local_s, local_c).normalize();
             const vec_end = new Vector3().subVectors(local_e, local_c).normalize();
-
             const cross_v = new Vector3().crossVectors(vec_start, vec_end);
             const dot_v = Math.max(-1, Math.min(1, vec_start.dot(vec_end)));
             const sign_a = Math.sign(cross_v.dot(edgeDir));
             const theta_a = Math.acos(dot_v) * (sign_a === 0 ? 1 : sign_a);
 
-            // Build rings with offset-center arc points
+            const k = edgeDir.clone().normalize();
+
+            // Build rings with arc points
             const r1: Vector3[] = [];
             const r2: Vector3[] = [];
             for (let i = 0; i <= divisions; i++) {
                 const t = i / divisions;
                 const angle = theta_a * t;
                 let dir_i = vec_start.clone();
-                // Rotate vec_start to get dir_i
-                const k = edgeDir.clone().normalize();
                 const cos = Math.cos(angle), sin = Math.sin(angle);
                 const term1 = dir_i.multiplyScalar(cos);
                 const term2 = new Vector3().crossVectors(k, dir_i).multiplyScalar(sin);
@@ -125,21 +124,19 @@ export function useFilletPreview(mesh: Mesh | null) {
                 dir_i = new Vector3().addVectors(term1, term2).add(term3).normalize();
 
                 const local_point = new Vector3().addVectors(local_c, dir_i.multiplyScalar(radius));
-                const v1Clone = new Vector3().copy(v1.position);
-                const v2Clone = new Vector3().copy(v2.position);
-                const a = v1Clone.add(local_point);
-                const b = v2Clone.add(local_point);
+                const a = new Vector3().addVectors(v1.position, local_point);
+                const b = new Vector3().addVectors(v2.position, local_point);
                 r1.push(a);
                 r2.push(b);
             }
 
-            // Connect as before
-            for (let i = 0; i <= divisions; i++) {
-                out.push({ a: r1[i], b: r2[i] });
-            }
+            // Connect as preview lines
             for (let i = 0; i < divisions; i++) {
-                out.push({ a: r1[i], b: r1[i + 1] });
-                out.push({ a: r2[i], b: r2[i + 1] });
+                out.push({ a: r1[i], b: r1[i + 1] }); // Boundary along v1 side
+                out.push({ a: r2[i], b: r2[i + 1] }); // Boundary along v2 side
+            }
+            for (let i = 0; i <= divisions; i++) {
+                out.push({ a: r1[i], b: r2[i] }); // Generatrix along edge
             }
         }
 
